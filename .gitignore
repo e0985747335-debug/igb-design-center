@@ -49,3 +49,11 @@ logs/*.md
 
 # === Optional: ignore local-only dashboards ===
 # frontend/public/dashboard.html  # 若你已搬到 Next.js，可解除註解
+
+# Ignore backups and logs
+frontend_backup/
+frontend_backup_*/
+igb-design-center/
+*.log
+*.tmp
+*.swp
