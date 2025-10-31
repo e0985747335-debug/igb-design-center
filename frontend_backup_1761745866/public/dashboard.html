@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📊 e-Market 商業分析儀表板</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      font-family: "Noto Sans TC", sans-serif;
+      background: #f9fafb;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #1f2937;
+      margin-bottom: 10px;
+    }
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 25px;
+      margin-top: 20px;
+    }
+    .chart-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      padding: 20px;
+      height: 360px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+    #exportBtn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #06b6d4;
+      color: white;
+      border: none;
+      padding: 12px 18px;
+      border-radius: 50px;
+      cursor: pointer;
+      font-weight: bold;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    }
+    #exportBtn:hover {
+      background-color: #0891b2;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 e-Market 商業洞察儀表板</h1>
+  <div class="chart-grid">
+    <div class="chart-card"><canvas id="salesChart"></canvas></div>
+    <div class="chart-card"><canvas id="radarChart"></canvas></div>
+    <div class="chart-card"><canvas id="allocationChart"></canvas></div>
+    <div class="chart-card"><canvas id="impactBubbleChart"></canvas></div>
+  </div>
+
+  <button id="exportBtn">📄 下載報告</button>
+
+  <script>
+    const tooltipConfig = {
+      plugins: {
+        tooltip: {
+          backgroundColor: "rgba(31,41,55,0.9)",
+          titleColor: "#fff",
+          bodyColor: "#f9fafb",
+          borderWidth: 1,
+          borderColor: "#9ca3af",
+        },
+      },
+    };
+    const wrapLabel = (label) =>
+      label.length > 6 ? label.match(/.{1,6}/g).join("\\n") : label;
+
+    // 1️⃣ 銷售折線圖
+    new Chart(document.getElementById("salesChart"), {
+      type: "line",
+      data: {
+        labels: ["1月", "2月", "3月", "4月", "5月", "6月"],
+        datasets: [
+          {
+            label: "月營收（萬元）",
+            data: [120, 150, 180, 220, 260, 310],
+            borderColor: "#06b6d4",
+            backgroundColor: "rgba(6,182,212,0.2)",
+            borderWidth: 3,
+            tension: 0.3,
+            fill: true,
+          },
+        ],
+      },
+      options: {
+        ...tooltipConfig,
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: "bottom" } },
+      },
+    });
+
+    // 2️⃣ 痛點雷達圖
+    new Chart(document.getElementById("radarChart"), {
+      type: "radar",
+      data: {
+        labels: ["物流", "介面", "信任", "價格", "社群"].map(wrapLabel),
+        datasets: [
+          {
+            label: "痛點分數 (滿分 5)",
+            data: [4.2, 3.8, 4.5, 3.2, 4.0],
+            backgroundColor: "rgba(255,107,107,0.3)",
+            borderColor: "#FF6B6B",
+            borderWidth: 2,
+          },
+        ],
+      },
+      options: {
+        ...tooltipConfig,
+        scales: {
+          r: {
+            suggestedMin: 0,
+            suggestedMax: 5,
+            ticks: { stepSize: 1 },
+            grid: { color: "#e5e7eb" },
+          },
+        },
+      },
+    });
+
+    // 3️⃣ 資源配置甜甜圈圖
+    new Chart(document.getElementById("allocationChart"), {
+      type: "doughnut",
+      data: {
+        labels: ["UI/UX", "物流", "信任", "營銷"],
+        datasets: [
+          {
+            data: [30, 30, 25, 15],
+            backgroundColor: ["#118AB2", "#06D6A0", "#FFD166", "#FF6B6B"],
+            borderWidth: 2,
+            borderColor: "#fff",
+          },
+        ],
+      },
+      options: {
+        ...tooltipConfig,
+        plugins: { legend: { position: "bottom" } },
+      },
+    });
+
+    // 4️⃣ 財務衝擊氣泡圖
+    new Chart(document.getElementById("impactBubbleChart"), {
+      type: "bubble",
+      data: {
+        labels: ["現行營運", "惜福專區", "彈性訂閱", "整合方案"],
+        datasets: [
+          {
+            label: "財務衝擊組合",
+            data: [
+              { x: 2, y: 1.5, r: 8 },
+              { x: 4, y: 1.2, r: 12 },
+              { x: 2.5, y: 4.5, r: 14 },
+              { x: 5, y: 5, r: 20 },
+            ],
+            backgroundColor: ["#9ca3af", "#FFD166", "#FF6B6B", "#06D6A0"],
+            borderWidth: 2,
+            borderColor: "#fff",
+          },
+        ],
+      },
+      options: {
+        ...tooltipConfig,
+        scales: {
+          x: {
+            min: 0,
+            max: 6,
+            title: { display: true, text: "庫損優化潛力" },
+          },
+          y: {
+            min: 0,
+            max: 6,
+            title: { display: true, text: "CLV 提升潛力" },
+          },
+        },
+        plugins: { legend: { position: "top" } },
+      },
+    });
+
+    // 匯出功能 PDF / PNG
+    document.getElementById("exportBtn").addEventListener("click", async () => {
+      const { jsPDF } = window.jspdf;
+      const canvas = await html2canvas(document.body, { scale: 2 });
+      const imgData = canvas.toDataURL("image/png");
+
+      const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const imgHeight = (canvas.height * pageWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pageWidth, imgHeight);
+      pdf.save(`eMarket_Report_${new Date().toISOString().split("T")[0]}.pdf`);
+    });
+  </script>
+</body>
+</html>
