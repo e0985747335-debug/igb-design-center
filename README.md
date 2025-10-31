@@ -1,57 +1,71 @@
-# 🧠 e-Market 開發筆記
+# 🏗 IGB Design Center
 
-> 「打造屬於本地的數位菜市場。」
+> 數位化企業核心增長系統（IGB ERP / e-Market 專案）
 
-這是 `e-Market` 的開發紀錄與架構說明，記錄專案的設計理念、進度與實作細節。  
-目標是建立一個能讓 **消費者與生產者直接交易** 的線上平台。
+本專案整合 **企業營運核心模組**（CRM、SCM、財務、人資、BI 等）與 **技術基礎架構**（Next.js、Node.js、PostgreSQL、Redis、S3 等），旨在打造可擴展的數位化營運系統。
 
 ---
 
-## 🗂 專案結構
+## 📁 專案結構
 
 e-market/
-├── backend/ # 後端 API (Node.js / Express)
-│ ├── routes/ # API 路由
-│ ├── models/ # 資料結構 (MongoDB Schema)
-│ ├── controllers/# 控制邏輯
-│ ├── config/ # 系統設定檔
-│ └── server.js # 入口點
-│
-├── frontend/ # 前端 (React / Next.js)
-│ ├── pages/ # 頁面
-│ ├── components/ # 可重用元件
-│ ├── store/ # 狀態管理 (Redux / Pinia)
-│ └── assets/ # 靜態資源
-│
-├── database/ # MongoDB 設定與備份
-├── docs/ # 文件與規劃筆記
-└── README.md
+├── frontend/ # 前端應用 (Next.js)
+├── docs/ # 系統設計與技術文件
+│ ├── architecture.md # 🧩 系統架構與模組關係圖
+│ └── ...
+├── logs/ # 自動化執行日誌
+├── scripts/ # 自動化腳本（報表、部署等）
+├── .github/ # CI/CD & Vercel 工作流
+└── README.md # 本文件
 
 yaml
 複製程式碼
 
 ---
 
-## 🧩 開發階段紀錄
+## 📖 文件導覽
 
-| 日期 | 進度 | 說明 |
-|------|------|------|
-| 2025/10/29 | ✅ 初始化專案 | 建立 GitHub 倉庫與 SSH 部署連線 |
-| 2025/10/29 | 🧱 架構規劃 | 設計前後端資料夾與技術堆疊 |
-| 2025/10/30 | 🚧 待辦 | 建立 Express 後端 API |
-| 2025/10/31 | 🚧 待辦 | 設定 React 前端環境與 UI 結構 |
+| 文件名稱 | 說明 |
+|-----------|------|
+| [`docs/architecture.md`](./docs/architecture.md) | 系統架構與技術分層概覽 |
+| [`docs/`](./docs) | 其他模組規劃與技術文檔 |
 
 ---
 
-## 🛠 技術堆疊
+## ⚙️ 技術棧 (Tech Stack)
 
-| 區塊 | 技術 | 備註 |
-|------|------|------|
-| 前端 | React / Next.js | 支援 RWD、模組化架構 |
-| 後端 | Node.js + Express | RESTful API |
-| 資料庫 | MongoDB (Mongoose ORM) | 雲端或本地連線皆可 |
-| 認證 | JWT + Bcrypt | 使用者登入驗證 |
-| 部署 | Ubuntu + Nginx + PM2 | 可使用 GitHub Actions 自動部署 |
-| 版本控制 | Git + GitHub | 以 main 分支為主開發線 |
+| 類別 | 技術 |
+|------|------|
+| 前端 | Next.js, React, TailwindCSS |
+| 後端 | Node.js (Express/NestJS), REST API |
+| 資料庫 | PostgreSQL / MySQL, Redis, S3 |
+| 部署 | Vercel, GitHub Actions, Docker (未來擴充) |
+| 文件 | Markdown + Mermaid (自動架構圖) |
 
 ---
+
+## 🚀 快速啟動
+
+```bash
+# 安裝依賴
+npm install
+
+# 啟動開發模式
+npm run dev
+
+# 建置正式版本
+npm run build
+🧠 專案願景
+IGB ERP / e-Market 專案致力於打造：
+
+可彈性擴展的企業級系統基礎。
+
+數據驅動的決策支持平台。
+
+以使用者體驗為中心的智慧企業解決方案。
+
+🧩 貢獻與維護
+歡迎團隊成員透過 Pull Request 貢獻代碼與文檔。
+若需更新架構圖或文件，請更新 docs/architecture.md 並推送至 main 分支。
+
+© 2025 IGB Design Center. All Rights Reserved.
