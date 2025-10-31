@@ -14,3 +14,10 @@
 ## 📘 文件導覽
 
 - [IGB ERP 會計科目設計規格書 (最終版)](docs/IGB_ERP_會計科目設計規格書.md)
+
+---
+
+## 📘 文件導覽
+
+- [🧩 系統架構設計文件](docs/architecture.md)
+- [📘 IGB ERP 會計科目設計規格書 (最終版)](docs/IGB_ERP_會計科目設計規格書.md)
