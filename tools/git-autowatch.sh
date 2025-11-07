@@ -1,39 +1,31 @@
 #!/bin/bash
-# ==========================================================
-# 🧠 IGB ERP 2.0 Auto Git Watcher v2.0
-# 作者: IGB Tung
-# 功能:
-#   ✅ 自動監測本地變更 (每 30 秒)
-#   ✅ 自動 add / commit / push
-#   ✅ 顯示桌面通知 (notify-send)
-#   ✅ 日誌記錄至 logs/git-autowatch.log
-# ==========================================================
+WATCH_DIR="/home/iven/igb-design-center"
+LOG_FILE="/home/iven/igb-design-center/logs/git-autowatch.log"
 
-cd ~/igb-design-center || exit 1
-LOG_DIR="logs"
-mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/git-autowatch.log"
+notify-send "🔍 IGB Git Watch" "自動監控已啟動"
 
-DATE=$(date '+%Y%m%d_%H%M%S')
-echo "[$DATE] 🚀 啟動 Git Auto Watcher..." | tee -a "$LOG_FILE"
+LAST_CHANGE=$(date +%s)
 
-# 每 30 秒檢查一次變更
-while true; do
-    DATE=$(date '+%Y-%m-%d %H:%M:%S')
+# 背景批次推送函式
+batch_push() {
+  local now=$(date +%s)
+  local diff=$((now - LAST_CHANGE))
+  if [ $diff -ge 3 ]; then
+    cd "$WATCH_DIR" || exit
+    git add . >/dev/null 2>&1
+    git commit -m "⚡ 自動批次更新 $(date '+%H:%M:%S')" >/dev/null 2>&1 && \
+    git push origin main >/dev/null 2>&1 && \
+    notify-send "✅ IGB ERP 2.0 自動推送完成" "最新修改已同步至 GitHub" || \
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ⚠ 推送失敗" >> "$LOG_FILE"
+  fi
+}
 
-    # 檢查有無變更
-    if [[ -n $(git status --porcelain) ]]; then
-        echo "[$DATE] 🔄 偵測到檔案變更，準備提交..." | tee -a "$LOG_FILE"
-        git add .
-        git commit -m "🤖 Auto-sync: $DATE" >> "$LOG_FILE" 2>&1
-        if git push origin main >> "$LOG_FILE" 2>&1; then
-            echo "[$DATE] ✅ 自動推送成功！" | tee -a "$LOG_FILE"
-            notify-send "IGB ERP 2.0" "📤 已自動同步至 GitHub ✅"
-        else
-            echo "[$DATE] ⚠ 推送失敗，稍後重試..." | tee -a "$LOG_FILE"
-            notify-send "IGB ERP 2.0" "⚠ Git 推送失敗，稍後重試"
-        fi
-    fi
-
-    sleep 30
+inotifywait -m -r -e modify,create,delete,move "$WATCH_DIR" --exclude '(\.git|\.log|data|__pycache__)' |
+while read -r directory events filename; do
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] 📂 $events: $filename" >> "$LOG_FILE"
+  LAST_CHANGE=$(date +%s)
+  (
+    sleep 3
+    batch_push
+  ) &
 done
