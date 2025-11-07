@@ -1,12 +1,12 @@
 #!/bin/bash
 # ==========================================================
-# 🚀 IGB ERP 2.0 自動狀態摘要同步工具 v1.3
+# 🚀 IGB ERP 2.0 自動狀態摘要同步工具 v1.4
 # 作者: IGB Tung
 # 功能:
 #   ✅ 生成 AUTO_STATUS_GUIDE.md 狀態摘要
 #   ✅ 檢查版本同步狀態
-#   ✅ 自動提交並推送至 GitHub
-#   ✅ 支援排程每日 23:30 執行
+#   ✅ 自動提交並推送至 GitHub（含重試機制）
+#   ✅ 每日 23:30 自動執行
 # ==========================================================
 
 set -e
@@ -20,7 +20,7 @@ mkdir -p ./logs
 echo "[${DATE}] 🚀 開始生成狀態摘要..." | tee -a "$LOG_FILE"
 
 cat > "$GUIDE_FILE" <<EOF2
-# 🧩 IGB ERP 2.0 自動化狀態摘要 v1.3
+# 🧩 IGB ERP 2.0 自動化狀態摘要 v1.4
 生成時間：${DATE}
 
 ## 🧠 系統模組版本狀態
@@ -41,15 +41,37 @@ cat > "$GUIDE_FILE" <<EOF2
 ## ⚙️ 自動化任務排程
 - 🔁 每日 23:30 自動檢查與推送版本
 - 🧹 關機自動清理與備份已啟用
-- 🔔 桌面通知已整合至 git-autowatch.service
-
+- 🔔 桌面通知與 git-autowatch 整合完成
 EOF2
 
-echo "[${DATE}] ✍️ 自動提交與推送..." | tee -a "$LOG_FILE"
+echo "[${DATE}] ✍️ 準備推送至 GitHub..." | tee -a "$LOG_FILE"
 git add "$GUIDE_FILE"
-git commit -m "📘 Auto update: system status v1.3 @ ${DATE}" || echo "[${DATE}] ℹ️ 無需提交" | tee -a "$LOG_FILE"
-git push origin main | tee -a "$LOG_FILE"
+git commit -m "📘 Auto update: system status v1.4 @ ${DATE}" >> "$LOG_FILE" 2>&1 || echo "[${DATE}] ℹ️ 無需提交" | tee -a "$LOG_FILE"
 
-notify-send "✅ IGB ERP 2.0" "AUTO_STATUS_GUIDE.md v1.3 已更新並推送成功"
+# === GitHub 推送重試機制 ===
+MAX_RETRIES=3
+RETRY_INTERVAL=10
+RETRY_COUNT=0
+PUSH_SUCCESS=false
 
-echo "[${DATE}] ✅ 狀態摘要同步完成！" | tee -a "$LOG_FILE"
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    echo "[${DATE}] ☁ 第 $((RETRY_COUNT+1)) 次推送嘗試..." | tee -a "$LOG_FILE"
+    if git push origin main >> "$LOG_FILE" 2>&1; then
+        PUSH_SUCCESS=true
+        break
+    else
+        echo "[${DATE}] ⚠ 推送失敗，$RETRY_INTERVAL 秒後重試..." | tee -a "$LOG_FILE"
+        sleep $RETRY_INTERVAL
+        RETRY_COUNT=$((RETRY_COUNT+1))
+    fi
+done
+
+if [ "$PUSH_SUCCESS" = true ]; then
+    notify-send "✅ IGB ERP 2.0" "AUTO_STATUS_GUIDE.md v1.4 已成功推送至 GitHub"
+    echo "[${DATE}] ✅ 推送成功！" | tee -a "$LOG_FILE"
+else
+    notify-send "❌ IGB ERP 2.0" "推送失敗，請檢查網路或權限設定。"
+    echo "[${DATE}] ❌ GitHub 推送失敗，已達最大重試次數。" | tee -a "$LOG_FILE"
+fi
+
+echo "[${DATE}] 🎯 狀態摘要同步完成" | tee -a "$LOG_FILE"
