@@ -1,24 +1,23 @@
-# 📘 IGB ERP 2.0 自動化狀態摘要（v1.3）
+# 🧩 IGB ERP 2.0 自動化狀態摘要 v1.3
+生成時間：2025-11-07 23:14:01
 
-## 🧩 系統模組啟用狀態
-- ✅ Smart Heavy Cleaner：運作中  
-- ✅ Auto Git Push（auto-version-push.sh）：啟用  
-- ✅ Git AutoWatch（git-autowatch.service）：已啟動  
-- ✅ Shutdown Clean Backup（git-autoclean-shutdown.service）：已註冊  
+## 🧠 系統模組版本狀態
+| 模組 | 狀態 | 檢查時間 |
+|------|------|-----------|
+| FastAPI | ✅ 運行中 (port: 8000) | 2025-11-07 23:14:01 |
+| Node Gateway | ✅ 運行中 (port: 3000) | 2025-11-07 23:14:01 |
+| PostgreSQL | ✅ 運行中 (port: 5433) | 2025-11-07 23:14:01 |
+| Caddy HTTPS Proxy | ✅ 運行中 (port: 443) | 2025-11-07 23:14:01 |
 
-## 🕒 排程任務
-| 時間 | 任務名稱 | 狀態 |
-|------|-----------|------|
-| 每日 09:00 | 開工提醒 | ✅ |
-| 每日 18:00 | 收工自動化 | ✅ |
-| 每週日 21:00 | 系統備份 | ✅ |
-| 每日 23:30 | AUTO_STATUS 同步 | ✅ |
+## 🪄 Git 同步狀態
+| 項目 | 狀態 |
+|------|------|
+| 本地變更 | 1 項變更 |
+| 最新提交 | 8fa6bc6 - 🧩 Auto-commit at 2025-11-07 23:13:08 |
+| 遠端狀態 | 無法檢查遠端狀態 |
 
-## 🔄 Git 狀態同步檢查
-- 分支：`main`
-- 遠端倉庫：`origin`
-- 同步模式：自動（Auto Push Enabled）
-- 檢查時間：$(date '+%Y-%m-%d %H:%M:%S')
+## ⚙️ 自動化任務排程
+- 🔁 每日 23:30 自動檢查與推送版本
+- 🧹 關機自動清理與備份已啟用
+- 🔔 桌面通知已整合至 git-autowatch.service
 
-## 🧠 說明
-本文件由 auto-status-sync.sh 自動生成並同步至 GitHub。
