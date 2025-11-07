@@ -1,6 +1,7 @@
 #!/bin/bash
 # ==========================================================
 # 🧠 IGB ERP 2.0 - Git AutoWatch 一鍵修復腳本 v1.1
+# 作者: IGB Tung
 # 功能：
 #   ✅ 自動建立 / 修復 systemd service
 #   ✅ 啟用桌面通知 (notify-send)
