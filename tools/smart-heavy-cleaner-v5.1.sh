@@ -1,90 +1,78 @@
 #!/bin/bash
 # ==========================================================
-# 🧠 IGB ERP 2.0 Smart Heavy Cleaner v5.3
+# 🧹 IGB ERP 2.0 Smart Heavy Cleaner v3.9 (含 Git Repair 自動重試)
 # 作者: IGB Tung
 # 功能:
-#   ✅ 自動偵測 >100MB 的檔案
-#   ✅ 搬移至 ~/.cache/igb-heavy/
-#   ✅ 自動壓縮專案為 backup 檔案
-#   ✅ 更新 .gitignore
-#   ✅ 自動 Git commit + push
-#   ✅ 結尾提示結果與通知
+#   ✅ 系統與 Docker 清理
+#   ✅ 自動偵測並執行 git-repair.sh
+#   ✅ 若推送失敗自動重試 3 次
+#   ✅ 桌面通知 + 日誌記錄 + Cron 兼容
 # ==========================================================
 
 set -e
-cd "$(dirname "$0")/.."   # 移動到專案根目錄
-
-DATE=$(date '+%Y-%m-%d_%H-%M-%S')
+cd "$(dirname "$0")/.."   # 回到專案根目錄
+DATE=$(date '+%Y%m%d_%H%M%S')
 LOG_DIR="./logs"
-HEAVY_CACHE="$HOME/.cache/igb-heavy"
-BACKUP_DIR="./backup"
-LOG_FILE="$LOG_DIR/smart-heavy-cleaner-$DATE.log"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/smart-heavy-cleaner.log"
 
-mkdir -p "$LOG_DIR" "$HEAVY_CACHE" "$BACKUP_DIR"
+# === 桌面通知 ===
+notify() {
+  local title="$1"
+  local msg="$2"
+  if command -v notify-send &>/dev/null; then
+    notify-send "$title" "$msg"
+  elif command -v osascript &>/dev/null; then
+    osascript -e "display notification \"$msg\" with title \"$title\""
+  else
+    echo "🔔 [$title] $msg"
+  fi
+}
 
-echo "[$(date '+%H:%M:%S')] 🚀 Smart Heavy Cleaner v5.3 啟動..." | tee -a "$LOG_FILE"
+echo "[$DATE] 🚀 開始執行 Smart Heavy Cleaner..." | tee -a "$LOG_FILE"
 
-# === Step 1: 搬移大於 100MB 的檔案 ===
-find . -type f -size +100M 2>/dev/null | while read -r FILE; do
-    TARGET="$HEAVY_CACHE$(dirname "$FILE" | sed 's|^\./||')"
-    mkdir -p "$TARGET"
-    echo "[$(date '+%H:%M:%S')] ⚙ 偵測大檔案: $FILE" | tee -a "$LOG_FILE"
-    mv "$FILE" "$TARGET/" 2>/dev/null || {
-        echo "[$(date '+%H:%M:%S')] ❌ 搬移失敗: $FILE" | tee -a "$LOG_FILE"
-        continue
-    }
-    echo "(moved to $HEAVY_CACHE)" > "$FILE"
-    echo "[$(date '+%H:%M:%S')] ✅ 已搬移至: $TARGET/$(basename "$FILE")" | tee -a "$LOG_FILE"
-done
+# === 1️⃣ 系統清理 ===
+echo "[$DATE] 🧹 清理暫存與快取..." | tee -a "$LOG_FILE"
+sudo rm -rf ./__pycache__ ./tmp ./cache ./logs/*.old ./node_modules/.cache >> "$LOG_FILE" 2>&1 || true
+sudo docker system prune -af >> "$LOG_FILE" 2>&1 || true
+sudo apt-get autoremove -y >> "$LOG_FILE" 2>&1 || true
 
-# === Step 2: 更新 .gitignore ===
-cat > .gitignore << 'EOF'
-# === Docker volumes / DB / cache ===
-/data/
-/yes/
-/pgdata/
-/postgres/
-/caddy/data/
-/caddy/config/
-/logs/
-/mnt/
-/var/
-/backup/
+# === 2️⃣ Node / Python 清理 ===
+echo "[$DATE] 🧠 清理 Node / Python 環境..." | tee -a "$LOG_FILE"
+sudo rm -rf ~/.npm/_logs ~/.cache/pip >> "$LOG_FILE" 2>&1 || true
 
-# === Python ===
-__pycache__/
-*.pyc
-.venv/
-venv/
-.env
+# === 3️⃣ Git 修復模組 (自動重試推送) ===
+if [ -f "./tools/git-repair.sh" ]; then
+  echo "[$DATE] 🧩 偵測到 git-repair.sh，開始執行..." | tee -a "$LOG_FILE"
+  bash ./tools/git-repair.sh >> "$LOG_FILE" 2>&1
 
-# === Node / Frontend ===
-node_modules/
-dist/
-build/
+  # === 檢查推送狀態 ===
+  ATTEMPT=1
+  MAX_RETRY=3
+  SUCCESS=false
 
-# === Archives ===
-*.tar.gz
-EOF
+  while [ $ATTEMPT -le $MAX_RETRY ]; do
+    echo "[$DATE] ☁ 嘗試第 $ATTEMPT 次推送..." | tee -a "$LOG_FILE"
+    git add . >> "$LOG_FILE" 2>&1
+    git commit -m "🔁 Auto Push Retry #$ATTEMPT" >> "$LOG_FILE" 2>&1 || true
+    git push origin main >> "$LOG_FILE" 2>&1 && SUCCESS=true && break
+    echo "[$DATE] ⚠ 推送失敗，第 $ATTEMPT 次重試中..." | tee -a "$LOG_FILE"
+    sleep 15
+    ATTEMPT=$((ATTEMPT + 1))
+  done
 
-echo "[$(date '+%H:%M:%S')] 🧾 .gitignore 已更新。" | tee -a "$LOG_FILE"
+  if [ "$SUCCESS" = true ]; then
+    echo "[$DATE] ✅ GitHub 推送成功！" | tee -a "$LOG_FILE"
+    notify "IGB ERP 自動推送成功" "GitHub 已同步完成 ✅"
+  else
+    echo "[$DATE] ❌ 推送 3 次皆失敗，請檢查網路或 Token。" | tee -a "$LOG_FILE"
+    notify "⚠ IGB ERP 推送失敗" "請手動檢查 Git 狀態。"
+  fi
 
-# === Step 3: 壓縮專案 ===
-BACKUP_FILE="$BACKUP_DIR/igb-design-center-$DATE.tar.gz"
-echo "[$(date '+%H:%M:%S')] 📦 壓縮專案中..." | tee -a "$LOG_FILE"
-tar --exclude='./backup' --exclude='./.git' --exclude='./yes' --exclude='./data' \
-    -czf "$BACKUP_FILE" . 2>>"$LOG_FILE"
-echo "[$(date '+%H:%M:%S')] ✅ 壓縮完成: $BACKUP_FILE" | tee -a "$LOG_FILE"
-
-# === Step 4: Git commit + push ===
-echo "[$(date '+%H:%M:%S')] 🔄 提交並推送至 GitHub..." | tee -a "$LOG_FILE"
-git add . >/dev/null 2>&1
-git commit -m "🧹 Auto-clean + backup @ $DATE" >/dev/null 2>&1 || echo "[$(date '+%H:%M:%S')] ℹ 無變更可提交" | tee -a "$LOG_FILE"
-if git push origin main --force >/dev/null 2>&1; then
-    echo "[$(date '+%H:%M:%S')] ✅ GitHub 同步成功！" | tee -a "$LOG_FILE"
 else
-    echo "[$(date '+%H:%M:%S')] ⚠ GitHub 推送失敗，請手動檢查。" | tee -a "$LOG_FILE"
+  echo "[$DATE] ⚠ 找不到 ./tools/git-repair.sh，跳過 Git 修復步驟" | tee -a "$LOG_FILE"
 fi
 
-# === Step 5: 完成通知 ===
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✅ Smart Heavy Cleaner v5.3 完成！" | tee -a "$LOG_FILE"
+# === 4️⃣ 結束階段 ===
+echo "[$DATE] ✅ 清理與推送流程完成！" | tee -a "$LOG_FILE"
+notify "IGB ERP 清理完成" "系統清理 + Git 修復已完成。"
