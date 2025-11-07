@@ -1,0 +1,13 @@
+[Unit]
+Description=IGB ERP 2.0 Git Auto Watcher (v2.1)
+After=network.target
+
+[Service]
+Type=simple
+User=iven
+WorkingDirectory=/home/iven/igb-design-center
+ExecStart=/home/iven/igb-design-center/tools/git-autowatch.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
