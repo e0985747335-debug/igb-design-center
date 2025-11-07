@@ -1,3 +1,4 @@
+cat > ~/igb-design-center/tools/git-autowatch-run.sh <<'BASH'
 #!/usr/bin/env bash
 # git-autowatch-run.sh (v2.1 fixed)
 set -euo pipefail
