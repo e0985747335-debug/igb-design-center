@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UML 序列圖：用戶驗證程序互動</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .uml-container {
+            position: relative;
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            padding: 2rem;
+            min-height: 800px;
+            overflow-x: auto;
+        }
+        .lifeline {
+            position: absolute;
+            top: 10px;
+            bottom: 10px;
+            width: 2px;
+            background-color: #9ca3af; /* 灰色虛線效果 */
+            border-left: 2px dashed #9ca3af;
+        }
+        .actor, .object {
+            position: absolute;
+            top: 0;
+            width: 100px;
+            text-align: center;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        .actor {
+            height: 40px;
+        }
+        .object {
+            padding: 5px 10px;
+            border: 2px solid #3b82f6;
+            background-color: #eff6ff;
+            border-radius: 6px;
+            height: auto;
+        }
+        .activation-bar {
+            position: absolute;
+            width: 10px;
+            background-color: #2563eb; /* 藍色 */
+        }
+        .message-arrow {
+            position: absolute;
+            height: 0;
+            border-top: 1px solid #10b981; /* 綠色箭頭 */
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+        .message-arrow::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: -5px;
+            width: 0;
+            height: 0;
+            border-left: 10px solid #10b981;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+        }
+        .return-arrow {
+            border-top: 1px dashed #ef4444; /* 紅色虛線箭頭 */
+        }
+        .return-arrow::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: -5px;
+            width: 0;
+            height: 0;
+            border-right: 10px solid #ef4444; /* 方向不同 */
+            border-left: none;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+        }
+        .message-label {
+            position: absolute;
+            top: -20px;
+            font-size: 0.8rem;
+            background-color: #ffffff;
+            padding: 0 4px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            color: #059669;
+        }
+        .return-label {
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4 border-b-2 border-green-500 pb-2">
+            UML 序列圖：用戶註冊驗證程序
+        </h1>
+        <p class="text-gray-600 mb-6">
+            本圖表展示了**複雜驗證流程**中，不同系統組件之間的**互動行為順序**。
+            這是處理複雜流程判斷邏輯時，不可或缺的**結構視角**工具。
+        </p>
+
+        <div id="umlDiagram" class="uml-container rounded-xl shadow-2xl">
+            <!-- 參與者/對象 定義 -->
+            <div id="User" class="actor" style="left: 50px;">用戶</div>
+            <div id="ClientUI" class="object" style="left: 200px; top: 50px;">前端界面 (Web/App)</div>
+            <div id="Gateway" class="object" style="left: 370px; top: 50px;">API 閘道器</div>
+            <div id="AuthService" class="object" style="left: 540px; top: 50px;">驗證微服務</div>
+            <div id="Database" class="object" style="left: 710px; top: 50px;">用戶資料庫 (DB)</div>
+
+            <!-- 生命線 (Lifelines) -->
+            <div class="lifeline" style="left: 100px; top: 50px; bottom: 30px;"></div>
+            <div class="lifeline" style="left: 250px; top: 100px; bottom: 30px;"></div>
+            <div class="lifeline" style="left: 420px; top: 100px; bottom: 30px;"></div>
+            <div class="lifeline" style="left: 590px; top: 100px; bottom: 30px;"></div>
+            <div class="lifeline" style="left: 760px; top: 100px; bottom: 30px;"></div>
+
+            <!-- 激活條 (Activation Bars) 和 訊息 (Messages) 將由 JS 動態生成 -->
+            <div id="flowArea"></div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // 參與者/對象的中心X座標
+        const lifelines = {
+            User: 100,
+            ClientUI: 250,
+            Gateway: 420,
+            AuthService: 590,
+            Database: 760
+        };
+
+        // 訊息定義：[來源, 目的地, 訊息內容, 類型 (send/return), Y座標]
+        const messages = [
+            ['User', 'ClientUI', '1. 輸入註冊資料', 'send', 120],
+            ['ClientUI', 'Gateway', '2. POST /register (帶有資料)', 'send', 170],
+            ['Gateway', 'AuthService', '3. 請求驗證 (Email/密碼)', 'send', 220],
+            
+            // 複雜驗證細節開始
+            ['AuthService', 'Database', '4. 查詢用戶名是否重複', 'send', 270],
+            ['Database', 'AuthService', '5. 返回查詢結果 (e.g., [status: available])', 'return', 320],
+            
+            // 驗證服務內部邏輯 (密碼強度、Email格式等)
+            ['AuthService', 'AuthService', '6. 執行內部驗證邏輯 (密碼強度檢查)', 'self', 370],
+
+            // 驗證成功後
+            ['AuthService', 'Gateway', '7. 返回驗證成功結果 (status: ok)', 'return', 420],
+            ['Gateway', 'ClientUI', '8. 轉發成功回應 (HTTP 201 Created)', 'return', 470],
+            ['ClientUI', 'User', '9. 顯示「註冊成功」頁面', 'send', 520],
+        ];
+
+        const container = document.getElementById('flowArea');
+        let currentY = 0;
+
+        // 繪製訊息箭頭和激活條
+        function drawMessage(source, target, label, type, y) {
+            const x1 = lifelines[source];
+            const x2 = lifelines[target];
+            const minX = Math.min(x1, x2);
+            const maxX = Math.max(x1, x2);
+            const width = maxX - minX;
+            const isReturn = type === 'return';
+            const isSelf = source === target;
+            
+            currentY = y;
+
+            if (isSelf) {
+                // 處理自我調用 (Activation Bar 自身的循環)
+                const bar = document.createElement('div');
+                bar.className = 'activation-bar';
+                bar.style.left = `${x1 + 5}px`;
+                bar.style.top = `${y - 10}px`;
+                bar.style.height = '30px';
+                container.appendChild(bar);
+
+                const arrow = document.createElement('div');
+                arrow.className = 'message-arrow';
+                arrow.style.borderTop = '1px solid #f97316';
+                arrow.style.left = `${x1 + 15}px`;
+                arrow.style.width = '20px';
+                arrow.style.top = `${y}px`;
+                // 自我調用箭頭頭部
+                arrow.style.transform = 'rotate(90deg) translate(-5px, 0px)';
+                arrow.style.transformOrigin = '0 0';
+                
+                const labelEl = document.createElement('span');
+                labelEl.className = 'message-label';
+                labelEl.textContent = label;
+                labelEl.style.left = `${x1 + 25}px`;
+                labelEl.style.top = `${y - 25}px`;
+                labelEl.style.color = '#f97316';
+                labelEl.style.borderColor = '#f97316';
+
+                container.appendChild(labelEl);
+                // 為了簡單，自調用只畫標籤，不畫複雜箭頭
+                return; 
+            }
+
+            // 繪製訊息箭頭
+            const arrow = document.createElement('div');
+            arrow.className = `message-arrow ${isReturn ? 'return-arrow' : ''}`;
+            arrow.style.left = isReturn ? `${x2}px` : `${x1}px`;
+            arrow.style.width = `${width}px`;
+            arrow.style.top = `${y}px`;
+            
+            // 如果是 return 訊息，箭頭方向相反
+            if (isReturn) {
+                arrow.style.right = `${x1}px`;
+                arrow.style.left = `${x2}px`;
+                arrow.style.borderRight = '10px solid #ef4444'; 
+                arrow.style.borderLeft = 'none';
+                arrow.style.right = '0';
+                arrow.querySelector('::after')?.remove(); // 移除自帶的箭頭頭部
+
+                // 手動創建反向箭頭頭部
+                const head = document.createElement('div');
+                head.style.position = 'absolute';
+                head.style.left = '-10px';
+                head.style.top = '-5px';
+                head.style.width = '0';
+                head.style.height = '0';
+                head.style.borderRight = '10px solid #ef4444';
+                head.style.borderTop = '5px solid transparent';
+                head.style.borderBottom = '5px solid transparent';
+                arrow.appendChild(head);
+            }
+
+            // 繪製訊息標籤
+            const labelEl = document.createElement('span');
+            labelEl.className = `message-label ${isReturn ? 'return-label' : ''}`;
+            labelEl.textContent = label;
+            labelEl.style.left = `${minX + width / 2 - label.length * 3}px`;
+            labelEl.style.top = `${y - 20}px`;
+
+            if (isReturn) {
+                labelEl.style.borderColor = '#ef4444';
+            } else {
+                labelEl.style.borderColor = '#10b981';
+            }
+
+
+            // 繪製激活條
+            if (!isReturn) {
+                 const bar = document.createElement('div');
+                 bar.className = 'activation-bar';
+                 bar.style.left = `${x2 + 5}px`;
+                 bar.style.top = `${y}px`;
+                 bar.style.height = '0px'; // 初始高度為 0，後續會更新
+                 bar.setAttribute('data-target', target);
+                 bar.setAttribute('data-start-y', y);
+                 container.appendChild(bar);
+            }
+
+            container.appendChild(arrow);
+            container.appendChild(labelEl);
+        }
+        
+        // 繪製流程圖
+        messages.forEach(msg => {
+            drawMessage(...msg);
+        });
+        
+        // 調整 Activation Bar 的高度
+        // 這個邏輯很複雜，簡單地為 Auth Service 設置一個代表整個驗證過程的 Activation Bar
+        const authBarStart = messages.find(m => m[1] === 'AuthService')[4];
+        const authBarEnd = messages.findLast(m => m[0] === 'AuthService')[4]; 
+        
+        const authBar = document.createElement('div');
+        authBar.className = 'activation-bar';
+        authBar.style.left = `${lifelines['AuthService'] + 5}px`;
+        authBar.style.top = `${authBarStart}px`;
+        authBar.style.height = `${authBarEnd - authBarStart + 20}px`; // +20 讓它稍微超過最後的返回訊息
+        container.appendChild(authBar);
+
+        // 類似地為 ClientUI, Gateway, Database 設置激活條
+        // ClientUI
+        let clientUIBarStart = messages.find(m => m[1] === 'ClientUI')[4];
+        let clientUIBarEnd = messages.findLast(m => m[0] === 'ClientUI')[4];
+        const clientBar = document.createElement('div');
+        clientBar.className = 'activation-bar';
+        clientBar.style.left = `${lifelines['ClientUI'] + 5}px`;
+        clientBar.style.top = `${clientUIBarStart}px`;
+        clientBar.style.height = `${clientUIBarEnd - clientUIBarStart + 20}px`; 
+        container.appendChild(clientBar);
+        
+        // Gateway
+        let gatewayBarStart = messages.find(m => m[1] === 'Gateway')[4];
+        let gatewayBarEnd = messages.findLast(m => m[0] === 'Gateway')[4];
+        const gatewayBar = document.createElement('div');
+        gatewayBar.className = 'activation-bar';
+        gatewayBar.style.left = `${lifelines['Gateway'] + 5}px`;
+        gatewayBar.style.top = `${gatewayBarStart}px`;
+        gatewayBar.style.height = `${gatewayBarEnd - gatewayBarStart + 20}px`; 
+        container.appendChild(gatewayBar);
+
+        // Database
+        let dbBarStart = messages.find(m => m[1] === 'Database')[4];
+        let dbBarEnd = messages.findLast(m => m[0] === 'Database')[4];
+        const dbBar = document.createElement('div');
+        dbBar.className = 'activation-bar';
+        dbBar.style.left = `${lifelines['Database'] + 5}px`;
+        dbBar.style.top = `${dbBarStart}px`;
+        dbBar.style.height = `${dbBarEnd - dbBarStart + 20}px`; 
+        container.appendChild(dbBar);
+
+
+    </script>
+</body>
+</html>

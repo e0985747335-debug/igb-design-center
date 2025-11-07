@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QDP 績效儀表板</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 Chart.js 用於圖表 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- 載入 Inter 字體 -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+        }
+        /* 基礎卡片樣式 */
+        .card {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
+        }
+        /* 可點擊卡片的樣式增強 */
+        .card.interactive:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            border: 2px solid #6366f1; /* 靛藍色邊框 */
+            cursor: pointer;
+        }
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1e3a8a; /* 藍色，突出顯示 */
+        }
+        .metric-title {
+            font-size: 1rem;
+            color: #6b7280;
+            margin-top: 0.5rem;
+        }
+        .chart-container {
+            height: 300px; /* 固定圖表高度 */
+        }
+        /* 表格樣式 */
+        .data-table th, .data-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+        }
+        .data-table th {
+            font-weight: 600;
+            background-color: #f3f4f6;
+            color: #4b5563;
+        }
+        .data-table tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <header class="mb-8">
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-2">QDP 績效儀表板</h1>
+        <p class="text-xl text-indigo-600 font-medium">即時數據驅動的決策</p>
+    </header>
+
+    <!-- 導航/切換按鈕 (D 默認突出顯示) -->
+    <div class="flex space-x-4 mb-8">
+        <button id="btn-q" class="nav-btn px-6 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition duration-150">
+            品質 (Q)
+        </button>
+        <button id="btn-d" class="nav-btn px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150">
+            交期 (D)
+        </button>
+        <button id="btn-p" class="nav-btn px-6 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition duration-150">
+            生產力 (P)
+        </button>
+    </div>
+
+    <!-- 交期 (D) 內容區域 (默認顯示) -->
+    <div id="delivery-area">
+        <section id="delivery-overview" class="mb-12">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-indigo-500 pb-2">
+                <span class="text-indigo-600">D</span>elivery 交期概覽
+            </h2>
+
+            <!-- 頂部卡片指標 (可點擊) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <!-- OTD -->
+                <div class="card interactive text-center border-2 border-transparent" onclick="showMetricDetail('OTD', '96.7%')">
+                    <p class="text-sm font-semibold text-green-600">本月趨勢：<span id="otd-trend">+0.5%</span></p>
+                    <p id="otd-value" class="metric-value text-green-600">96.7<span class="text-xl">%</span></p>
+                    <p class="metric-title">準時交貨率 (OTD)</p>
+                    <p class="text-xs text-gray-500 mt-1">目標: > 95.0%</p>
+                </div>
+                <!-- 平均交期 -->
+                <div class="card interactive text-center border-2 border-transparent" onclick="showMetricDetail('平均交期', '12.5 天')">
+                    <p class="text-sm font-semibold text-red-600">本月趨勢：<span id="lead-time-trend">+0.5天</span></p>
+                    <p id="lead-time-value" class="metric-value text-red-600">12.5</p>
+                    <p class="metric-title">平均訂單交期 (天)</p>
+                    <p class="text-xs text-gray-500 mt-1">目標: < 12.0 天</p>
+                </div>
+                <!-- 延誤次數 -->
+                <div class="card interactive text-center border-2 border-transparent" onclick="showMetricDetail('延誤次數', '8 次')">
+                    <p class="text-sm font-semibold text-yellow-600">本月趨勢：<span id="delay-count-trend">穩定</span></p>
+                    <p id="delay-count-value" class="metric-value">8</p>
+                    <p class="metric-title">交貨延誤次數</p>
+                    <p class="text-xs text-gray-500 mt-1">目標: < 10 次</p>
+                </div>
+            </div>
+
+            <!-- 圖表區域 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">準時交貨率 (OTD) - 6個月趨勢</h3>
+                    <div class="chart-container"><canvas id="otdChart"></canvas></div>
+                </div>
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">平均訂單交期 (天) - 6個月趨勢</h3>
+                    <div class="chart-container"><canvas id="leadTimeChart"></canvas></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+
+    <!-- 品質 (Q) 內容區域 (初始隱藏) -->
+    <div id="quality-area" class="hidden">
+
+        <section id="quality-overview" class="mb-12">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-gray-300 pb-2">
+                <span class="text-gray-500">Q</span>ualitly 品質概覽
+            </h2>
+            <!-- 頂部卡片指標 (可點擊) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <!-- FPY -->
+                <div class="card interactive text-center border-2 border-transparent" onclick="showMetricDetail('FPY', '98.5%')">
+                    <p class="text-sm font-semibold text-green-600">本月趨勢：<span>+0.8%</span></p>
+                    <p class="metric-value text-green-600">98.5<span class="text-xl">%</span></p>
+                    <p class="metric-title">首件通過率 (FPY)</p>
+                    <p class="text-xs text-gray-500 mt-1">目標: > 98.0%</p>
+                </div>
+                <!-- PPM -->
+                <div class="card interactive text-center border-2 border-transparent" onclick="showMetricDetail('PPM', '450')">
+                    <p class="text-sm font-semibold text-red-600">本月趨勢：<span>-15</span></p>
+                    <p class="metric-value text-red-600">450</p>
+                    <p class="metric-title">不良率 (PPM)</p>
+                    <p class="text-xs text-gray-500 mt-1">目標: < 500 PPM</p>
+                </div>
+                <!-- 客訴次數 -->
+                <div class="card interactive text-center border-2 border-transparent" onclick="showMetricDetail('客訴次數', '3 次')">
+                    <p class="text-sm font-semibold text-yellow-600">本月趨勢：<span>穩定</span></p>
+                    <p class="metric-value">3</p>
+                    <p class="metric-title">客戶投訴次數</p>
+                    <p class="text-xs text-gray-500 mt-1">目標: < 5 次</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card"><div class="chart-container"><canvas id="fpyChart"></canvas></div></div>
+                <div class="card"><div class="chart-container"><canvas id="ppmChart"></canvas></div></div>
+            </div>
+        </section>
+
+        <section id="detailed-quality-analysis" class="mb-12">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-gray-300 pb-2">
+                <span class="text-gray-500">Q</span>uality 詳細分析
+            </h2>
+
+            <!-- 切換按鈕 -->
+            <div class="flex space-x-3 mb-6">
+                <button id="btn-product-line" class="px-5 py-2 text-sm font-medium rounded-full transition duration-150 shadow-md bg-indigo-600 text-white hover:bg-indigo-700">
+                    按產品線
+                </button>
+                <button id="btn-workstation" class="px-5 py-2 text-sm font-medium rounded-full transition duration-150 shadow-md bg-gray-200 text-gray-800 hover:bg-gray-300">
+                    按工站
+                </button>
+            </div>
+
+            <!-- 詳細數據顯示區域 -->
+            <div class="card p-0 overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-200 data-table">
+                    <thead>
+                        <tr>
+                            <th id="table-header-name" class="w-1/3">產品線名稱</th>
+                            <th class="w-1/3">不良率 (PPM)</th>
+                            <th class="w-1/3">月度變化</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detailed-data-body" class="divide-y divide-gray-200">
+                        <!-- 數據將由 JS 渲染至此 -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- 生產力 (P) 內容區域 (初始隱藏) -->
+    <div id="productivity-area" class="hidden">
+        <section id="productivity-overview" class="mb-12">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-gray-300 pb-2">
+                <span class="text-gray-500">P</span>roductivity 生產力概覽
+            </h2>
+
+            <!-- 頂部卡片指標 (可點擊) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <!-- OEE -->
+                <div class="card interactive text-center border-2 border-transparent" onclick="showMetricDetail('OEE', '85%')">
+                    <p class="text-sm font-semibold text-green-600">本月趨勢：<span>+2.1%</span></p>
+                    <p class="metric-value text-green-600">85<span class="text-xl">%</span></p>
+                    <p class="metric-title">設備綜合效率 (OEE)</p>
+                    <p class="text-xs text-gray-500 mt-1">目標: > 80%</p>
+                </div>
+                <!-- 人均產出 -->
+                <div class="card interactive text-center border-2 border-transparent" onclick="showMetricDetail('人均產出', '1.5 PCS/小時')">
+                    <p class="text-sm font-semibold text-indigo-600">本月趨勢：<span>-0.2小時</span></p>
+                    <p class="metric-value text-indigo-600">1.5</p>
+                    <p class="metric-title">人均產出 (PCS/小時)</p>
+                    <p class="text-xs text-gray-500 mt-1">目標: > 1.8 PCS/小時</p>
+                </div>
+                <!-- 停機時間 -->
+                <div class="card interactive text-center border-2 border-transparent" onclick="showMetricDetail('停機時間', '120 分鐘/日')">
+                    <p class="text-sm font-semibold text-red-600">本月趨勢：<span>+5</span></p>
+                    <p class="metric-value text-red-600">120</p>
+                    <p class="metric-title">停機時間 (分鐘/日)</p>
+                    <p class="text-xs text-gray-500 mt-1">目標: < 90 分鐘/日</p>
+                </div>
+            </div>
+
+            <!-- 圖表區域 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">OEE 趨勢 - 6個月</h3>
+                    <div class="chart-container">
+                        <canvas id="oeeChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">停機原因分佈</h3>
+                    <div class="chart-container">
+                        <canvas id="downtimeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- P - 詳細分析區塊 -->
+        <section id="productivity-detailed-analysis" class="mb-12">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-gray-300 pb-2">
+                <span class="text-gray-500">P</span>roductivity 詳細分析
+            </h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <!-- 稼動率圖表 -->
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">產線稼動率 - 機器分佈</h3>
+                    <div class="chart-container"><canvas id="lineUtilizationChart"></canvas></div>
+                </div>
+                <!-- 績效表格 -->
+                <div class="card p-0 overflow-hidden">
+                    <div class="p-4 bg-gray-50 border-b border-gray-200">
+                        <h3 class="text-xl font-semibold text-gray-700">班次績效比較</h3>
+                    </div>
+                    <table class="min-w-full divide-y divide-gray-200 data-table">
+                        <thead>
+                            <tr>
+                                <th class="w-1/3">班次/機台</th>
+                                <th class="w-1/3">績效達成率 (%)</th>
+                                <th class="w-1/3">產出差異 (PCS)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productivity-data-body" class="divide-y divide-gray-200">
+                            <!-- 數據將由 JS 渲染至此 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- 底部腳註 -->
+    <footer class="mt-12 text-center text-gray-500 text-sm">
+        數據更新於：2025年10月26日 10:56
+    </footer>
+
+    <!-- Data Interaction Modal (Hidden by default) -->
+    <div id="detailModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-75 flex items-center justify-center" onclick="closeModal(event)">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full m-4 transform transition-all" onclick="event.stopPropagation()">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h3 id="modalTitle" class="text-2xl font-bold text-gray-800"></h3>
+                <button onclick="closeModal(event)" class="text-gray-400 hover:text-gray-600 transition">
+                    <!-- Close Icon (using SVG for standard look) -->
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <p id="modalValue" class="text-4xl font-extrabold mb-4 text-indigo-600"></p>
+                <div id="modalContent" class="text-gray-700 space-y-3 list-disc pl-5">
+                    <!-- Dynamic content will go here -->
+                </div>
+            </div>
+            <div class="p-4 bg-gray-50 border-t border-gray-200 text-right">
+                <button onclick="closeModal(event)" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-150">
+                    關閉
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- 模擬數據 ---
+        const mockData = {
+            months: ['5月', '6月', '7月', '8月', '9月', '10月'],
+            // 品質 (Q) 數據
+            fpyData: [95.5, 96.2, 97.0, 97.7, 98.3, 98.5],
+            ppmData: [750, 680, 600, 550, 465, 450],
+            fpyTarget: 98.0,
+            ppmTarget: 500,
+            // 交期 (D) 數據
+            otdData: [90.5, 92.1, 95.0, 93.8, 96.2, 96.7],
+            leadTimeData: [15.0, 14.5, 13.0, 13.5, 12.0, 12.5],
+            otdTarget: 95.0,
+            leadTimeTarget: 12.0,
+            // 生產力 (P) 數據
+            oeeData: [78, 80, 81, 83, 84, 85],
+            downtimeData: [60, 30, 15, 10, 5],
+            downtimeLabels: ['設備故障', '材料等待', '換線設定', '品質檢查', '閒置時間']
+        };
+
+        const detailedData = {
+            // Q 數據
+            productLinePPM: [
+                { name: '產品線 A (高階)', ppm: 320, change: -50 },
+                { name: '產品線 B (標準)', ppm: 580, change: +80 },
+                { name: '產品線 C (配件)', ppm: 410, change: -20 }
+            ],
+            workstationPPM: [
+                { name: '工站 10 - 焊接', ppm: 650, change: +120 },
+                { name: '工站 20 - 組裝', ppm: 420, change: -40 },
+                { name: '工站 30 - 測試', ppm: 380, change: -10 }
+            ],
+            // P 數據
+            lineUtilizationLabels: ['機台 M1', '機台 M2', '機台 M3', '機台 M4'],
+            lineUtilizationRates: [92, 85, 96, 78], // Utilization %
+            shiftPerformance: [
+                { name: '早班', targetRate: 90, actualRate: 92, variance: 250 },
+                { name: '中班', targetRate: 90, actualRate: 88, variance: -180 },
+                { name: '晚班', targetRate: 90, actualRate: 95, variance: 400 }
+            ]
+        };
+
+        let currentQualityView = 'productLine';
+        let currentFocus = 'delivery'; // 預設焦點為 D
+
+        // --- 核心焦點切換邏輯 ---
+
+        function setFocus(focusArea) {
+            currentFocus = focusArea;
+
+            // 1. 定義所有按鈕和內容區域
+            const areas = {
+                q: { btn: document.getElementById('btn-q'), section: document.getElementById('quality-area') },
+                d: { btn: document.getElementById('btn-d'), section: document.getElementById('delivery-area') },
+                p: { btn: document.getElementById('btn-p'), section: document.getElementById('productivity-area') }
+            };
+
+            // 2. 遍歷並切換顯示狀態和按鈕樣式
+            for (const area in areas) {
+                const isFocused = area === focusArea;
+                const { btn, section } = areas[area];
+
+                // 處理內容區塊顯示/隱藏
+                if (isFocused) {
+                    section.classList.remove('hidden');
+                } else {
+                    section.classList.add('hidden');
+                }
+
+                // 處理按鈕樣式
+                if (isFocused) {
+                    btn.classList.remove('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                    btn.classList.add('bg-indigo-600', 'text-white', 'shadow-md', 'hover:bg-indigo-700');
+                } else {
+                    btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-md', 'hover:bg-indigo-700');
+                    btn.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                }
+
+                // 處理標題顏色和邊框 (視覺上的焦點)
+                section.querySelectorAll('h2').forEach(h2Element => {
+                    h2Element.classList.remove('border-indigo-500', 'border-gray-300');
+                    h2Element.classList.add(isFocused ? 'border-indigo-500' : 'border-gray-300');
+
+                    const span = h2Element.querySelector('span');
+                    if (span) {
+                        span.classList.remove('text-indigo-600', 'text-gray-500');
+                        span.classList.add(isFocused ? 'text-indigo-600' : 'text-gray-500');
+                    }
+                });
+            }
+        }
+
+        // --- 數據交互模態框 (Modal) 邏輯 ---
+
+        function showMetricDetail(metricName, metricValue) {
+            const modal = document.getElementById('detailModal');
+            const title = document.getElementById('modalTitle');
+            const value = document.getElementById('modalValue');
+            const content = document.getElementById('modalContent');
+
+            // Set content
+            title.textContent = `${metricName} 詳細分析`;
+            value.textContent = `當前值: ${metricValue}`;
+
+            // Generate simulated drilling down data based on metricName
+            let detailHtml = '';
+
+            switch (metricName) {
+                case 'OTD':
+                    detailHtml = `
+                        <ul class="list-disc ml-4 space-y-2">
+                            <li><strong>趨勢分析:</strong> 本月 OTD 96.7% (優於 95.0% 目標)，但過去七天微幅下滑至 96.0%。</li>
+                            <li><strong>主要貢獻:</strong> 產品線 C OTD 高達 99%，為主要穩定來源。</li>
+                            <li><strong>關注點:</strong> 產品線 A OTD 僅 93%，需要檢查排程或物料瓶頸。</li>
+                            <li><strong>建議:</strong> <span class="text-sm text-yellow-600 font-medium">立即對產品線 A 的延期訂單進行風險評估並優先處理。</span></li>
+                        </ul>
+                    `;
+                    break;
+                case '平均交期':
+                    detailHtml = `
+                        <ul class="list-disc ml-4 space-y-2">
+                            <li><strong>趨勢分析:</strong> 本月平均交期 12.5 天，較上月增加 0.5 天，未達 12.0 天目標。</li>
+                            <li><strong>瓶頸分析:</strong> 延遲主要發生在產品檢測環節，平均增加 1 天的等待時間。</li>
+                            <li><strong>供應商影響:</strong> 供應商 S003 的關鍵零組件交貨延遲 2 天，影響 5 張訂單。</li>
+                            <li><strong>建議:</strong> <span class="text-sm text-red-600 font-medium">優化檢測排程，並與 S003 協商建立更嚴格的 SLA。</span></li>
+                        </ul>
+                    `;
+                    break;
+                case '延誤次數':
+                    detailHtml = `
+                        <ul class="list-disc ml-4 space-y-2">
+                            <li><strong>趨勢分析:</strong> 本月延誤次數 8 次 (控制在 10 次目標內)，但已是近三個月最高值。</li>
+                            <li><strong>原因分佈:</strong> 3 次由設備故障引起，5 次由插單/急單造成排程混亂。</li>
+                            <li><strong>影響訂單:</strong> 8 次延誤共影響了 4 位客戶，其中一位是 VIP 客戶。</li>
+                            <li><strong>建議:</strong> <span class="text-sm text-yellow-600 font-medium">建立急單處理 SOP，並設立預防性維護計畫減少設備故障。</span></li>
+                        </ul>
+                    `;
+                    break;
+                case 'FPY':
+                    detailHtml = `
+                        <ul class="list-disc ml-4 space-y-2">
+                            <li><strong>趨勢分析:</strong> FPY 98.5%，達到並略優於 98.0% 目標，品質穩定。</li>
+                            <li><strong>高 FPY 產線:</strong> 產品線 C 保持 99.8% 的優秀表現。</li>
+                            <li><strong>改善空間:</strong> 產品線 B 仍有 1.5% 的一次性不良，主要集中在組裝工站。</li>
+                            <li><strong>建議:</strong> <span class="text-sm text-green-600 font-medium">持續監測組裝工站，考慮導入視覺檢測系統以提升精度。</span></li>
+                        </ul>
+                    `;
+                    break;
+                case 'PPM':
+                    detailHtml = `
+                        <ul class="list-disc ml-4 space-y-2">
+                            <li><strong>趨勢分析:</strong> PPM 450 (優於 500 目標)，總不良數為 1250 件。</li>
+                            <li><strong>主要貢獻:</strong> 焊接工站是最大的不良來源，佔總不良的 45% (約 560 件)。</li>
+                            <li><strong>不良類型:</strong> 最常見的不良是表面缺陷 (60%)，其次是尺寸超差 (30%)。</li>
+                            <li><strong>建議:</strong> <span class="text-sm text-red-600 font-medium">立即啟動焊接工站的 8D 報告，專注解決表面缺陷問題。</span></li>
+                        </ul>
+                    `;
+                    break;
+                case '客訴次數':
+                    detailHtml = `
+                        <ul class="list-disc ml-4 space-y-2">
+                            <li><strong>趨勢分析:</strong> 本月 3 次客訴，全部與產品在最終測試後的意外功能失效有關。</li>
+                            <li><strong>根本原因:</strong> 經過追溯，兩次客訴歸因於同一批次的次級供應商材料。</li>
+                            <li><strong>未完成:</strong> 仍有 1 次客訴的根本原因正在調查中 (72小時內必須完成)。</li>
+                            <li><strong>建議:</strong> <span class="text-sm text-yellow-600 font-medium">將該次級供應商標記為高風險，並對其材料進行 100% 入料檢驗。</span></li>
+                        </ul>
+                    `;
+                    break;
+                case 'OEE':
+                    detailHtml = `
+                        <ul class="list-disc ml-4 space-y-2">
+                            <li><strong>OEE 拆解 (85%):</strong> 稼動率 92.0%, 績效 92.4%, 品質 99.5%。</li>
+                            <li><strong>關注點:</strong> 績效指標低於目標 (95%)，可能是機台實際運行速度慢於標準。</li>
+                            <li><strong>最大損失:</strong> 換線設定時間過長，貢獻了 40% 的非計畫停機時間。</li>
+                            <li><strong>建議:</strong> <span class="text-sm text-blue-600 font-medium">對所有操作員進行 SMED 快速換線培訓，減少換線時間。</span></li>
+                        </ul>
+                    `;
+                    break;
+                case '人均產出':
+                    detailHtml = `
+                        <ul class="list-disc ml-4 space-y-2">
+                            <li><strong>趨勢分析:</strong> 人均產出 1.5 PCS/小時，較目標 1.8 仍有較大差距。</li>
+                            <li><strong>班次差異:</strong> 中班的績效達成率最低 (88%)，是拉低平均的主要因素。</li>
+                            <li><strong>工站效率:</strong> 組裝工站的瓶頸最明顯，效率只有 75%。</li>
+                            <li><strong>建議:</strong> <span class="text-sm text-red-600 font-medium">對中班組裝人員進行技能評估和補充培訓。</span></li>
+                        </ul>
+                    `;
+                    break;
+                case '停機時間':
+                    detailHtml = `
+                        <ul class="list-disc ml-4 space-y-2">
+                            <li><strong>趨勢分析:</strong> 平均停機時間 120 分鐘/日，超出 90 分鐘目標 33%。</li>
+                            <li><strong>主要原因:</strong> 設備故障佔 60 分鐘 (50%)，材料等待佔 30 分鐘 (25%)。</li>
+                            <li><strong>高風險機台:</strong> 機台 M4 的故障頻率最高，過去一週貢獻了 40% 的故障時間。</li>
+                            <li><strong>建議:</strong> <span class="text-sm text-red-600 font-medium">對機台 M4 實施深度維護檢查，並建立材料安全庫存。</span></li>
+                        </ul>
+                    `;
+                    break;
+                default:
+                    detailHtml = `<p>此指標 (${metricName}) 的詳細分析數據正在整理中，請稍後再試。</p>`;
+            }
+
+            content.innerHTML = detailHtml;
+
+            // Show modal
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal(event) {
+            // 點擊背景或關閉按鈕時關閉
+            if (!event || event.target.id === 'detailModal' || event.target.closest('button')) {
+                document.getElementById('detailModal').classList.add('hidden');
+            }
+        }
+
+        // --- 圖表函數定義 (Q, D, P) ---
+        // (保持與上一個版本相同，以確保所有圖表功能正常)
+
+        // Q - FPY
+        function renderFpyChart() {
+            const ctx = document.getElementById('fpyChart').getContext('2d');
+            new Chart(ctx, { type: 'line', data: { labels: mockData.months, datasets: [{ label: 'FPY (%)', data: mockData.fpyData, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', tension: 0.3, fill: true }, { label: '目標值 (98.0%)', data: mockData.months.map(() => mockData.fpyTarget), borderColor: '#ef4444', borderDash: [5, 5], pointRadius: 0, backgroundColor: 'transparent' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true }, title: { display: false } }, scales: { y: { min: 90, max: 100, title: { display: true, text: 'FPY (%)' }, ticks: { callback: (value) => value + '%' } } } } });
+        }
+
+        // Q - PPM
+        function renderPpmChart() {
+            const ctx = document.getElementById('ppmChart').getContext('2d');
+            new Chart(ctx, { type: 'bar', data: { labels: mockData.months, datasets: [{ label: 'PPM', data: mockData.ppmData, backgroundColor: '#3b82f6', borderRadius: 6 }, { label: '目標值 (500 PPM)', data: mockData.months.map(() => mockData.ppmTarget), type: 'line', borderColor: '#22c55e', borderDash: [5, 5], pointRadius: 0, backgroundColor: 'transparent' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true }, title: { display: false } }, scales: { y: { min: 0, max: 1000, title: { display: true, text: 'PPM' } }, x: { grid: { display: false } } } } });
+        }
+
+        // D - OTD
+        function renderOtdChart() {
+            const ctx = document.getElementById('otdChart').getContext('2d');
+            new Chart(ctx, { type: 'line', data: { labels: mockData.months, datasets: [{ label: 'OTD (%)', data: mockData.otdData, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.4, fill: true }, { label: '目標值 (95.0%)', data: mockData.months.map(() => mockData.otdTarget), borderColor: '#22c55e', borderDash: [5, 5], pointRadius: 0, backgroundColor: 'transparent' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true }, title: { display: false } }, scales: { y: { min: 85, max: 100, title: { display: true, text: 'OTD (%)' }, ticks: { callback: (value) => value + '%' } } } } });
+        }
+
+        // D - Lead Time
+        function renderLeadTimeChart() {
+            const ctx = document.getElementById('leadTimeChart').getContext('2d');
+            new Chart(ctx, { type: 'bar', data: { labels: mockData.months, datasets: [{ label: '平均交期 (天)', data: mockData.leadTimeData, backgroundColor: (context) => { const value = context.dataset.data[context.dataIndex]; return value > mockData.leadTimeTarget ? '#ef4444' : '#10b981'; }, borderRadius: 6 }, { label: '目標值 (12.0 天)', data: mockData.months.map(() => mockData.leadTimeTarget), type: 'line', borderColor: '#f97316', borderDash: [5, 5], pointRadius: 0, backgroundColor: 'transparent' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true }, title: { display: false } }, scales: { y: { min: 0, max: 20, title: { display: true, text: '交期 (天)' } }, x: { grid: { display: false } } } } });
+        }
+
+        // P - OEE
+        function renderOeeChart() {
+            const ctx = document.getElementById('oeeChart').getContext('2d');
+            new Chart(ctx, { type: 'line', data: { labels: mockData.months, datasets: [{ label: 'OEE (%)', data: mockData.oeeData, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.4, fill: true }, { label: '目標值 (80%)', data: mockData.months.map(() => 80), borderColor: '#22c55e', borderDash: [5, 5], pointRadius: 0, backgroundColor: 'transparent' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true }, title: { display: false } }, scales: { y: { min: 70, max: 100, title: { display: true, text: 'OEE (%)' }, ticks: { callback: (value) => value + '%' } } } } });
+        }
+
+        // P - Downtime
+        function renderDowntimeChart() {
+            const ctx = document.getElementById('downtimeChart').getContext('2d');
+            new Chart(ctx, { type: 'pie', data: { labels: mockData.downtimeLabels, datasets: [{ data: mockData.downtimeData, backgroundColor: ['#ef4444', '#f97316', '#eab308', '#3b82f6', '#10b981'], hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' }, title: { display: false } } } });
+        }
+
+        // P - Line Utilization (新圖表)
+        function renderLineUtilizationChart() {
+            const ctx = document.getElementById('lineUtilizationChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: detailedData.lineUtilizationLabels,
+                    datasets: [{
+                        label: '稼動率 (%)',
+                        data: detailedData.lineUtilizationRates,
+                        backgroundColor: (context) => {
+                            const value = context.dataset.data[context.dataIndex];
+                            // 低於 80% 標紅
+                            return value < 80 ? '#ef4444' : '#3b82f6';
+                        },
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            min: 70,
+                            max: 100,
+                            title: { display: true, text: '稼動率 (%)' },
+                            ticks: { callback: (value) => value + '%' }
+                        },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // P - Shift Performance Table (新表格)
+        function renderShiftPerformanceTable() {
+            const tbody = document.getElementById('productivity-data-body');
+            let html = '';
+            detailedData.shiftPerformance.forEach(item => {
+                const isOverTarget = item.actualRate >= item.targetRate;
+                const rateColor = isOverTarget ? 'text-green-600 font-bold' : 'text-red-600';
+                const varianceColor = item.variance > 0 ? 'text-green-500' : (item.variance < 0 ? 'text-red-500' : 'text-gray-500');
+                const varianceIcon = item.variance > 0 ? '▲' : (item.variance < 0 ? '▼' : '-');
+                const varianceSign = item.variance > 0 ? '+' : '';
+
+                html += `
+                    <tr>
+                        <td class="text-gray-800 font-medium">${item.name}</td>
+                        <td class="${rateColor}">${item.actualRate}% (${item.targetRate}% 目標)</td>
+                        <td class="${varianceColor}">${varianceIcon} ${varianceSign}${Math.abs(item.variance)}</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+
+        // --- 詳細分析渲染函數 (供 Q 區塊使用) ---
+
+        function renderDetailedAnalysis(view) {
+            const data = view === 'productLine' ? detailedData.productLinePPM : detailedData.workstationPPM;
+            const headerElement = document.getElementById('table-header-name');
+            const tbody = document.getElementById('detailed-data-body');
+            const btnProductLine = document.getElementById('btn-product-line');
+            const btnWorkstation = document.getElementById('btn-workstation');
+
+            // 確保 Q 區塊的按鈕和表頭正確更新
+            if(headerElement && btnProductLine && btnWorkstation) {
+                headerElement.textContent = view === 'productLine' ? '產品線名稱' : '工站名稱';
+
+                if (view === 'productLine') {
+                    btnProductLine.classList.remove('bg-gray-200', 'text-gray-800');
+                    btnProductLine.classList.add('bg-indigo-600', 'text-white');
+                    btnWorkstation.classList.remove('bg-indigo-600', 'text-white');
+                    btnWorkstation.classList.add('bg-gray-200', 'text-gray-800');
+                } else {
+                    btnWorkstation.classList.remove('bg-gray-200', 'text-gray-800');
+                    btnWorkstation.classList.add('bg-indigo-600', 'text-white');
+                    btnProductLine.classList.remove('bg-indigo-600', 'text-white');
+                    btnProductLine.classList.add('bg-gray-200', 'text-gray-800');
+                }
+            }
+
+            let html = '';
+            data.forEach(item => {
+                const isOverTarget = item.ppm > mockData.ppmTarget;
+                const ppmColor = isOverTarget ? 'text-red-600 font-bold' : 'text-green-600';
+                const changeColor = item.change > 0 ? 'text-red-500' : (item.change < 0 ? 'text-green-500' : 'text-gray-500');
+                const changeIcon = item.change > 0 ? '▲' : (item.change < 0 ? '▼' : '-');
+                const changeSign = item.change > 0 ? '+' : '';
+
+                html += `
+                    <tr>
+                        <td class="text-gray-800 font-medium">${item.name}</td>
+                        <td class="${ppmColor}">${item.ppm} PPM ${isOverTarget ? '(需關注)' : ''}</td>
+                        <td class="${changeColor}">${changeIcon} ${changeSign}${Math.abs(item.change)}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+
+        // --- 初始化所有圖表與功能 ---
+        window.onload = function() {
+            // 渲染所有圖表
+            renderFpyChart();
+            renderPpmChart();
+            renderOtdChart();
+            renderLeadTimeChart();
+            renderOeeChart();
+            renderDowntimeChart();
+            renderLineUtilizationChart();
+
+            // 渲染表格
+            renderDetailedAnalysis(currentQualityView);
+            renderShiftPerformanceTable();
+
+            // 設置焦點切換按鈕的事件監聽器
+            document.getElementById('btn-q').addEventListener('click', () => setFocus('q'));
+            document.getElementById('btn-d').addEventListener('click', () => setFocus('d'));
+            document.getElementById('btn-p').addEventListener('click', () => setFocus('p'));
+
+            // 設置品質詳細分析的切換按鈕事件監聽器
+            document.getElementById('btn-product-line').addEventListener('click', () => {
+                currentQualityView = 'productLine';
+                renderDetailedAnalysis(currentQualityView);
+            });
+
+            document.getElementById('btn-workstation').addEventListener('click', () => {
+                currentQualityView = 'workstation';
+                renderDetailedAnalysis(currentQualityView);
+            });
+
+            // 設置初始焦點 (D)
+            setFocus('d');
+        };
+
+    </script>
+</body>
+</html>

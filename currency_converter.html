@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>簡易匯率轉換器</title>
+    <!-- 載入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 設定字體為 Inter */
+        html { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-lg bg-white shadow-2xl rounded-2xl p-6 md:p-10 border border-gray-100">
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">
+            🪙 簡易匯率轉換
+        </h1>
+
+        <!-- 匯率轉換區塊 -->
+        <div id="converter-app">
+            
+            <!-- 輸入金額 -->
+            <div class="mb-5">
+                <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">輸入金額</label>
+                <input type="number" id="amount" value="100" min="0" 
+                       class="w-full p-3 border border-gray-300 rounded-xl focus:ring-sky-500 focus:border-sky-500 transition duration-150"
+                       placeholder="請輸入欲轉換的金額">
+            </div>
+
+            <!-- 來源貨幣選擇 -->
+            <div class="flex items-center justify-between space-x-4 mb-5">
+                <div class="flex-1">
+                    <label for="from-currency" class="block text-sm font-medium text-gray-700 mb-2">從 (From)</label>
+                    <select id="from-currency" class="w-full p-3 border border-gray-300 bg-white rounded-xl focus:ring-sky-500 focus:border-sky-500 transition duration-150">
+                        <!-- 選項將由 JavaScript 填充 -->
+                    </select>
+                </div>
+                
+                <!-- 交換按鈕 -->
+                <button id="swap-button" title="交換貨幣" 
+                        class="mt-8 p-2 text-gray-500 hover:text-sky-600 transition duration-150 rounded-full hover:bg-sky-50">
+                    <!-- Swap Icon (Lucide-react equivalent: repeat) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                        <path d="M21 3h-6M21 3l-4 4M21 3v6M3 21h6M3 21l4-4M3 21v-6"></path>
+                        <path d="M12 18V6"></path>
+                        <path d="M12 18l-3-3"></path>
+                        <path d="M12 6l3 3"></path>
+                    </svg>
+                </button>
+
+                <!-- 目標貨幣選擇 -->
+                <div class="flex-1">
+                    <label for="to-currency" class="block text-sm font-medium text-gray-700 mb-2">到 (To)</label>
+                    <select id="to-currency" class="w-full p-3 border border-gray-300 bg-white rounded-xl focus:ring-sky-500 focus:border-sky-500 transition duration-150">
+                        <!-- 選項將由 JavaScript 填充 -->
+                    </select>
+                </div>
+            </div>
+            
+            <!-- 轉換按鈕 -->
+            <button id="convert-button"
+                    class="w-full bg-sky-600 text-white font-semibold py-3 rounded-xl hover:bg-sky-700 transition duration-300 shadow-lg shadow-sky-200/50 focus:outline-none focus:ring-4 focus:ring-sky-500/50">
+                執行轉換
+            </button>
+
+            <!-- 結果顯示區塊 -->
+            <div id="result-box" class="mt-8 p-6 bg-sky-100/70 text-gray-800 rounded-xl border border-sky-200 text-center">
+                <p class="text-lg font-medium mb-1">轉換結果:</p>
+                <p id="conversion-result" class="text-4xl font-extrabold text-sky-800">
+                    請輸入金額並選擇貨幣
+                </p>
+                <p id="loading-message" class="hidden text-sm text-gray-600 mt-2">正在處理中...</p>
+                <p id="error-message" class="hidden text-sm text-red-600 mt-2">發生錯誤，請稍後再試。</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 匯率轉換邏輯 (使用單一檔案 JavaScript) ---
+        
+        // 模擬匯率數據 (相對於 1 USD 的匯率)
+        const exchangeRates = {
+            USD: 1.0,  // 美元
+            TWD: 32.0, // 新台幣
+            JPY: 155.0, // 日圓
+            EUR: 0.92, // 歐元
+            CNY: 7.2    // 人民幣
+        };
+
+        const elements = {
+            amountInput: document.getElementById('amount'),
+            fromSelect: document.getElementById('from-currency'),
+            toSelect: document.getElementById('to-currency'),
+            swapButton: document.getElementById('swap-button'),
+            convertButton: document.getElementById('convert-button'),
+            resultBox: document.getElementById('result-box'),
+            conversionResult: document.getElementById('conversion-result'),
+            loadingMessage: document.getElementById('loading-message'),
+            errorMessage: document.getElementById('error-message')
+        };
+
+        /**
+         * 初始化貨幣選擇下拉選單
+         */
+        function initializeCurrencySelectors() {
+            const currencies = Object.keys(exchangeRates);
+            
+            currencies.forEach(currency => {
+                const optionFrom = document.createElement('option');
+                optionFrom.value = currency;
+                optionFrom.textContent = currency;
+                elements.fromSelect.appendChild(optionFrom);
+
+                const optionTo = document.createElement('option');
+                optionTo.value = currency;
+                optionTo.textContent = currency;
+                elements.toSelect.appendChild(optionTo.cloneNode(true));
+            });
+
+            // 設定預設值
+            elements.fromSelect.value = 'USD';
+            elements.toSelect.value = 'TWD';
+        }
+
+        /**
+         * 模擬非同步 API 呼叫以進行匯率轉換
+         * @param {number} amount 
+         * @param {string} fromCurrency 
+         * @param {string} toCurrency 
+         * @returns {Promise<number>} 轉換後的金額
+         */
+        function convertCurrency(amount, fromCurrency, toCurrency) {
+            return new Promise((resolve, reject) => {
+                // 模擬網路延遲
+                setTimeout(() => {
+                    try {
+                        // 1. 檢查貨幣是否存在
+                        if (!exchangeRates[fromCurrency] || !exchangeRates[toCurrency]) {
+                            throw new Error('無效的貨幣代碼');
+                        }
+                        
+                        // 2. 轉換邏輯： (金額 / 來源USD匯率) * 目標USD匯率
+                        const amountInUSD = amount / exchangeRates[fromCurrency];
+                        const convertedAmount = amountInUSD * exchangeRates[toCurrency];
+                        
+                        resolve(convertedAmount);
+                    } catch (error) {
+                        reject(error);
+                    }
+                }, 700); // 延遲 700ms 
+            });
+        }
+
+        /**
+         * 處理轉換按鈕點擊事件
+         */
+        async function handleConvert() {
+            // 清理錯誤和載入訊息
+            elements.errorMessage.classList.add('hidden');
+            elements.loadingMessage.classList.remove('hidden');
+            elements.conversionResult.textContent = '...';
+            elements.convertButton.disabled = true;
+
+            const amount = parseFloat(elements.amountInput.value);
+            const fromCurrency = elements.fromSelect.value;
+            const toCurrency = elements.toSelect.value;
+            
+            if (isNaN(amount) || amount <= 0) {
+                elements.errorMessage.textContent = '請輸入有效的正數金額。';
+                elements.errorMessage.classList.remove('hidden');
+                elements.conversionResult.textContent = '錯誤';
+                elements.loadingMessage.classList.add('hidden');
+                elements.convertButton.disabled = false;
+                return;
+            }
+
+            try {
+                // 執行轉換
+                const result = await convertCurrency(amount, fromCurrency, toCurrency);
+                
+                // 格式化結果
+                const formattedResult = result.toLocaleString('zh-TW', {
+                    style: 'currency',
+                    currency: toCurrency,
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                });
+
+                // 顯示結果
+                elements.conversionResult.textContent = formattedResult;
+                elements.resultBox.classList.remove('bg-sky-100/70', 'bg-red-100');
+                elements.resultBox.classList.add('bg-green-100/70');
+
+            } catch (error) {
+                // 顯示錯誤
+                console.error('轉換失敗:', error);
+                elements.errorMessage.textContent = '轉換失敗: ' + error.message;
+                elements.errorMessage.classList.remove('hidden');
+                elements.conversionResult.textContent = '錯誤';
+                
+                elements.resultBox.classList.remove('bg-sky-100/70', 'bg-green-100/70');
+                elements.resultBox.classList.add('bg-red-100');
+            } finally {
+                // 隱藏載入訊息並重新啟用按鈕
+                elements.loadingMessage.classList.add('hidden');
+                elements.convertButton.disabled = false;
+            }
+        }
+
+        /**
+         * 處理交換按鈕點擊事件
+         */
+        function handleSwap() {
+            const temp = elements.fromSelect.value;
+            elements.fromSelect.value = elements.toSelect.value;
+            elements.toSelect.value = temp;
+            // 交換後自動執行轉換
+            handleConvert();
+        }
+
+        // --- 監聽器與啟動 ---
+        window.onload = function() {
+            initializeCurrencySelectors();
+            
+            // 監聽轉換按鈕
+            elements.convertButton.addEventListener('click', handleConvert);
+            
+            // 監聽交換按鈕
+            elements.swapButton.addEventListener('click', handleSwap);
+
+            // 初始載入時執行一次轉換
+            handleConvert();
+        };
+
+    </script>
+
+</body>
+</html>

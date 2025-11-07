@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB QDP 績效儀表板（深度分析版）</title>
+    <!-- Load Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter Font -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .card-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+        /* Style for the modal overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen">
+
+    <div id="app" class="max-w-6xl mx-auto">
+        <!-- 標題區塊 -->
+        <header class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 border-b-4 border-indigo-600 pb-2 inline-block">
+                IGB 量子數據處理器 (QDP) 績效概覽
+            </h1>
+            <p class="text-gray-500">即時監控核心單元運行狀態與整體系統健康度。</p>
+        </header>
+
+        <!-- 互動控制區塊 -->
+        <div class="bg-white p-6 rounded-xl card-shadow mb-8 grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- 數據更新 -->
+            <div class="col-span-1 lg:col-span-3 border-r lg:border-r-2 border-gray-200 lg:pr-6">
+                <h2 class="text-xl font-bold text-indigo-800 mb-4">單元數據更新</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div>
+                        <label for="unit-select" class="block text-sm font-medium text-gray-700 mb-1">選擇單元 ID</label>
+                        <select id="unit-select" class="w-full p-2.5 border border-indigo-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 bg-white">
+                            <!-- Options filled by JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label for="new-score" class="block text-sm font-medium text-gray-700 mb-1">輸入新績效分數 (0-100)</label>
+                        <input type="number" id="new-score" min="0" max="100" step="0.01" placeholder="例如: 90.55" class="w-full p-2.5 border border-indigo-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150">
+                    </div>
+                    <button id="update-button" class="w-full bg-indigo-600 text-white p-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition duration-150 ease-in-out transform hover:scale-[1.02] shadow-md">
+                        更新分數
+                    </button>
+                </div>
+            </div>
+
+            <!-- 閾值設定 -->
+            <div class="col-span-1 lg:col-span-1 pt-4 lg:pt-0">
+                <h2 class="text-xl font-bold text-red-700 mb-4">警報閾值設定</h2>
+                <label for="new-threshold" class="block text-sm font-medium text-gray-700 mb-1">設定異常基準線 (%)</label>
+                <div class="flex space-x-2">
+                    <input type="number" id="new-threshold" min="50" max="95" step="0.5" class="w-full p-2.5 border border-red-300 rounded-lg focus:ring-red-500 focus:border-red-500 transition duration-150">
+                    <button id="set-threshold-button" class="bg-red-500 text-white p-2.5 rounded-lg font-semibold hover:bg-red-600 transition duration-150 shadow-md flex-shrink-0">
+                        設定
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">目前: <span id="current-threshold">85.00</span>%</p>
+            </div>
+
+        </div>
+
+
+        <!-- 整體系統健康度卡片 -->
+        <div id="overall-health-card" class="bg-white p-6 rounded-xl card-shadow mb-8 transition duration-300 transform hover:scale-[1.01] border-l-8 border-gray-300">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div class="mb-4 md:mb-0">
+                    <p class="text-lg font-semibold text-gray-700">整體運行平均績效分數</p>
+                    <div class="flex items-baseline space-x-2">
+                        <span id="overall-score" class="text-5xl font-bold text-gray-800">--</span>
+                        <span class="text-xl text-gray-400">%</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div id="system-status-icon" class="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 text-gray-600">
+                        <!-- Icon will be injected -->
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">系統狀態</p>
+                        <p id="system-status-text" class="text-xl font-bold text-gray-800">載入中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 績效單元列表 -->
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">核心單元分析 (<span id="unit-count">--</span> 個)</h2>
+        <div id="unit-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Unit cards will be injected by JavaScript -->
+        </div>
+
+        <!-- 腳本錯誤訊息 (模擬通知區域) -->
+        <div id="message-box" class="fixed bottom-4 right-4 p-4 rounded-lg card-shadow hidden z-50 transition-opacity duration-300">
+            <p id="message-text">載入中...</p>
+        </div>
+
+    </div>
+
+    <!-- 單元詳細資訊 Modal 視窗 -->
+    <div id="unit-detail-modal" class="modal-overlay hidden">
+        <div class="bg-white rounded-xl card-shadow w-11/12 md:w-3/4 lg:w-1/2 max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-95 opacity-0" id="modal-content">
+            <div class="p-6">
+                <div class="flex justify-between items-start border-b pb-3 mb-4">
+                    <h3 class="text-2xl font-extrabold text-gray-900" id="modal-unit-id">單元詳細資訊</h3>
+                    <button onclick="closeUnitDetails()" class="text-gray-400 hover:text-gray-600 transition duration-150">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">目前分數</p>
+                        <p class="text-4xl font-bold text-indigo-600" id="modal-score">--</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">單元狀態</p>
+                        <p class="text-2xl font-bold" id="modal-status">--</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">警報閾值</p>
+                        <p class="text-lg font-semibold text-red-600" id="modal-threshold">--</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">上次更新時間</p>
+                        <p class="text-lg text-gray-700" id="modal-last-update">--</p>
+                    </div>
+                </div>
+
+                <h4 class="text-xl font-bold text-gray-800 mb-3 border-t pt-4">歷史績效趨勢 (4 個數據點)</h4>
+                <div class="bg-gray-50 p-4 rounded-lg border">
+                    <svg id="trend-chart" width="100%" height="200" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid meet" class="w-full h-auto"></svg>
+                    <p class="text-xs text-center text-gray-400 mt-2">X 軸: 數據點 (舊→新) | Y 軸: 績效分數 (%)</p>
+                </div>
+
+                <p class="text-sm text-gray-600 mt-4" id="modal-advice">
+                    <!-- Advice based on status will be injected -->
+                </p>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // 設定模擬數據
+        let systemData = {
+            threshold: 85.00, // Common threshold for failure/critical state
+            units: [
+                // Added simulated historical data (4 data points) and last updated time
+                { id: 'WL-001-Ledger', score: 96.09, history: [94.5, 95.1, 96.0, 96.09], lastUpdate: new Date().toLocaleString() },
+                { id: 'MDM-002-Config', score: 85.25, history: [88.0, 86.5, 85.0, 85.25], lastUpdate: new Date(Date.now() - 3600000).toLocaleString() }, // 1 hour ago
+                { id: 'PSQL-003-Master', score: 98.10, history: [97.5, 98.0, 98.5, 98.10], lastUpdate: new Date(Date.now() - 600000).toLocaleString() }, // 10 minutes ago
+                { id: 'SYNC-004-Inventory', score: 83.00, history: [85.5, 84.0, 83.5, 83.00], lastUpdate: new Date(Date.now() - 7200000).toLocaleString() }, // 2 hours ago
+                { id: 'API-005-Gateway', score: 71.50, history: [75.0, 73.5, 72.0, 71.50], lastUpdate: new Date().toLocaleString() },
+            ]
+        };
+
+        // DOM element references
+        const unitListEl = document.getElementById('unit-list');
+        const unitCountEl = document.getElementById('unit-count');
+        const overallScoreEl = document.getElementById('overall-score');
+        const systemStatusTextEl = document.getElementById('system-status-text');
+        const systemStatusIconEl = document.getElementById('system-status-icon');
+        const overallHealthCardEl = document.getElementById('overall-health-card');
+
+        const unitSelectEl = document.getElementById('unit-select');
+        const newScoreEl = document.getElementById('new-score');
+        const updateButtonEl = document.getElementById('update-button');
+
+        const newThresholdEl = document.getElementById('new-threshold');
+        const setThresholdButtonEl = document.getElementById('set-threshold-button');
+        const currentThresholdEl = document.getElementById('current-threshold');
+
+        const messageBoxEl = document.getElementById('message-box');
+        const messageTextEl = document.getElementById('message-text');
+
+        const modalEl = document.getElementById('unit-detail-modal');
+        const modalContentEl = document.getElementById('modal-content');
+
+        // ----------------------------------------------------
+        // Helper Functions
+        // ----------------------------------------------------
+
+        // Helper function: Display message box (instead of alert)
+        function showMessage(text, type = 'info') {
+            messageTextEl.textContent = text;
+            messageBoxEl.className = 'fixed bottom-4 right-4 p-4 rounded-lg card-shadow z-50 transition-opacity duration-300';
+
+            if (type === 'error') {
+                messageBoxEl.classList.add('bg-red-100', 'text-red-800');
+            } else if (type === 'warning') {
+                messageBoxEl.classList.add('bg-yellow-100', 'text-yellow-800');
+            } else {
+                messageBoxEl.classList.add('bg-green-100', 'text-green-800');
+            }
+            messageBoxEl.classList.remove('hidden', 'opacity-0');
+            messageBoxEl.classList.add('opacity-100');
+
+            setTimeout(() => {
+                messageBoxEl.classList.classList.remove('opacity-100');
+                messageBoxEl.classList.add('opacity-0');
+                setTimeout(() => messageBoxEl.classList.add('hidden'), 300);
+            }, 5000);
+        }
+
+        // Determine color, text, and icon based on score and current threshold
+        function getStatus(score, threshold) {
+            if (score >= threshold) {
+                return { color: 'green', text: '最佳 (Optimal)', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>' };
+            } else if (score >= (threshold * 0.9)) { // 90% of threshold to 100%
+                return { color: 'yellow', text: '關注 (Caution)', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.332 16c-.77 1.333.192 3 1.732 3z"></path>' };
+            } else {
+                return { color: 'red', text: '異常 (Critical)', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.332 16c-.77 1.333.192 3 1.732 3z"></path>' };
+            }
+        }
+
+        // ----------------------------------------------------
+        // Rendering Logic
+        // ----------------------------------------------------
+
+        // Render a single unit card
+        function renderUnitCard(unit) {
+            const unitStatus = getStatus(unit.score, systemData.threshold);
+            const scoreDisplay = unit.score.toFixed(2);
+
+            // Attach openUnitDetails function to the card click
+            return `
+                <div class="bg-white p-5 rounded-xl card-shadow border-l-4 border-${unitStatus.color}-500 transition duration-150 ease-in-out hover:bg-${unitStatus.color}-50 hover:scale-[1.01] cursor-pointer"
+                     id="card-${unit.id}" onclick="openUnitDetails('${unit.id}')">
+
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-lg font-bold text-gray-800">${unit.id}</h3>
+                        <div class="w-6 h-6 text-${unitStatus.color}-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">${unitStatus.icon}</svg>
+                        </div>
+                    </div>
+
+                    <p class="text-4xl font-extrabold text-${unitStatus.color}-600 mb-2" id="score-${unit.id}">${scoreDisplay}<span class="text-lg font-medium">%</span></p>
+
+                    <p class="text-sm text-gray-500">狀態: <span class="font-semibold text-${unitStatus.color}-700" id="status-${unit.id}">${unitStatus.text}</span></p>
+
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 mt-3">
+                        <div class="h-2.5 rounded-full bg-${unitStatus.color}-500 transition-all duration-500" style="width: ${Math.min(unit.score, 100)}%" id="progress-${unit.id}"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Calculate and render overall dashboard metrics
+        function renderDashboard() {
+            // 1. Calculate overall average score
+            const totalScore = systemData.units.reduce((sum, unit) => sum + unit.score, 0);
+            const averageScore = totalScore / systemData.units.length;
+
+            // 2. Render overall score and unit count
+            overallScoreEl.textContent = averageScore.toFixed(2);
+            unitCountEl.textContent = systemData.units.length;
+            currentThresholdEl.textContent = systemData.threshold.toFixed(2); // Update threshold display
+
+            // 3. Determine system status (lowest status takes precedence)
+            let overallStatusColor = 'green';
+            let overallStatusText = '最佳 (Optimal)';
+
+            if (systemData.units.some(unit => getStatus(unit.score, systemData.threshold).color === 'red')) {
+                overallStatusColor = 'red';
+                overallStatusText = '異常 (Critical)';
+            } else if (systemData.units.some(unit => getStatus(unit.score, systemData.threshold).color === 'yellow')) {
+                overallStatusColor = 'yellow';
+                overallStatusText = '關注 (Caution)';
+            }
+
+            const overallStatus = getStatus(overallStatusColor === 'green' ? 100 : overallStatusColor === 'yellow' ? 90 : 0, 100);
+
+            // Update overall status display
+            systemStatusIconEl.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">${overallStatus.icon}</svg>`;
+            systemStatusIconEl.className = `w-10 h-10 rounded-full flex items-center justify-center bg-${overallStatusColor}-100 text-${overallStatusColor}-600`;
+            systemStatusTextEl.textContent = overallStatusText;
+            systemStatusTextEl.className = `text-xl font-bold text-${overallStatusColor}-600`;
+
+            // Update overall card border
+            overallHealthCardEl.className = `bg-white p-6 rounded-xl card-shadow mb-8 transition duration-300 transform hover:scale-[1.01] border-l-8 border-${overallStatusColor}-500`;
+
+            // 4. Render or update unit list
+            if (unitListEl.children.length === 0 || unitListEl.children.length !== systemData.units.length) {
+                unitListEl.innerHTML = systemData.units.map(renderUnitCard).join('');
+            } else {
+                 systemData.units.forEach(unit => updateCardContent(unit));
+            }
+        }
+
+        // Update single card content (for real-time interaction)
+        function updateCardContent(unit) {
+            const unitStatus = getStatus(unit.score, systemData.threshold);
+            const cardEl = document.getElementById(`card-${unit.id}`);
+            const scoreEl = document.getElementById(`score-${unit.id}`);
+            const statusEl = document.getElementById(`status-${unit.id}`);
+            const progressEl = document.getElementById(`progress-${unit.id}`);
+
+            if (cardEl && scoreEl && statusEl && progressEl) {
+                // Update score
+                scoreEl.textContent = unit.score.toFixed(2);
+                scoreEl.className = `text-4xl font-extrabold text-${unitStatus.color}-600 mb-2`;
+
+                // Update status text
+                statusEl.textContent = unitStatus.text;
+                statusEl.className = `font-semibold text-${unitStatus.color}-700`;
+
+                // Update card border and hover background
+                cardEl.className = `bg-white p-5 rounded-xl card-shadow border-l-4 border-${unitStatus.color}-500 transition duration-150 ease-in-out hover:bg-${unitStatus.color}-50 hover:scale-[1.01] cursor-pointer`;
+
+                // Update progress bar
+                progressEl.style.width = `${Math.min(unit.score, 100)}%`;
+                progressEl.className = `h-2.5 rounded-full bg-${unitStatus.color}-500 transition-all duration-500`;
+
+                // Ensure card click is correctly bound (needed if re-rendering the whole list)
+                cardEl.onclick = () => openUnitDetails(unit.id);
+            }
+        }
+
+        // ----------------------------------------------------
+        // Modal & Chart Functions
+        // ----------------------------------------------------
+
+        // Draw a simple line chart using SVG
+        function drawTrendChart(unit, chartId) {
+            const chartEl = document.getElementById(chartId);
+            if (!chartEl) return;
+
+            // SVG dimensions and padding
+            const width = 600;
+            const height = 200;
+            const padding = 20;
+            const innerWidth = width - 2 * padding;
+            const innerHeight = height - 2 * padding;
+
+            // Data and scaling
+            const scores = unit.history;
+            const minScore = 70; // Fixed Y-axis low for visibility
+            const maxScore = 100; // Fixed Y-axis high
+            const range = maxScore - minScore;
+
+            const numPoints = scores.length;
+            const xStep = innerWidth / (numPoints > 1 ? numPoints - 1 : 1);
+
+            // Function to map score to Y coordinate (inverted for SVG)
+            const getY = (score) => {
+                const normalized = (score - minScore) / range; // 0 to 1
+                return innerHeight - (normalized * innerHeight) + padding; // Invert and add padding
+            };
+
+            // Generate the SVG path data
+            const pathData = scores.map((score, i) => {
+                const x = i * xStep + padding;
+                const y = getY(score);
+                return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+            }).join(' ');
+
+            const latestY = getY(unit.score);
+            const latestX = (numPoints - 1) * xStep + padding;
+
+            // Trend line color
+            const status = getStatus(unit.score, systemData.threshold);
+            const trendColor = status.color === 'red' ? '#EF4444' : status.color === 'yellow' ? '#F59E0B' : '#10B981';
+
+            // Base SVG structure
+            let svgContent = `<rect x="0" y="0" width="${width}" height="${height}" fill="#f9fafb" rx="8" ry="8"/>`;
+
+            // Draw Y-axis labels and lines (90%, 100%)
+            const y100 = getY(100);
+            const yThreshold = getY(systemData.threshold);
+
+            // 100% line
+            svgContent += `<line x1="${padding}" y1="${y100}" x2="${width - padding}" y2="${y100}" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="3,3" />`;
+            svgContent += `<text x="${padding - 5}" y="${y100 + 4}" font-size="12" fill="#9CA3AF" text-anchor="end">100%</text>`;
+
+            // Threshold line (red)
+            svgContent += `<line x1="${padding}" y1="${yThreshold}" x2="${width - padding}" y2="${yThreshold}" stroke="#F87171" stroke-width="1.5" stroke-dasharray="5,5" />`;
+            svgContent += `<text x="${padding - 5}" y="${yThreshold + 4}" font-size="12" fill="#F87171" text-anchor="end">${systemData.threshold.toFixed(2)}%</text>`;
+
+            // Draw the data path
+            svgContent += `<path d="${pathData}" fill="none" stroke="${trendColor}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+            // Draw points (circles)
+            scores.forEach((score, i) => {
+                const x = i * xStep + padding;
+                const y = getY(score);
+                svgContent += `<circle cx="${x}" cy="${y}" r="4" fill="${trendColor}" stroke="white" stroke-width="2" />`;
+
+                // Add score labels for the first and last point
+                if (i === 0 || i === numPoints - 1) {
+                    const textY = y > height / 2 ? y - 10 : y + 15;
+                    svgContent += `<text x="${x}" y="${textY}" font-size="12" fill="#374151" text-anchor="${i === 0 ? 'start' : 'end'}">${score.toFixed(2)}</text>`;
+                }
+            });
+
+
+            chartEl.innerHTML = svgContent;
+        }
+
+
+        // Open the detail modal
+        function openUnitDetails(unitId) {
+            const unit = systemData.units.find(u => u.id === unitId);
+            if (!unit) return;
+
+            const unitStatus = getStatus(unit.score, systemData.threshold);
+
+            // Populate Modal Content
+            document.getElementById('modal-unit-id').textContent = unit.id;
+            document.getElementById('modal-score').textContent = unit.score.toFixed(2) + '%';
+
+            const modalStatusEl = document.getElementById('modal-status');
+            modalStatusEl.textContent = unitStatus.text;
+            modalStatusEl.className = `text-2xl font-bold text-${unitStatus.color}-600`;
+
+            document.getElementById('modal-threshold').textContent = systemData.threshold.toFixed(2) + '%';
+            document.getElementById('modal-last-update').textContent = unit.lastUpdate;
+
+            // Generate Advice
+            const adviceEl = document.getElementById('modal-advice');
+            let advice = "";
+            if (unitStatus.color === 'red') {
+                advice = `
+                    <p class="text-red-700 font-bold">🚨 緊急行動：</p>
+                    <p>該單元績效遠低於警報閾值 (${systemData.threshold.toFixed(2)}%)，需要立即進行深度診斷。請檢查其資源分配和日誌以查找核心錯誤。</p>
+                `;
+            } else if (unitStatus.color === 'yellow') {
+                advice = `
+                    <p class="text-yellow-700 font-bold">⚠️ 建議關注：</p>
+                    <p>該單元績效接近或略低於預期表現。雖然目前未達臨界點，建議定期監控，確保其不會持續下降。</p>
+                `;
+            } else {
+                advice = `
+                    <p class="text-green-700 font-bold">✅ 狀態良好：</p>
+                    <p>該單元運行在最佳狀態，遠超閾值。維持現狀，並留意未來可能的性能波動。</p>
+                `;
+            }
+            adviceEl.innerHTML = advice;
+
+            // Draw the chart
+            drawTrendChart(unit, 'trend-chart');
+
+            // Show Modal with transition
+            modalEl.classList.remove('hidden');
+            setTimeout(() => {
+                modalContentEl.classList.remove('scale-95', 'opacity-0');
+                modalContentEl.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        // Close the detail modal
+        function closeUnitDetails() {
+            modalContentEl.classList.remove('scale-100', 'opacity-100');
+            modalContentEl.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modalEl.classList.add('hidden');
+            }, 300);
+        }
+
+
+        // ----------------------------------------------------
+        // Event Handlers
+        // ----------------------------------------------------
+
+        // Initialize the selection dropdown
+        function initUnitSelect() {
+            unitSelectEl.innerHTML = systemData.units.map(unit =>
+                `<option value="${unit.id}">${unit.id} (目前: ${unit.score.toFixed(2)}%)</option>`
+            ).join('');
+
+            // Set input field to the first unit's score by default
+            if (systemData.units.length > 0) {
+                 newScoreEl.value = systemData.units[0].score.toFixed(2);
+                 unitSelectEl.addEventListener('change', (e) => {
+                    const selectedUnit = systemData.units.find(u => u.id === e.target.value);
+                    if (selectedUnit) {
+                        newScoreEl.value = selectedUnit.score.toFixed(2);
+                    }
+                 });
+            }
+        }
+
+        // Handle update button click
+        function handleUpdateScore() {
+            const selectedUnitId = unitSelectEl.value;
+            const newScoreValue = parseFloat(newScoreEl.value);
+
+            if (!selectedUnitId) {
+                showMessage('請選擇一個單元 ID。', 'error');
+                return;
+            }
+
+            if (isNaN(newScoreValue) || newScoreValue < 0 || newScoreValue > 100) {
+                showMessage('輸入分數無效。請輸入 0 到 100 之間的值。', 'error');
+                return;
+            }
+
+            // 1. Update data model
+            const unitToUpdate = systemData.units.find(unit => unit.id === selectedUnitId);
+            if (unitToUpdate) {
+                // Update score and history (pop the oldest, push the newest)
+                unitToUpdate.score = newScoreValue;
+                unitToUpdate.history.shift();
+                unitToUpdate.history.push(newScoreValue);
+                unitToUpdate.lastUpdate = new Date().toLocaleString();
+
+                // 2. Re-render the dashboard
+                renderDashboard();
+
+                // 3. Update the score in the dropdown list
+                initUnitSelect();
+
+                showMessage(`成功更新 [${selectedUnitId}] 的績效分數至 ${newScoreValue.toFixed(2)}%！`, 'info');
+            } else {
+                showMessage(`找不到單元 ID: ${selectedUnitId}。`, 'error');
+            }
+        }
+
+        // Handle threshold setting button click
+        function handleSetThreshold() {
+            const newThresholdValue = parseFloat(newThresholdEl.value);
+
+            if (isNaN(newThresholdValue) || newThresholdValue < 50 || newThresholdValue > 95) {
+                showMessage('閾值輸入無效。請輸入 50 到 95 之間的值。', 'error');
+                return;
+            }
+
+            // Update data model
+            systemData.threshold = newThresholdValue;
+
+            // Re-render the entire dashboard to apply new colors/statuses
+            renderDashboard();
+
+            showMessage(`成功設定新的警報閾值為 ${newThresholdValue.toFixed(2)}%！`, 'warning');
+        }
+
+
+        // ----------------------------------------------------
+        // App Initialization
+        // ----------------------------------------------------
+
+        window.onload = function() {
+            // Bind functions globally for use in inline HTML click events
+            window.openUnitDetails = openUnitDetails;
+            window.closeUnitDetails = closeUnitDetails;
+
+            initUnitSelect();
+            // Initialize threshold input field
+            newThresholdEl.value = systemData.threshold.toFixed(2);
+            renderDashboard();
+
+            // Attach event listeners
+            updateButtonEl.addEventListener('click', handleUpdateScore);
+            setThresholdButtonEl.addEventListener('click', handleSetThreshold);
+
+            // Allow clicking outside the modal to close it
+            modalEl.addEventListener('click', (e) => {
+                if (e.target.id === 'unit-detail-modal') {
+                    closeUnitDetails();
+                }
+            });
+
+            showMessage('儀表板深度分析版已載入。點擊單元卡片查看趨勢圖！', 'info');
+        };
+
+    </script>
+
+</body>
+</html>

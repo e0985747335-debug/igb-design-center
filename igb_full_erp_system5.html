@@ -1,0 +1,388 @@
+<!-- Chosen Palette: Professional & Trustworthy (Primary: Cool Blue/Blue-700, Background: Off-White/Gray-50, Text: Dark Gray/Gray-800) -->
+<!-- Application Structure Plan: The structure uses a "Knowledge Dashboard" approach with a fixed vertical sidebar for primary navigation (功能, 架構, 績效). The main content area is divided into three thematic, interactive views, allowing users to non-linearly explore the WHAT (功能), the HOW (架構), and the WHY (績效/數據). This structure was chosen because the source content is highly conceptual (architecture and functions), and requires clear separation for deep understanding, moving from abstract concepts to tangible impact metrics. -->
+<!-- Visualization & Content Choices: 1. 功能地圖 -> Goal: Organize/Inform -> Viz: Clickable Grid Cards (HTML/Tailwind) -> Interaction: Card Click updates detail panel. Justification: Best for non-linear functional exploration. 2. 架構透視 -> Goal: Organize/Inform -> Viz: 3-Layer Explorable Diagram (HTML/CSS/JS) -> Interaction: Clicking a layer highlights it and reveals associated details (Microservices, DBs). Justification: Clearly illustrates the logical separation of the 3-Tier model. 3. 績效儀表板 -> Goal: Change/Compare -> Viz: Line & Bar Charts (Conceptual Data) -> Interaction: Button toggle between Efficiency Bar Chart and Integration Line Chart. Justification: Provides a tangible representation of the system's strategic goal (growth/efficiency). Library/Method: Chart.js/Canvas for all charts. CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB 核心增長系統互動式儀表板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+        .chart-container {
+            position: relative;
+            width: 100%;
+            /* Maximum width for readability on large screens */
+            max-width: 800px;
+            /* Center the chart container */
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px; /* Base height for medium screens */
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px; /* Taller on desktop */
+            }
+        }
+        .scroll-smooth {
+            scroll-behavior: smooth;
+        }
+        /* Custom styles for the 3-Tier Architecture Diagram */
+        .arch-layer {
+            transition: all 0.3s ease-in-out;
+            cursor: pointer;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .arch-layer:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3), 0 4px 6px -4px rgba(37, 99, 235, 0.2);
+        }
+        .arch-layer.active {
+            border: 3px solid #1D4ED8; /* Blue-700 */
+            background-color: #DBEAFE; /* Blue-100 */
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex min-h-screen scroll-smooth">
+
+    <!-- FAKE DATA & APPLICATION STATE -->
+    <script>
+        const appData = {
+            modules: [
+                { id: 'crm', title: '客戶關係管理 (CRM)', icon: '&#128187;', description: '潛在客戶開發、銷售流程管理、報價、訂單處理、售後服務與支援，實現以客戶為中心的營運模式。' },
+                { id: 'scm', title: '供應鏈管理 (SCM)', icon: '&#128666;', description: '採購管理、庫存控制、倉儲管理、供應商協同合作，確保供應鏈高效運轉和成本優化。' },
+                { id: 'pm', title: '生產管理 (PM)', icon: '&#9881;', description: '生產計畫、物料需求計畫 (MRP)、工單管理、車間執行系統 (MES) 整合，提升製造靈活性。' },
+                { id: 'fa', title: '財務會計 (FA)', icon: '&#128184;', description: '總帳、應收/應付帳款、固定資產管理、稅務管理，提供準確的外部財務報告。' },
+                { id: 'ma', title: '管理會計 (MA)', icon: '&#128200;', description: '預算編制、財務分析、獲利能力分析、內部控制與審計，支持內部經營決策。' },
+                { id: 'hcm', title: '人力資本管理 (HCM)', icon: '&#128100;', description: '組織架構、員工資料、薪資計算、考勤管理、績效評估，最大化人力資源價值。' },
+                { id: 'bi', title: '商業智能 (BI) 與分析', icon: '&#128202;', description: '實時數據儀表板、報告生成、大數據分析、預測模型，為企業提供決策支持和洞察。' },
+                { id: 'tech', title: '雲原生與整合 (Tech)', icon: '&#9729;', description: '納入容器化、Kubernetes 和 DevOps 流程，確保系統具備高可用性、可擴展性和靈活性。' }
+            ],
+            architecture: {
+                presentation: {
+                    title: '展示層 (Presentation Tier)',
+                    details: '負責使用者介面 (UI) 和體驗 (UX)。包含網頁界面（React/Vue/Angular）、移動應用和外部系統的數據輸入接口。職責是處理用戶輸入、數據格式化和視覺化。',
+                    components: ['網頁/移動介面', '使用者體驗 (UX)', '前端框架']
+                },
+                application: {
+                    title: '應用/業務邏輯層 (Application Tier)',
+                    details: '核心業務邏輯的執行場所。採用微服務架構，將功能拆分為獨立服務（如訂單服務、庫存服務），通過 API 網關統一管理請求。職責是執行所有業務規則和交易邏輯。',
+                    components: ['微服務群 (Microservices)', 'API 網關', '業務規則引擎']
+                },
+                data: {
+                    title: '數據層 (Data Tier)',
+                    details: '負責所有系統數據的持久化存儲、管理與存取。包括核心交易資料庫 (OLTP)、數據倉庫 (OLAP/Lake) 和緩存系統 (Redis/Memcached)。職責是數據存儲、安全和完整性。',
+                    components: ['交易資料庫 (OLTP)', '數據倉庫 (OLAP)', '緩存系統', '文件儲存']
+                }
+            },
+            performance: {
+                labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                efficiencyData: [5.5, 7.2, 9.8, 12.0],
+                integrationData: [65, 78, 85, 92]
+            }
+        };
+
+        let currentView = 'functions';
+        let currentModuleId = 'crm';
+        let currentArchitectureLayer = 'application';
+        let performanceChart;
+        let activeMetric = 'efficiency';
+
+        const formatLabel = (label) => {
+            const maxLength = 16;
+            if (label.length > maxLength) {
+                return label.match(new RegExp('.{1,' + maxLength + '}', 'g'));
+            }
+            return label;
+        };
+
+        const renderChart = () => {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            const data = appData.performance;
+
+            const chartType = activeMetric === 'efficiency' ? 'bar' : 'line';
+            const chartData = activeMetric === 'efficiency' ? data.efficiencyData : data.integrationData;
+            const chartLabel = activeMetric === 'efficiency' ? '營運效率提升 (%)' : '系統整合度分數 (滿分100)';
+            const color = activeMetric === 'efficiency' ? '#1D4ED8' : '#06B6D4'; // Blue-700 or Cyan-500
+
+            if (performanceChart) {
+                performanceChart.destroy();
+            }
+
+            performanceChart = new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: chartLabel,
+                        data: chartData,
+                        backgroundColor: chartType === 'bar' ? color + 'CC' : color + '33',
+                        borderColor: color,
+                        borderWidth: chartType === 'line' ? 3 : 1,
+                        fill: chartType === 'line' ? true : false,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: chartLabel }
+                        }
+                    }
+                }
+            });
+        };
+
+        const updateModuleDetails = (moduleId) => {
+            currentModuleId = moduleId;
+            const module = appData.modules.find(m => m.id === moduleId);
+            document.getElementById('moduleDetailTitle').textContent = module.title + '：詳情';
+            document.getElementById('moduleDetailDescription').textContent = module.description;
+
+            document.querySelectorAll('.module-card').forEach(card => {
+                card.classList.remove('ring-4', 'ring-blue-500', 'bg-blue-50');
+                if (card.id === `card-${moduleId}`) {
+                    card.classList.add('ring-4', 'ring-blue-500', 'bg-blue-50');
+                }
+            });
+        };
+
+        const updateArchitectureDetails = (layerId) => {
+            currentArchitectureLayer = layerId;
+            const layer = appData.architecture[layerId];
+
+            document.getElementById('archDetailTitle').textContent = layer.title + '：說明';
+            document.getElementById('archDetailDescription').textContent = layer.details;
+            document.getElementById('archDetailComponents').innerHTML = layer.components.map(comp => `<li class="flex items-center space-x-2"><span class="text-blue-500">&#10003;</span><span>${comp}</span></li>`).join('');
+
+            document.querySelectorAll('.arch-layer').forEach(layerDiv => {
+                layerDiv.classList.remove('active');
+                layerDiv.classList.remove('bg-blue-100');
+                layerDiv.classList.add('bg-white');
+                if (layerDiv.id === `arch-${layerId}`) {
+                    layerDiv.classList.add('active', 'bg-blue-100');
+                }
+            });
+        };
+
+        const switchMetric = (metric) => {
+            activeMetric = metric;
+            document.getElementById('efficiencyBtn').classList.remove('bg-blue-700', 'text-white');
+            document.getElementById('integrationBtn').classList.remove('bg-blue-700', 'text-white');
+            document.getElementById('efficiencyBtn').classList.add('bg-gray-200', 'text-gray-700');
+            document.getElementById('integrationBtn').classList.add('bg-gray-200', 'text-gray-700');
+
+            document.getElementById(metric + 'Btn').classList.remove('bg-gray-200', 'text-gray-700');
+            document.getElementById(metric + 'Btn').classList.add('bg-blue-700', 'text-white');
+            renderChart();
+        };
+
+        const switchView = (viewId) => {
+            currentView = viewId;
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('bg-blue-700', 'text-white');
+                item.classList.add('text-gray-300', 'hover:bg-blue-600');
+                if (item.dataset.view === viewId) {
+                    item.classList.add('bg-blue-700', 'text-white');
+                    item.classList.remove('text-gray-300', 'hover:bg-blue-600');
+                }
+            });
+
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.add('hidden');
+                if (section.id === viewId) {
+                    section.classList.remove('hidden');
+                }
+            });
+
+            if (viewId === 'performance') {
+                setTimeout(() => {
+                    switchMetric(activeMetric);
+                }, 50);
+            }
+        };
+
+        window.onload = () => {
+            // Initial render for Function Map
+            appData.modules.slice(0, 4).forEach(module => updateModuleDetails(module.id)); // Pre-load some details
+
+            // Set up initial module cards (only need to do this once)
+            const moduleGrid = document.getElementById('moduleGrid');
+            appData.modules.forEach(module => {
+                const card = document.createElement('div');
+                card.id = `card-${module.id}`;
+                card.className = 'module-card bg-white p-4 rounded-xl shadow-lg hover:shadow-xl transition duration-300 cursor-pointer text-center flex flex-col items-center border border-gray-100';
+                card.innerHTML = `<div class="text-4xl mb-2">${module.icon}</div><div class="font-bold text-lg">${module.title}</div>`;
+                card.onclick = () => updateModuleDetails(module.id);
+                moduleGrid.appendChild(card);
+            });
+
+            // Set up initial architecture details
+            updateArchitectureDetails('application');
+
+            // Set up architecture layer interaction
+            document.querySelectorAll('.arch-layer').forEach(layerDiv => {
+                layerDiv.onclick = () => updateArchitectureDetails(layerDiv.dataset.layer);
+            });
+
+            // Initial view switch
+            switchView('functions');
+        };
+    </script>
+
+    <!-- Side Navigation (Left Panel) -->
+    <aside class="w-20 md:w-64 bg-gray-800 text-white flex flex-col p-4 shadow-2xl sticky top-0 h-screen">
+        <h1 class="text-xl md:text-2xl font-black mb-10 text-center text-blue-400">IGB 系統</h1>
+
+        <nav class="flex flex-col space-y-3 flex-grow">
+            <a href="#functions" data-view="functions" class="nav-item flex items-center justify-center md:justify-start p-3 rounded-xl transition duration-200 ease-in-out cursor-pointer text-gray-300 hover:bg-blue-600" onclick="switchView('functions');">
+                <span class="text-2xl md:text-xl">&#128170;</span>
+                <span class="hidden md:inline ml-4 font-semibold text-sm">功能地圖</span>
+            </a>
+            <a href="#architecture" data-view="architecture" class="nav-item flex items-center justify-center md:justify-start p-3 rounded-xl transition duration-200 ease-in-out cursor-pointer text-gray-300 hover:bg-blue-600" onclick="switchView('architecture');">
+                <span class="text-2xl md:text-xl">&#128640;</span>
+                <span class="hidden md:inline ml-4 font-semibold text-sm">架構透視</span>
+            </a>
+            <a href="#performance" data-view="performance" class="nav-item flex items-center justify-center md:justify-start p-3 rounded-xl transition duration-200 ease-in-out cursor-pointer text-gray-300 hover:bg-blue-600" onclick="switchView('performance');">
+                <span class="text-2xl md:text-xl">&#128200;</span>
+                <span class="hidden md:inline ml-4 font-semibold text-sm">績效儀表板</span>
+            </a>
+        </nav>
+
+        <div class="mt-auto text-center hidden md:block text-gray-500 text-xs">
+            核心增長系統 V1.0
+        </div>
+    </aside>
+
+    <!-- Main Content Area (Right Panel) -->
+    <main class="flex-grow p-4 md:p-10 overflow-y-auto">
+
+        <!-- HEADER / INTRO -->
+        <header class="mb-8 border-b pb-4">
+            <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900">數位化企業核心增長系統儀表板</h2>
+            <p class="mt-2 text-lg text-gray-600">透過互動式探索，深入理解 IGB ERP 系統的功能、技術分層與戰略價值。</p>
+        </header>
+
+        <!-- 1. 功能地圖 (WHAT) -->
+        <section id="functions" class="content-section mb-12">
+            <h3 class="text-2xl font-bold text-blue-700 mb-4 flex items-center">&#128170; 核心功能地圖：系統在做什麼？</h3>
+            <p class="text-gray-700 mb-6 border-l-4 border-blue-200 pl-3 bg-white p-3 rounded-lg shadow-sm">
+                本區塊展示了 IGB ERP 系統涵蓋的八大核心模組。請點擊任一卡片以查看該模組的關鍵功能、目標和在企業增長中的定位。此結構有助於非線性地理解每個模組的細節。
+            </p>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div id="moduleGrid" class="col-span-2 md:col-span-3 grid grid-cols-2 gap-4">
+                    <!-- Module Cards will be inserted here by JS -->
+                </div>
+
+                <!-- Detail Panel -->
+                <div class="col-span-2 md:col-span-1 bg-white p-6 rounded-xl shadow-2xl border-t-4 border-blue-500 h-full">
+                    <h4 id="moduleDetailTitle" class="text-xl font-bold text-gray-900 mb-3">客戶關係管理 (CRM)：詳情</h4>
+                    <p id="moduleDetailDescription" class="text-gray-600 leading-relaxed text-sm">
+                        潛在客戶開發、銷售流程管理、報價、訂單處理、售後服務與支援，實現以客戶為中心的營運模式。
+                    </p>
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <p class="text-blue-700 font-semibold text-sm">核心價值:</p>
+                        <ul class="text-xs text-gray-500 list-disc list-inside ml-2">
+                            <li>提升客戶滿意度</li>
+                            <li>優化銷售效率</li>
+                            <li>精準市場預測</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. 技術架構透視 (HOW) -->
+        <section id="architecture" class="content-section mb-12 hidden">
+            <h3 class="text-2xl font-bold text-blue-700 mb-4 flex items-center">&#128640; 技術架構透視：系統是如何建構的？</h3>
+            <p class="text-gray-700 mb-6 border-l-4 border-blue-200 pl-3 bg-white p-3 rounded-lg shadow-sm">
+                本區塊展示了 IGB ERP 系統基於高可用性與可擴展性而採用的標準三層式架構 (3-Tier)。請點擊各層次方塊，即可查看其技術構成與核心職責。
+            </p>
+
+            <!-- Architecture Diagram (HTML/CSS) -->
+            <div class="max-w-4xl mx-auto space-y-4 text-center">
+                <div id="arch-presentation" data-layer="presentation" class="arch-layer bg-white p-6 h-32 flex flex-col justify-center">
+                    <div class="text-3xl">&#128187;</div>
+                    <div class="text-lg font-bold">展示層 (Presentation Tier)</div>
+                    <div class="text-sm text-gray-500">使用者介面與交互</div>
+                </div>
+
+                <div class="text-3xl text-gray-400">&#11015;</div>
+
+                <div id="arch-application" data-layer="application" class="arch-layer bg-white p-6 h-32 flex flex-col justify-center active bg-blue-100">
+                    <div class="text-3xl">&#128640;</div>
+                    <div class="text-lg font-bold">應用/業務邏輯層 (Application Tier)</div>
+                    <div class="text-sm text-gray-500">核心業務邏輯與微服務</div>
+                </div>
+
+                <div class="text-3xl text-gray-400">&#11015;</div>
+
+                <div id="arch-data" data-layer="data" class="arch-layer bg-white p-6 h-32 flex flex-col justify-center">
+                    <div class="text-3xl">&#128190;</div>
+                    <div class="text-lg font-bold">數據層 (Data Tier)</div>
+                    <div class="text-sm text-gray-500">持久化存儲與分析</div>
+                </div>
+            </div>
+
+            <!-- Architecture Details Panel -->
+            <div class="mt-8 bg-gray-100 p-6 rounded-xl shadow-inner border-l-8 border-blue-700 max-w-4xl mx-auto">
+                <h4 id="archDetailTitle" class="text-2xl font-extrabold text-gray-900 mb-3">應用/業務邏輯層 (Application Tier)：說明</h4>
+                <p id="archDetailDescription" class="text-gray-700 mb-4">
+                    核心業務邏輯的執行場所，採用微服務架構，將功能拆分為獨立服務（如訂單服務、庫存服務），通過 API 網關統一管理請求。職責是執行所有業務規則和交易邏輯。
+                </p>
+                <p class="text-blue-700 font-bold mb-2">關鍵技術構成:</p>
+                <ul id="archDetailComponents" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-800">
+                    <li class="flex items-center space-x-2"><span class="text-blue-500">&#10003;</span><span>微服務群 (Microservices)</span></li>
+                    <li class="flex items-center space-x-2"><span class="text-blue-500">&#10003;</span><span>API 網關</span></li>
+                    <li class="flex items-center space-x-2"><span class="text-blue-500">&#10003;</span><span>業務規則引擎</span></li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 3. 績效儀表板 (WHY) -->
+        <section id="performance" class="content-section mb-12 hidden">
+            <h3 class="text-2xl font-bold text-blue-700 mb-4 flex items-center">&#128200; 戰略績效儀表板：系統帶來的價值？</h3>
+            <p class="text-gray-700 mb-6 border-l-4 border-blue-200 pl-3 bg-white p-3 rounded-lg shadow-sm">
+                此儀表板展示了系統導入後可能帶來的概念性戰略績效。請切換指標以觀察系統在**營運效率提升**和**系統整合度**方面的季度增長趨勢。
+            </p>
+
+            <!-- Metric Toggles -->
+            <div class="flex space-x-4 mb-6 justify-center">
+                <button id="efficiencyBtn" class="px-6 py-2 rounded-full font-semibold transition duration-200 shadow-md bg-blue-700 text-white" onclick="switchMetric('efficiency')">
+                    營運效率提升 (%)
+                </button>
+                <button id="integrationBtn" class="px-6 py-2 rounded-full font-semibold transition duration-200 shadow-md bg-gray-200 text-gray-700 hover:bg-gray-300" onclick="switchMetric('integration')">
+                    系統整合度分數
+                </button>
+            </div>
+
+            <!-- Chart Container (Mandatory Styling) -->
+            <div class="chart-container bg-white p-6 rounded-xl shadow-2xl border border-gray-200">
+                <canvas id="performanceChart"></canvas>
+            </div>
+
+            <div class="mt-8 max-w-4xl mx-auto bg-gray-100 p-6 rounded-xl shadow-inner">
+                <h4 class="text-xl font-bold text-gray-900 mb-3">數據解讀：</h4>
+                <p class="text-gray-700">
+                    **營運效率提升**圖表說明了通過自動化、流程優化和數據洞察所帶來的季度百分比增長。
+                    **系統整合度分數**則反映了各核心模組之間數據流和流程協同的成熟度，是衡量 ERP 系統成功實施的關鍵指標。
+                    持續的增長表明 IGB 系統有效地支持了企業的數位化轉型與核心增長戰略。
+                </p>
+            </div>
+        </section>
+
+    </main>
+</body>
+</html>

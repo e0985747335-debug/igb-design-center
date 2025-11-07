@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>綜合財務報告</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 報告專用的深色主題 */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        :root {
+            --primary-color: #3b82f6; /* Blue-500 */
+            --bg-dark: #1f2937;       /* Gray-800 */
+            --bg-deep: #111827;       /* Gray-900 */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-deep);
+            color: #d1d5db; /* Light Gray */
+            padding: 3rem;
+            min-height: 100vh;
+        }
+
+        .report-container {
+            max-width: 1000px;
+            margin: auto;
+            background-color: var(--bg-dark);
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            padding: 2.5rem;
+        }
+
+        .report-card {
+            background-color: #1f2937; /* Gray-800 */
+            border: 1px solid #374151; /* Gray-700 */
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+        }
+
+        .kpi-value {
+            font-size: 2.25rem; /* text-4xl */
+            font-weight: 700;   /* font-bold */
+            line-height: 1.2;
+            color: white;
+        }
+
+        /* 專門用於列印優化 */
+        @media print {
+            body {
+                background-color: white;
+                color: #333;
+                padding: 1rem;
+            }
+            .report-container {
+                box-shadow: none;
+                border: 1px solid #ccc;
+                padding: 2rem;
+                background-color: white;
+            }
+            .report-card {
+                border: 1px solid #ccc;
+                background-color: #f9fafb; /* Light background for print */
+            }
+            h1, h2, h3 {
+                color: #1f2937 !important;
+            }
+            .text-gray-400 {
+                color: #6b7280 !important;
+            }
+            /* 隱藏不必要的元素，確保只有報告內容被列印 */
+            .hidden-print {
+                display: none;
+            }
+        }
+
+        /* 確保 Tailwind 使用的動態顏色類別存在 */
+        .border-red-500, .border-yellow-500, .border-green-500, .border-blue-500, .bg-red-500\/20, .bg-yellow-500\/20, .bg-green-500\/20, .bg-blue-500\/20, .text-red-400, .text-yellow-400, .text-green-400, .text-blue-400, .text-indigo-400 {}
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <!-- 報告標頭 -->
+        <header class="mb-10 pb-4 border-b border-gray-700">
+            <h1 class="text-4xl font-extrabold text-blue-400 mb-2">綜合財務報告</h1>
+            <p class="text-lg text-gray-400">期間: 2025 年第三季度及十月份交易摘要</p>
+            <p class="text-sm text-gray-500 mt-1">報告生成日期: ${new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </header>
+
+        <!-- 關鍵績效指標 (KPI) 總覽 -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-700 pb-2">1. 關鍵財務指標 (Q3)</h2>
+            <div id="kpi-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- KPI Card 1: 總收入 -->
+                <div class="report-card border-l-4 border-green-500">
+                    <p class="text-sm font-medium text-gray-400">總收入 (Q3)</p>
+                    <p class="kpi-value text-green-400">NT$ 1,500 萬</p>
+                    <div class="flex items-center mt-2">
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">+12.5% YoY</span>
+                    </div>
+                </div>
+                <!-- KPI Card 2: 淨利潤率 -->
+                <div class="report-card border-l-4 border-red-500">
+                    <p class="text-sm font-medium text-gray-400">淨利潤率</p>
+                    <p class="kpi-value text-red-400">18.7%</p>
+                    <div class="flex items-center mt-2">
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">-0.5% YoY</span>
+                    </div>
+                </div>
+                <!-- KPI Card 3: 應收帳款 -->
+                <div class="report-card border-l-4 border-yellow-500">
+                    <p class="text-sm font-medium text-gray-400">應收帳款 (30+天)</p>
+                    <p class="kpi-value text-yellow-400">NT$ 80 萬</p>
+                    <div class="flex items-center mt-2">
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">+25.0% MoM</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 月度收支概覽 (Finance Tracker Data) -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-700 pb-2">2. 月度財務平衡 (十月至今)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 總收入 -->
+                <div class="report-card border-b-4 border-green-500">
+                    <p class="text-lg font-medium text-gray-400">本月總收入</p>
+                    <p class="text-4xl font-bold text-green-400 mt-2">NT$ 850,000</p>
+                </div>
+                <!-- 總支出 -->
+                <div class="report-card border-b-4 border-red-500">
+                    <p class="text-lg font-medium text-gray-400">本月總支出</p>
+                    <p class="text-4xl font-bold text-red-400 mt-2">NT$ 420,000</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 主要支出分類 (Accounting Analysis Data) -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-700 pb-2">3. 主要營運支出結構</h2>
+            <div class="space-y-4">
+                ${renderCategoryRow('人事費用', 45, 'NT$ 450 萬', 'bg-red-500')}
+                ${renderCategoryRow('研發投入', 25, 'NT$ 250 萬', 'bg-blue-500')}
+                ${renderCategoryRow('市場營銷', 15, 'NT$ 150 萬', 'bg-yellow-500')}
+                ${renderCategoryRow('營運雜項', 15, 'NT$ 150 萬', 'bg-green-500')}
+            </div>
+        </section>
+
+        <!-- 審批與交易摘要 (Combined Data) -->
+        <section>
+            <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-700 pb-2">4. 審批與近期交易摘要</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 採購訂單概覽 -->
+                <div class="report-card">
+                    <h3 class="text-xl font-medium text-blue-300 mb-3">採購訂單 (PO) 概覽</h3>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li class="flex justify-between"><span>待處理 PO 數量</span><span class="font-bold text-red-400">12 筆</span></li>
+                        <li class="flex justify-between"><span>預計到貨總值 (本週)</span><span class="font-bold text-blue-400">NT$ 350 萬</span></li>
+                        <li class="flex justify-between"><span>新供應商請求</span><span class="font-bold text-yellow-400">3 份 (待審核)</span></li>
+                    </ul>
+                </div>
+
+                <!-- 費用審批概覽 -->
+                <div class="report-card">
+                    <h3 class="text-xl font-medium text-blue-300 mb-3">待審批費用 (總覽)</h3>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li class="flex justify-between"><span>差旅費 (TSMC 專案)</span><span class="font-bold text-red-400">NT$ 2,500</span></li>
+                        <li class="flex justify-between"><span>招待費 (客戶晚宴)</span><span class="font-bold text-yellow-400">NT$ 800</span></li>
+                        <li class="flex justify-between"><span>已通過報銷 (硬體)</span><span class="font-bold text-green-400">NT$ 450</span></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <footer class="mt-12 pt-4 border-t border-gray-700 text-center text-sm text-gray-500">
+            <p>本報告數據根據 ERP 2.0 系統實時快照生成，可能包含正在處理中的交易。</p>
+            <!-- 添加一個按鈕方便用戶列印 -->
+            <button onclick="window.print()" class="hidden-print mt-4 bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">
+                列印此報告
+            </button>
+        </footer>
+    </div>
+
+    <script>
+        // JS 輔助函數：渲染支出分類行
+        function renderCategoryRow(name, percentage, amount, barColorClass) {
+            return `
+                <div class="report-card">
+                    <div class="flex justify-between items-center mb-1">
+                        <p class="text-md font-medium text-white">${name}</p>
+                        <div class="flex space-x-4 items-baseline">
+                            <span class="text-xl font-bold text-blue-400">${percentage}%</span>
+                            <span class="text-sm text-gray-400">${amount}</span>
+                        </div>
+                    </div>
+                    <div class="h-2 bg-gray-600 rounded-full">
+                        <div class="h-2 ${barColorClass} rounded-full" style="width: ${percentage}%;"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 將輔助函數暴露給 DOM (雖然在這個報告中不是必須的，但保留結構清晰)
+        window.renderCategoryRow = renderCategoryRow;
+    </script>
+</body>
+</html>

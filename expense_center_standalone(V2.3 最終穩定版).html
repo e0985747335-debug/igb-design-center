@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB 費用管理中心 - 獨立模組 (V2.3)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#10497E',
+                        'secondary-gray': '#F7F9FB',
+                        'accent-orange': '#FF7A00',
+                        'status-draft': '#9CA3AF', /* Gray-400 */
+                        'status-pending': '#F97316', /* Orange-500 */
+                        'status-approved': '#10B981', /* Green-500 */
+                        'status-rejected': '#EF4444', /* Red-500 */
+
+                        /* 統一樣式：用於新表單的顏色 */
+                        'primary-indigo': '#10497E',
+                        'light-indigo': '#E0F2FE',
+                        'compliance-yellow': '#FFFBEB', /* Yellow-50 */
+                        'compliance-yellow-text': '#B45309', /* Amber-700 */
+                        'compliance-yellow-border': '#FDE68A', /* Amber-200 */
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    },
+                },
+            }
+        }
+    </script>
+    <style>
+        .claim-row { cursor: pointer; transition: background-color 0.2s; }
+        .claim-row:hover:not(.active) { background-color: #f3f4f6; }
+        .claim-row.active { background-color: #E0F2F1; border-left: 4px solid theme('colors.primary-blue'); }
+        .view-switch-btn.active { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); transform: translateY(-2px); }
+
+        #messageBox.hidden { display: none !important; }
+        #messageBox.flex { display: flex !important; }
+
+        .kpi-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+    </style>
+</head>
+<script>
+    // 初始化 Chart.js 實例的變數 (頂層)
+    const chartInstances = {
+        cashFlow: null, expense: null, inventoryValue: null, purchaseCategory: null,
+        workOrderStatus: null, employeeDistribution: null, salesFunnel: null,
+        profitTrend: null, balanceAnalysis: null, projectType: null
+    };
+
+    const moduleTitles = {
+        'finance-module-view': ['財務管理 (Finance)', '即時現金流與費用總覽'],
+        'scm-module-view': ['供應鏈管理 (SCM)', '採購、庫存和供應商績效概覽'],
+        'manufacturing-module-view': ['生產製造 (Manufacturing)', 'OEE、工單狀態和產能監控'],
+        'hr-module-view': ['人力資源 (HR)', '員工、薪酬與離職率分析'],
+        'crm-module-view': ['客戶關係管理 (CRM)', '銷售漏斗、轉換率和客戶服務'],
+        'bi-module-view': ['商業智慧 (BI)', '跨部門策略數據分析與預測'],
+        'project-mgmt-module-view': ['專案管理 (Project Mgmt)', '專案進度、資源和預算健康度'],
+        'wms-module-view': ['倉儲管理 (WMS)', '庫存水位、儲位和出入庫作業效率'],
+        'general-ledger-view': ['總帳明細 (General Ledger)', '所有借貸分錄的詳細清單'],
+        'fixed-assets-view': ['固定資產 (Fixed Assets)', '追蹤資產壽命、折舊計算和維護排程'],
+        'accounts-receivable-view': ['應收帳款 (Accounts Receivable)', '追蹤客戶未付款項和控制信用額度'],
+        'accounts-payable-view': ['應付帳款 (Accounts Payable)', '管理供應商發票、支付時程和現金流預測'],
+        'api-docs-view': ['API 文件/測試 (FastAPI)', '後端服務文件與測試介面'],
+        'single-expense-view': ['單筆費用申報', '快速填寫並生成報銷草稿']
+    };
+
+    // ★★★ 新增：模擬報銷單數據 (用於單筆費用申報) ★★★
+    let mockClaims = [
+        { id: 101, title: "2025年11月客戶拜訪費用", total: 7350, date: "2025-10-25", status: "Pending", projectId: 'P2025-5',
+          purpose: "拜訪台北重要客戶，討論年度合作方案。",
+          details: ["交通費: TWD 3,000", "餐飲費: TWD 850", "住宿費: TWD 3,500"],
+          approverNotes: "", accountCode: "國內差旅費 (Domestic)" },
+
+        { id: 102, title: "辦公室用品採購", total: 1200, date: "2025-10-24", status: "Draft", projectId: 'None',
+          purpose: "購買影印紙和墨水。",
+          details: ["影印紙: TWD 700", "墨水匣: TWD 500"],
+          approverNotes: "", accountCode: "辦公用品及耗材 (Supplies)" },
+    ];
+
+    // --- 費用申報表單數據 (提取到全域) ---
+    const expenseCategories = [
+        { title: "💼 旅費及交通費", subItems: ["國內差旅費 (Domestic)", "國外差旅費 (International)", "市區交通費 (Local Transit)", "高鐵/火車票 (Rail Fare)", "機票費用 (Airfare)", "住宿費用 (Accommodation)"] },
+        { title: "🍽️ 餐費及招待費", subItems: ["客戶招待費 (Client Entertainment)", "員工福利餐費 (Staff Welfare)", "內部會議餐飲 (Internal Meeting F&B)"] },
+        { title: "📦 辦公與行政費", subItems: ["辦公用品及耗材 (Supplies)", "郵電/通訊費 (Post & Telecom)", "租金支出 (Rent Expense)", "水電瓦斯費 (Utilities)", "修繕與維護費 (Repair & Maint.)", "報章雜誌訂閱費 (Subscriptions)"] },
+        { title: "💻 資訊與軟體費", subItems: ["軟體訂閱費 (Software Subscription)", "硬體採購費 (Hardware Purchase)", "資訊服務費 (IT Services)", "雲端服務費 (Cloud Services)", "網站網域名稱費 (Domain/Web Fees)"] },
+        { title: "📈 行銷與業務費", subItems: ["廣告與宣傳費 (Advertising)", "業務交際費 (Sales Relations)", "展覽費 (Exhibition Fees)", "印刷宣傳品 (Printed Materials)", "市場調研費 (Market Research)"] },
+        { title: "📚 培訓與人才費", subItems: ["專業培訓費 (Professional Training)", "招募費用 (Recruitment Costs)", "教育訓練課程費 (Course Fees)", "員工健康檢查費 (Health Check-ups)"] },
+        { title: "🧑‍💻 專業服務費", subItems: ["顧問費 (Consulting)", "法律及會計費用 (Legal & Accounting)", "外部審計費 (External Audit)", "翻譯/口譯費 (Translation/Interpreting)"] },
+        { title: "🏦 財務與雜項費", subItems: ["銀行手續費 (Bank Charges)", "利息支出 (Interest Expense)", "政府規費與罰鍰 (Fees & Penalties)", "保險費 (Insurance Premiums)", "慈善捐贈 (Donations)"] },
+        { title: "❓ 其他雜項費用", subItems: ["其他雜項費用 (Misc. Other)"] }
+    ];
+
+    // 模擬專案清單/模組採購清單 (提取到全域)
+    const mockProjects = [
+        { id: '', name: '請選擇專案 (必選)' },
+        { id: 'OPEX-GEN', name: 'OPEX-GEN (一般營運支出)' },
+        { id: 'P2025-4', name: 'P2025-4 (DDR5 記憶體採購)' },
+        { id: 'P2025-5', name: 'P2025-5 (OLED 顯示模組採購)' },
+        { id: 'RND-001', name: 'RND-001 (產品原型設計)' },
+    ];
+
+    // 總帳模擬數據 (提取到全域)
+    const journalEntries = [
+        { date: '2024-10-25', voucher: 'J001', description: '支付員工薪資', account: '薪資費用', debit: 800000.00, credit: 0.00 },
+        { date: '2024-10-25', voucher: 'J001', description: '支付員工薪資', account: '銀行存款', debit: 0.00, credit: 800000.00 },
+        { date: '2024-10-26', voucher: 'J002', description: '採購辦公設備', account: '設備資產', debit: 150000.00, credit: 0.00 },
+        { date: '2024-10-26', voucher: 'J002', description: '採購辦公設備', account: '應付帳款', debit: 0.00, credit: 150000.00 },
+        { date: '2024-10-26', voucher: 'J003', description: '產品 A 銷貨', account: '應收帳款', debit: 450000.00, credit: 0.00 },
+        { date: '2024-10-26', voucher: 'J003', description: '產品 A 銷貨', account: '銷貨收入', debit: 0.00, credit: 450000.00 },
+        { date: '2024-10-27', voucher: 'J004', description: '收到客戶付款', account: '現金', debit: 300000.00, credit: 0.00 },
+        { date: '2024-10-27', voucher: 'J004', description: '收到客戶付款', account: '應收帳款', debit: 0.00, credit: 300000.00 },
+        { date: '2024-10-27', voucher: 'J005', description: '支付辦公室租金', account: '租金費用', debit: 50000.00, credit: 0.00 },
+        { date: '2024-10-27', voucher: 'J005', description: '支付辦公室租金', account: '銀行存款', debit: 0.00, credit: 50000.00 },
+        { date: '2024-10-28', voucher: 'J006', description: '支付銀行借款利息', account: '利息費用', debit: 15000.00, credit: 0.00 },
+        { date: '2024-10-28', voucher: 'J006', description: '支付銀行借款利息', account: '現金', debit: 0.00, credit: 15000.00 },
+    ];
+
+
+    // --- 核心圖表銷毀函數 ---
+    function destroyAllCharts() {
+        Object.keys(chartInstances).forEach(key => {
+            if (chartInstances[key]) {
+                chartInstances[key].destroy();
+                chartInstances[key] = null;
+            }
+        });
+        // 替換 Canvas 容器以強制清除 DOM 引用 (修正卡頓的關鍵)
+        const chartIds = ['cashFlowChart', 'expenseChart', 'inventoryValueChart', 'purchaseCategoryChart', 'workOrderStatusChart', 'employeeDistributionChart', 'salesFunnelChart', 'profitTrendChart', 'balanceAnalysisChart', 'projectTypeChart'];
+        chartIds.forEach(id => {
+            const oldCanvas = document.getElementById(id);
+            if (oldCanvas) {
+                const parent = oldCanvas.parentNode;
+                const newCanvas = document.createElement('canvas');
+                newCanvas.id = id;
+                newCanvas.className = "w-full h-full"; // 確保新 Canvas 尺寸正確
+                parent.appendChild(newCanvas);
+                oldCanvas.remove();
+            }
+        });
+    }
+
+    // --- 核心圖表渲染邏輯 (使用 Canvas 替換機制) ---
+    // (省略具體實現，但這些函數是存在的)
+    function renderCashFlowChart() {
+         const ctx = document.getElementById('cashFlowChart').getContext('2d');
+         const data = {labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],datasets: [{label: '淨現金流 (Net Flow)',data: [120000, 190000, 300000, 50000, 200000, 400000, 350000],backgroundColor: 'rgba(79, 70, 229, 0.8)',borderColor: 'rgba(79, 70, 229, 1)',borderWidth: 1,tension: 0.4,fill: true,}]};
+         chartInstances.cashFlow = new Chart(ctx, {type: 'line',data: data,options: {responsive: true,maintainAspectRatio: false,scales: {y: { beginAtZero: true }}}});
+    }
+    function renderExpenseChart() {
+        const ctx = document.getElementById('expenseChart').getContext('2d');
+        const data = {labels: ['薪資', '租金', '採購', '營銷', '雜項'],datasets: [{label: '費用分佈',data: [40, 25, 15, 10, 10],backgroundColor: ['#4f46e5', '#f59e0b', '#10b981', '#ef4444', '#6b7280'],hoverOffset: 10}]};
+        chartInstances.expense = new Chart(ctx, {type: 'doughnut',data: data,options: {responsive: true,maintainAspectRatio: false,plugins: {legend: { position: 'right'}}}});
+    }
+    function renderInventoryValueChart() { /* WMS */
+        const ctx = document.getElementById('inventoryValueChart').getContext('2d');
+        const data = {labels: ['成品', '原材料', '半成品', '耗材'],datasets: [{label: '庫存價值',data: [50, 30, 15, 5],backgroundColor: ['#06b6d4', '#f97316', '#a855f7', '#10b981'],hoverOffset: 10}]};
+        chartInstances.inventoryValue = new Chart(ctx, {type: 'pie',data: data,options: {responsive: true,maintainAspectRatio: false,plugins: {legend: { position: 'bottom'}}}});
+    }
+    function renderPurchaseCategoryChart() { /* SCM */
+        const ctx = document.getElementById('purchaseCategoryChart').getContext('2d');
+        const data = {labels: ['電子元件 (35萬)', '機構零件 (20萬)', '原物料 (15萬)', '服務/其他 (10萬)'],datasets: [{label: '採購支出 (TWD)',data: [350000, 200000, 150000, 100000],backgroundColor: ['#f59e0b', '#3b82f6', '#10b981', '#a855f7'],hoverOffset: 8}]};
+        chartInstances.purchaseCategory = new Chart(ctx, {type: 'pie',data: data,options: {responsive: true,maintainAspectRatio: false,plugins: {legend: { position: 'right'}}}});
+    }
+    function renderWorkOrderStatusChart() { /* Manufacturing */
+        const ctx = document.getElementById('workOrderStatusChart').getContext('2d');
+        const data = {labels: ['已完成 (25)', '生產中 (45)', '待開工 (10)', '停滯/異常 (5)'],datasets: [{label: '工單數量',data: [25, 45, 10, 5],backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],hoverOffset: 8}]};
+        chartInstances.workOrderStatus = new Chart(ctx, {type: 'doughnut',data: data,options: {responsive: true,maintainAspectRatio: false,plugins: {legend: { position: 'bottom'}}}});
+    }
+    function renderEmployeeDistributionChart() { /* HR */
+        const ctx = document.getElementById('employeeDistributionChart').getContext('2d');
+        const data = {labels: ['製造 (100)', '研發 (45)', '銷售 (30)', '行政 (25)', 'IT/財務 (15)'],datasets: [{label: '員工人數',data: [100, 45, 30, 25, 15],backgroundColor: ['#ef4444', '#a855f7', '#3b82f6', '#f59e0b', '#10b981'],hoverOffset: 8}]};
+        chartInstances.employeeDistribution = new Chart(ctx, {type: 'doughnut',data: data,options: {responsive: true,maintainAspectRatio: false,plugins: {legend: { position: 'right'}}}});
+    }
+    function renderSalesFunnelChart() { /* CRM */
+        const ctx = document.getElementById('salesFunnelChart').getContext('2d');
+        const data = {labels: ['潛在客戶 (850K)', '合格線索 (400K)', '報價階段 (250K)', '待結案 (100K)'],datasets: [{label: '銷售機會價值 (TWD)',data: [850, 400, 250, 100],backgroundColor: ['#818cf8', '#a78bfa', '#c4b5fd', '#d8b4fe'],indexAxis: 'y',borderWidth: 1,borderRadius: 5,minBarLength: 10}]};
+        chartInstances.salesFunnel = new Chart(ctx, {type: 'bar',data: data,options: {responsive: true,maintainAspectRatio: false,indexAxis: 'y',plugins: { legend: { display: false } },scales: { x: { beginAtZero: true, ticks: { callback: (v) => `$${v}K` } } }}});
+    }
+    function renderProfitTrendChart() { /* BI 1 */
+        const ctx = document.getElementById('profitTrendChart').getContext('2d');
+        const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+        const profitData = [350, 380, 410, 450, 420, 480, 510, 550, 580, 600, 620, 650].map(v => v * 1000);
+        chartInstances.profitTrend = new Chart(ctx, {type: 'line', data: {labels: months,datasets: [{label: '綜合淨利潤 (TWD)',data: profitData,borderColor: 'rgb(20, 184, 166)',backgroundColor: 'rgba(20, 184, 166, 0.1)',tension: 0.4,fill: true}]},options: {responsive: true,maintainAspectRatio: false,plugins: { legend: { labels: { color: '#4b5563' } } },scales: { x: { ticks: { color: '#6b7280' }, grid: { color: '#e5e7eb' } }, y: { ticks: { color: '#6b7280', callback: function(value) { return '$' + (value / 1000) + 'K'; } }, grid: { color: '#e5e7eb' }}}}});
+    }
+    function renderBalanceAnalysisChart() { /* BI 2 */
+        const ctx = document.getElementById('balanceAnalysisChart').getContext('2d');
+        const weeks = ['W38', 'W39', 'W40', 'W41', 'W42', 'W43'];
+        const inventory = [1200, 1150, 1300, 1250, 1400, 1350];
+        const manufacturing = [900, 950, 1000, 1050, 1100, 1150];
+        const sales = [100, 110, 105, 120, 115, 130];
+        chartInstances.balanceAnalysis = new Chart(ctx, {type: 'line', data: {labels: weeks,datasets: [{label: '庫存單位',data: inventory,borderColor: 'rgb(59, 130, 246)',backgroundColor: 'rgba(59, 130, 246, 0.5)',yAxisID: 'y'},{label: '製造產出單位',data: manufacturing,borderColor: 'rgb(168, 85, 247)',backgroundColor: 'rgba(168, 85, 247, 0.5)',yAxisID: 'y'},{label: '銷售指數 (K TWD)',data: sales,borderColor: 'rgb(245, 158, 11)',backgroundColor: 'rgba(245, 158, 11, 0.5)',yAxisID: 'y1',tension: 0.2,borderDash: [5, 5]}]},options: {responsive: true,maintainAspectRatio: false,plugins: { legend: { labels: { color: '#4b5563' } } },scales: {x: { ticks: { color: '#6b7280' }, grid: { color: '#e5e7eb' } },y: {type: 'linear',position: 'left',ticks: { color: '#6b7280' },title: { display: true, text: '單位 (Unit)', color: '#6b7280' },grid: { color: '#e5e7eb' }},y1: {type: 'linear',position: 'right',min: 0,max: 200,ticks: { color: '#f59e0b', callback: function(value) { return '$' + value + 'K'; } },title: { display: true, text: '銷售金額 (K TWD)', color: '#f59e0b' },grid: { drawOnChartArea: false }}}}});
+    }
+    function renderProjectTypeChart() { /* Project Mgmt */
+        const ctx = document.getElementById('projectTypeChart').getContext('2d');
+        const data = {labels: ['研發 (4)', 'IT/系統 (2)', '市場 (1)', '營運優化 (3)'],datasets: [{label: '專案數量',data: [4, 2, 1, 3],backgroundColor: ['#a855f7', '#6366f1', '#f97316', '#10b981'],hoverOffset: 4}]};
+        chartInstances.projectType = new Chart(ctx, {type: 'doughnut',data: data,options: {responsive: true,maintainAspectRatio: false,plugins: {legend: { position: 'bottom'}}}});
+    }
+
+
+    // --- 視圖切換邏輯 ---
+    function switchModule(viewId, subModule = null) {
+
+        const targetViewId = viewId;
+        let finalViewId = targetViewId;
+
+        // 處理標題和副標題
+        const titleElement = document.getElementById('view-title');
+        const subtitleElement = document.getElementById('view-subtitle');
+
+        // 檢查是否為 Placeholder 呼叫
+        if (targetViewId === 'placeholder-view' && subModule) {
+             titleElement.textContent = `${subModule} 模組 (開發中)`;
+             subtitleElement.textContent = "此為 V2 模組的 Light Mode 遷移佔位符，詳細儀表板將在 V3 階段依序完成整合。";
+        } else {
+            const [newTitle, newSubtitle] = moduleTitles[viewId] || [viewId.replace('-module-view', ''), ''];
+            titleElement.textContent = newTitle;
+            subtitleElement.textContent = newSubtitle;
+        }
+
+        // 隱藏所有視圖內容
+        document.querySelectorAll('.module-view').forEach(view => {
+            view.classList.add('hidden');
+        });
+        // 移除所有 Tab/模組按鈕的 active 樣式
+        document.querySelectorAll('.module-button').forEach(button => {
+            button.classList.remove('active');
+        });
+
+        // 顯示選定的視圖內容
+        const targetElement = document.getElementById(finalViewId);
+        if (targetElement) {
+             targetElement.classList.remove('hidden');
+        } else {
+             // 模組名稱不存在，切換到通用佔位符
+             document.getElementById('placeholder-view').classList.remove('hidden');
+             document.getElementById('placeholder-text').textContent = `模組 ID: ${targetViewId} 尚未實作。請等待 V3 階段完成。`;
+             finalViewId = 'placeholder-view';
+        }
+
+        // 設置選定的模組按鈕為 active
+        const navId = viewId.replace('-view', '');
+        const navButton = document.getElementById(`nav-${navId.replace('-module', '').replace('single-expense', 'single-expense')}`);
+        if (navButton) {
+            navButton.classList.add('active');
+        }
+
+        // ★★★ 核心修正：僅在 expense-center-view 啟用時才初始化其子視圖 ★★★
+        if (viewId === 'expense-center-view') {
+             // 預設進入報銷人儀表板
+             switchExpenseSubView('claimer');
+        }
+
+        // --- 核心圖表管理和初始化邏輯 ---
+        destroyAllCharts(); // 1. 銷毀所有現有圖表
+
+        const initMap = {
+            'finance-module-view': [renderCashFlowChart, renderExpenseChart],
+            'wms-module-view': [renderInventoryValueChart],
+            'scm-module-view': [renderPurchaseCategoryChart],
+            'manufacturing-module-view': [renderWorkOrderStatusChart],
+            'hr-module-view': [renderEmployeeDistributionChart],
+            'crm-module-view': [renderSalesFunnelChart],
+            'bi-module-view': [renderProfitTrendChart, renderBalanceAnalysisChart],
+            'project-mgmt-module-view': [renderProjectTypeChart],
+            'expense-center-view': [() => switchExpenseSubView('claimer')]
+        };
+
+        const initFuncs = initMap[finalViewId];
+
+        if (initFuncs) {
+            // 2. 異步渲染目標模組圖表/函數
+            initFuncs.forEach(func => {
+                window.requestAnimationFrame(() => {
+                    func();
+                });
+            });
+        } else if (finalViewId === 'general-ledger-view') {
+            renderGeneralLedger();
+        }
+    }
+
+    // --- 費用申報表單邏輯 (New) ---
+
+    // 輔助函式：渲染會計科目下拉選單 (修正後，單一 Select)
+    function renderCategorySelects() {
+        const finalSelect = document.getElementById('single-category-final');
+        if (!finalSelect) return;
+
+        finalSelect.innerHTML = '<option value="" disabled selected>請選擇費用科目 (大項 | 細目)</option>';
+
+        expenseCategories.forEach(cat => {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = cat.title;
+
+            cat.subItems.forEach(minor => {
+                const option = document.createElement('option');
+                // 關鍵：將大項和細目拼接在 value 中，便於後續解析
+                option.value = `${cat.title} | ${minor}`;
+                option.textContent = minor;
+                optgroup.appendChild(option);
+            });
+            finalSelect.appendChild(optgroup);
+        });
+    }
+
+    // 輔助函式：渲染專案下拉選單
+    function renderProjectSelect() {
+        const projectSelect = document.getElementById('single-project');
+        if (!projectSelect) return;
+
+        projectSelect.innerHTML = '';
+        mockProjects.forEach(project => {
+            const option = document.createElement('option');
+            option.value = project.id;
+            // 顯示：ID - 簡潔名稱
+            option.textContent = `${project.id} - ${project.name.replace(/ *\([^)]*\) */g, "")}`;
+            if (project.id === '') {
+                option.disabled = true;
+                option.selected = true;
+            }
+            projectSelect.appendChild(option);
+        });
+    }
+
+    function handleSingleExpenseSubmit(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+
+        const categoryFinal = formData.get('category-final');
+        const projectId = formData.get('project-id');
+
+        if (!form.checkValidity() || projectId === "" || categoryFinal === "" || categoryFinal === null) {
+             alert("錯誤：請確保所有必填欄位都已填寫，包括會計科目和專案 ID。");
+             form.reportValidity();
+             return;
+        }
+
+        // 解析科目：categoryFinal 格式為 "大項 | 細目"
+        const [majorCategoryTitle, minorCategory] = categoryFinal.split('|').map(s => s.trim());
+        const claimId = (mockClaims.length > 0 ? Math.max(...mockClaims.map(c => c.id)) : 100) + 1;
+
+        const newClaim = {
+            id: claimId,
+            title: `${minorCategory} - ${formData.get('date')}`,
+            total: parseFloat(formData.get('amount')),
+            submitDate: new Date().toISOString().slice(0, 10),
+            status: 'Draft',
+            projectCode: projectId,
+            accountCode: minorCategory, // 申報細目作為科目
+            purpose: formData.get('description') || '無詳細說明',
+            details: [`${minorCategory}: ${formData.get('currency')} ${formData.get('amount')}`],
+            claimer: "王小明",
+            department: "業務發展部"
+        };
+
+        mockClaims.push(newClaim);
+
+        alert(`✅ 申報成功！報銷單 #${claimId} (${minorCategory}) 已儲存為草稿。`);
+        form.reset();
+        switchModule('finance-module-view'); // 提交後返回主儀表板
+    }
+
+
+    // --- 總帳渲染與篩選邏輯 (保持不變) ---
+    function formatCurrency(value) { return value === 0 ? '-' : 'NT$ ' + parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function filterLedger(entries = journalEntries) {
+        const dateRange = document.getElementById('date-range').value.trim();
+        const accountFilter = document.getElementById('account-filter').value;
+        const searchText = document.getElementById('search-text').value.toLowerCase().trim();
+        let filteredEntries = journalEntries;
+        if (accountFilter) { filteredEntries = filteredEntries.filter(entry => entry.account === accountFilter); }
+        if (searchText) { filteredEntries = filteredEntries.filter(entry => entry.description.toLowerCase().includes(searchText) || entry.voucher.toLowerCase().includes(searchText)); }
+        if (dateRange && dateRange.length === 10) { filteredEntries = filteredEntries.filter(entry => entry.date === dateRange); }
+        renderGeneralLedger(filteredEntries);
+    }
+    function resetFilters() { document.getElementById('date-range').value = ''; document.getElementById('account-filter').value = ''; document.getElementById('search-text').value = ''; renderGeneralLedger(); }
+    function renderGeneralLedger(entries = journalEntries) {
+        const tbody = document.getElementById('ledger-body');
+        const balanceSummary = document.getElementById('balance-summary');
+        const noResults = document.getElementById('no-results');
+        tbody.innerHTML = ''; let totalDebit = 0; let totalCredit = 0;
+        if (entries.length === 0) { noResults.classList.remove('hidden'); balanceSummary.innerHTML = ''; return; } else { noResults.classList.add('hidden'); }
+        entries.forEach((entry, index) => {
+            totalDebit += entry.debit; totalCredit += entry.credit;
+            const row = document.createElement('tr'); row.classList.add(index % 2 === 0 ? 'bg-white' : 'bg-gray-50', 'hover:bg-indigo-50', 'transition');
+            const debitDisplay = formatCurrency(entry.debit); const creditDisplay = formatCurrency(entry.credit);
+            const isGroupStart = index === 0 || entry.voucher !== entries[index - 1].voucher;
+            const dateDisplay = isGroupStart ? entry.date : ''; const voucherDisplay = isGroupStart ? entry.voucher : '';
+            row.innerHTML = `<td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900">${dateDisplay}</td><td class_name="px-6 py-3 whitespace-nowrap text-sm text-gray-500">${voucherDisplay}</td><td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900">${entry.description}</td><td class="px-6 py-3 whitespace-nowrap text-sm font-medium text-indigo-600">${entry.account}</td><td class="px-6 py-3 whitespace-nowrap text-sm text-right text-green-700 font-mono">${debitDisplay}</td><td class="px-6 py-3 whitespace-nowrap text-sm text-right text-red-700 font-mono">${creditDisplay}</td>`;
+        });
+        const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
+        const balanceColor = isBalanced ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100';
+        const balanceStatus = isBalanced ? '平衡 (Balanced)' : '不平衡 (Out of Balance)';
+        balanceSummary.innerHTML = `<div class="flex justify-between items-center text-lg font-bold"><div class="space-y-1"><p class="text-gray-600">借方總額 (Total Debit): <span class="text-green-600">${formatCurrency(totalDebit)}</span></p><p class="text-gray-600">貸方總額 (Total Credit): <span class="text-red-600">${formatCurrency(totalCredit)}</span></p></div><div class="p-3 rounded-lg ${balanceColor} font-extrabold text-xl shadow-md">${balanceStatus}</div></div>`;
+    }
+
+
+    // --- 頁面初始化 ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // 綁定新表單的提交事件
+        const newExpenseForm = document.getElementById('newExpenseForm');
+        if (newExpenseForm) {
+            newExpenseForm.addEventListener('submit', handleSingleExpenseSubmit);
+        }
+
+        // 預設顯示財務儀表板 (Finance)
+        switchModule('finance-module-view');
+    });
+</script>
+</body>
+</html>
+<body class="bg-gray-100 font-sans p-4 sm:p-8">
+
+    <div id="mainAppContainer" class="max-w-7xl mx-auto bg-white shadow-2xl rounded-xl">
+
+        <header class="bg-primary-blue text-white p-6 rounded-t-xl flex justify-between items-center flex-wrap">
+            <h1 class="text-3xl font-bold mb-2 sm:mb-0">費用管理中心</h1>
+            <div id="viewSelector" class="flex space-x-4 p-1 bg-white/10 rounded-lg">
+                <button id="claimerViewBtn" onclick="switchView('claimer')" class="view-switch-btn py-2 px-4 rounded-md text-sm font-semibold bg-accent-orange text-white active">報銷人儀表板</button>
+                <button id="approverViewBtn" onclick="switchView('approver')" class="view-switch-btn py-2 px-4 rounded-md text-sm font-semibold bg-white text-primary-blue hover:bg-gray-100">審批人中心</button>
+            </div>
+        </header>
+
+        <main class="p-6">
+
+            <div id="messageBox" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+                <div class="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full transform transition-all scale-100 opacity-100">
+                    <h3 id="msgTitle" class="text-xl font-bold mb-3 text-primary-blue">提示</h3>
+                    <p id="msgText" class="text-gray-700 mb-4">操作訊息。</p>
+                    <div class="flex justify-end">
+                        <button onclick="closeMessageBox()" class="bg-primary-blue text-white py-2 px-4 rounded-md hover:bg-primary-blue/90">確定</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="claimerViewContainer" class="view-container">
+                <h2 class="text-2xl font-semibold text-primary-blue mb-6 border-b pb-2">我的報銷單追蹤 (<span id="claimerName">王小明</span>)</h2>
+
+                <div id="claimerDashboardView" class="view-section">
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="kpi-card bg-white p-5 rounded-lg shadow-lg border-l-4 border-status-draft">
+                            <p class="text-sm font-medium text-gray-500">待處理 (草稿)</p>
+                            <p id="statClaimerDraft" class="text-3xl font-bold text-status-draft mt-1">0</p>
+                        </div>
+                        <div class="kpi-card bg-white p-5 rounded-lg shadow-lg border-l-4 border-status-pending">
+                            <p class="text-sm font-medium text-gray-500">審核中 (待審批)</p>
+                            <p id="statClaimerPending" class="text-3xl font-bold text-status-pending mt-1">0</p>
+                        </div>
+                        <div class="kpi-card bg-white p-5 rounded-lg shadow-lg border-l-4 border-status-rejected">
+                            <p class="text-sm font-medium text-gray-500">已駁回 (需修改)</p>
+                            <p id="statClaimerRejected" class="text-3xl font-bold text-status-rejected mt-1">0</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
+                        <div>
+                            <button onclick="changeClaimerFilter('All')" class="claimer-filter-btn py-1 px-3 text-sm font-medium rounded-full bg-primary-blue text-white shadow-md transition duration-150" data-filter="All">全部</button>
+                            <button onclick="changeClaimerFilter('Draft')" class="claimer-filter-btn py-1 px-3 text-sm font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition duration-150" data-filter="Draft">草稿</button>
+                            <button onclick="changeClaimerFilter('Pending')" class="claimer-filter-btn py-1 px-3 text-sm font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition duration-150" data-filter="Pending">待審批</button>
+                            <button onclick="changeClaimerFilter('Rejected')" class="claimer-filter-btn py-1 px-3 text-sm font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition duration-150" data-filter="Rejected">已駁回</button>
+                        </div>
+                        <button onclick="createNewClaim()" class="flex items-center space-x-1 py-2 px-4 bg-accent-orange text-white rounded-lg hover:bg-accent-orange/90 font-semibold shadow-md transition duration-150">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                            </svg>
+                            <span>新增報銷單</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-secondary-gray p-4 rounded-lg shadow-inner">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-primary-blue/10">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">標題</th>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">關聯專案</th>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">總金額</th>
+                                    <th class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">狀態</th>
+                                    <th class="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase w-20">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="claimerClaimListBody" class="bg-white divide-y divide-gray-100">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="claimerEditFormView" class="view-section hidden max-w-2xl mx-auto p-6 bg-white border border-gray-200 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-bold text-primary-blue mb-4"><span id="formActionTitle">編輯</span>報銷單 <span id="editClaimIdDisplay" class="text-accent-orange">#N/A</span></h3>
+
+                    <form id="editForm" class="space-y-4">
+                        <div>
+                            <label for="editTitle" class="block text-sm font-medium text-gray-700 mb-1">報銷單標題</label>
+                            <input type="text" id="editTitle" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue">
+                        </div>
+
+                        <div>
+                            <label for="editProjectId" class="block text-sm font-medium text-gray-700 mb-1">關聯專案/模組編號</label>
+                            <select id="editProjectId" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue">
+                                </select>
+                        </div>
+
+                        <div>
+                            <label for="editTotal" class="block text-sm font-medium text-gray-700 mb-1">總金額 (TWD)</label>
+                            <input type="number" id="editTotal" required min="1" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue">
+                        </div>
+
+                        <div>
+                            <label for="editPurpose" class="block text-sm font-medium text-gray-700 mb-1">報銷事由</label>
+                            <textarea id="editPurpose" rows="3" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue"></textarea>
+                        </div>
+
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 mb-1">費用明細 (每行一項)</p>
+                            <textarea id="editDetails" rows="5" placeholder="例如：
+交通費: TWD 3000
+餐飲費: TWD 850" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue"></textarea>
+                        </div>
+
+                        <div id="rejectedReasonBox" class="p-3 bg-status-rejected/10 border border-status-rejected rounded-lg hidden">
+                            <p class="font-bold text-status-rejected mb-1">原駁回理由:</p>
+                            <p id="rejectedReasonText" class="text-sm text-gray-700 italic"></p>
+                        </div>
+
+                        <div class="flex justify-end space-x-3 pt-3">
+                            <button type="button" onclick="cancelEdit()" class="py-2 px-4 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-semibold">
+                                取消
+                            </button>
+                            <button type="button" onclick="saveClaim('Draft')" class="py-2 px-4 bg-accent-orange text-white rounded-lg hover:bg-accent-orange/90 font-semibold">
+                                <span id="saveDraftText">儲存草稿</span>
+                            </button>
+                            <button type="button" onclick="saveClaim('Pending')" class="py-2 px-4 bg-status-approved text-white rounded-lg hover:bg-status-approved/90 font-semibold">
+                                <span id="resubmitText">提交審批</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="newClaimFormView" class="view-section hidden max-w-2xl mx-auto p-6 bg-white border border-gray-200 rounded-lg shadow-lg">
+                    <h3 class="text-2xl font-bold text-primary-blue mb-6 border-b pb-3 flex items-center">
+                        <svg class="w-6 h-6 mr-2 text-primary-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        新增費用申報 (建立草稿)
+                    </h3>
+                    <p class="text-gray-500 mb-8">請填寫單筆費用資訊。儲存後將在您的儀表板建立一筆新草稿，您之後可以再編輯總標題和合併明細。</p>
+
+                    <form id="newExpenseForm" onsubmit="handleNewExpenseSubmit(event)" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
+                                <label for="new-category-final" class="block text-sm font-medium text-gray-700">會計科目 (大項 | 細目)*</label>
+                                <select id="new-category-final" name="category-final" required onchange="checkCompliance()"
+                                    class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-blue focus:border-primary-blue sm:text-sm rounded-md border shadow-sm">
+                                    </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="new-amount" class="block text-sm font-medium text-gray-700">金額 (Amount)*</label>
+                                <input type="number" step="0.01" min="0.01" id="new-amount" name="amount" required oninput="checkCompliance()"
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-blue focus:border-primary-blue sm:text-sm" placeholder="1200.00">
+                            </div>
+                            <div>
+                                <label for="new-currency" class="block text-sm font-medium text-gray-700">幣別 (Currency)*</label>
+                                <select id="new-currency" name="currency" required
+                                    class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-blue focus:border-primary-blue sm:text-sm rounded-md border shadow-sm">
+                                    <option value="TWD" selected>TWD (新臺幣)</option>
+                                    <option value="USD">USD (美元)</option>
+                                    <option value="EUR">EUR (歐元)</option>
+                                    <option value="JPY">JPY (日圓)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="compliance-prompt" class="p-4 bg-compliance-yellow border border-compliance-yellow-border rounded-lg hidden">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-compliance-yellow-text" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.636-1.107 2.37-1.107 3.006 0l7.236 12.533c.636 1.107-.23 2.502-1.503 2.502H2.524c-1.273 0-2.139-1.395-1.503-2.502L8.257 3.099zM9 9a1 1 0 00-1 1v4a1 1 0 102 0v-4a1 1 0 00-1-1zm1 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <h3 class="text-sm font-bold text-compliance-yellow-text">法規遵循提示</h3>
+                                    <div id="compliance-text" class="mt-2 text-sm text-compliance-yellow-text/90">
+                                        <ul class="list-disc list-inside space-y-1">
+                                            </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="new-project" class="block text-sm font-medium text-gray-700">關聯專案/模組 ID*</label>
+                            <select id="new-project" name="project-id" required
+                                class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-blue focus:border-primary-blue sm:text-sm rounded-md border shadow-sm">
+                                </select>
+                        </div>
+
+
+                        <div>
+                            <label for="new-date" class="block text-sm font-medium text-gray-700">發生日期 (Date)*</label>
+                            <input type="date" id="new-date" name="date" required
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-blue focus:border-primary-blue sm:text-sm">
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label for="new-description" class="block text-sm font-medium text-gray-700">說明/備註 (Description)</label>
+                            <textarea id="new-description" name="description" rows="3" placeholder="請簡述這筆費用的用途..."
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-blue focus:border-primary-blue sm:text-sm"></textarea>
+                        </div>
+
+                        <div class="pt-4 flex justify-end space-x-3">
+                            <button type="button" onclick="cancelEdit()"
+                                class="inline-flex justify-center rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none transition duration-150 ease-in-out">
+                                取消
+                            </button>
+                            <button id="new-save-button" type="submit"
+                                class="inline-flex justify-center items-center py-3 px-6 border border-transparent shadow-lg text-sm font-medium rounded-lg text-white bg-primary-blue hover:bg-primary-blue/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-blue transition duration-150">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v8a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4L14 7m0 0l-2-2m2 2l2 2"/></svg>
+                                儲存為草稿
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="approverViewContainer" class="view-container-inner hidden">
+                <h2 class="text-2xl font-semibold text-primary-blue mb-6 border-b pb-2">審批中心</h2>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                    <div class="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="kpi-card bg-white p-5 rounded-lg shadow-lg border-l-4 border-status-pending">
+                            <p class="text-sm font-medium text-gray-500">待審批數量</p>
+                            <p id="statPendingCount" class="text-3xl font-bold text-status-pending mt-1">0</p>
+                        </div>
+                        <div class="kpi-card bg-white p-5 rounded-lg shadow-lg border-l-4 border-accent-orange">
+                            <p class="text-sm font-medium text-gray-500">待審批總金額 (TWD)</p>
+                            <p id="statPendingTotal" class="text-3xl font-bold text-accent-orange mt-1">0</p>
+                        </div>
+                        <div class="kpi-card bg-white p-5 rounded-lg shadow-lg border-l-4 border-status-approved">
+                            <p class="text-sm font-medium text-gray-500">已批准總金額 (本期)</p>
+                            <p id="statApprovedTotal" class="text-3xl font-bold text-status-approved mt-1">0</Lp>
+                        </div>
+                    </div>
+
+
+                    <div class="lg:col-span-1 bg-secondary-gray p-4 rounded-lg shadow-inner border border-gray-200">
+                        <h3 class="text-xl font-semibold text-primary-blue mb-4">報銷單清單 (待處理：<span id="approverPendingCount" class="text-accent-orange">0</span> 筆)</h3>
+
+                        <div class="flex space-x-2 mb-4">
+                            <button data-status="Pending" onclick="changeApproverFilter('Pending')" class="approver-status-tab py-1 px-3 text-sm font-medium rounded-full bg-primary-blue text-white shadow-md">待審批</button>
+                            <button data-status="Approved" onclick="changeApproverFilter('Approved')" class="approver-status-tab py-1 px-3 text-sm font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300">已批准</button>
+                            <button data-status="Rejected" onclick="changeApproverFilter('Rejected')" class="approver-status-tab py-1 px-3 text-sm font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300">已駁回</button>
+                        </div>
+
+                        <div class="overflow-y-auto max-h-[60vh]">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="sticky top-0 bg-primary-blue/10">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-bold text-gray-600">標題/報銷人</th>
+                                        <th class="px-4 py-2 text-left text-xs font-bold text-gray-600 w-24">金額</th>
+                                        <th class="px-4 py-2 text-left text-xs font-bold text-gray-600 w-24">狀態</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="approverClaimListBody" class="bg-white divide-y divide-gray-100">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-xl border border-primary-blue/20">
+                        <div id="approverDetailPlaceholder" class="text-center p-10 text-gray-500 mt-20">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-4 text-primary-blue/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <p class="text-lg font-medium">請從左側清單選擇一筆報銷單以查看詳情。</p>
+                        </div>
+
+                        <div id="approverClaimDetailView" class="hidden space-y-6">
+                            <div class="border-b pb-3 mb-4">
+                                <h3 id="approverDetailTitle" class="text-2xl font-bold text-primary-blue"></h3>
+                                <div class="flex items-center space-x-4 mt-2 text-sm text-gray-600 flex-wrap gap-y-2">
+                                    <p>報銷人: <span id="approverDetailClaimer" class="font-medium"></span></p>
+                                    <p>部門: <span id="approverDetailDepartment" class="font-medium"></span></p>
+                                    <p>專案編號: <span id="approverDetailProjectCode" class="font-medium text-primary-blue"></span></p>
+                                    <p>會計科目: <span id="approverDetailAccountCode" class="font-medium text-primary-blue"></span></p>
+                                    <p>提交日期: <span id="approverDetailSubmitDate" class="font-medium"></span></p>
+                                    <p>總金額: <span id="approverDetailTotal" class="text-lg font-extrabold text-accent-orange"></span></p>
+                                    <span id="approverDetailStatus" class="px-3 py-1 text-xs font-semibold rounded-full"></span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p class="text-lg font-semibold text-gray-800 mb-2">報銷事由：</p>
+                                <div id="approverDetailPurpose" class="p-3 bg-secondary-gray rounded-md border border-gray-300 text-gray-700 italic mb-4"></div>
+                                <p class="text-md font-semibold text-gray-800 mb-1">費用明細：</p>
+                                <ul id="approverDetailMockDetails" class="list-disc list-inside ml-4 mt-2 space-y-1 text-gray-700 text-sm"></ul>
+                            </div>
+
+                            <div class="pt-6 border-t border-dashed mt-6 space-y-4">
+                                <p class="text-lg font-semibold text-primary-blue" id="approverActionTitle">審批意見與操作</p>
+
+                                <div id="approverActionsDiv">
+                                    <textarea id="approverNotesInput" rows="3" placeholder="請輸入審批意見（批准時可選填，駁回時必填）" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue transition duration-150"></textarea>
+
+                                    <div class="flex justify-end space-x-4 mt-3">
+                                        <button onclick="handleApproval('Rejected')" class="bg-status-rejected text-white py-2 px-4 rounded-lg hover:bg-status-rejected/90 font-semibold shadow-md">駁回</button>
+                                        <button onclick="handleApproval('Approved')" class="bg-status-approved text-white py-2 px-4 rounded-lg hover:bg-status-approved/90 font-semibold shadow-md">批准</button>
+                                    </div>
+                                </div>
+
+                                <div id="approverHistoryDiv" class="hidden space-y-2">
+                                    <p id="approverHistoryStatus" class="font-bold text-lg"></p>
+                                    <p class="text-sm text-gray-600">審批人備註:</p>
+                                    <div id="approverHistoryNotes" class="p-3 bg-gray-100 rounded-md border border-gray-200 italic text-gray-700"></div>
+                                    <p class="text-xs text-gray-500 pt-1">審批時間: <span id="approverHistoryDate"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

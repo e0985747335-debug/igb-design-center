@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module Switching App</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Base styles for theme switching */
+        .light-theme {
+            background-color: #f3f4f6; /* bg-gray-100 */
+        }
+        .dark-theme {
+            background-color: #1f2937; /* bg-gray-800 (Overall background) */
+        }
+        .light-theme #app {
+            background-color: #ffffff; /* bg-white (Main container) */
+            color: #1f2937; /* text-gray-800 */
+        }
+        .dark-theme #app {
+            background-color: #374151; /* bg-gray-700 (Main container) */
+            color: #f3f4f6; /* text-gray-100 */
+        }
+
+        /* Global Text and Border Adjustments */
+        .dark-theme .text-indigo-700 { color: #818cf8; /* indigo-300 */ }
+        .dark-theme .text-gray-500 { color: #d1d5db; /* gray-300 */ }
+        .dark-theme .border-b { border-color: #4b5563; /* gray-600 */ }
+        .dark-theme .border-gray-200 { border-color: #4b5563; /* gray-600 */ }
+        .dark-theme .bg-indigo-50 { background-color: #4338ca; /* indigo-700 */ }
+        .dark-theme .text-indigo-800 { color: #c4b5fd; /* violet-200 */ }
+
+        /* FIX: Module Containers (Settings/Profile) which use bg-gray-50 */
+        .dark-theme .bg-gray-50 {
+            background-color: #374151; /* Match main app background for clean look */
+            color: #f3f4f6; /* Ensure text is light */
+        }
+
+        /* FIX: Text and Title Colors inside dark modules */
+        .dark-theme .text-gray-700, .dark-theme .text-gray-900 {
+            color: #d1d5db;
+        }
+
+        /* FIX: Input Field Styling in Dark Mode (Profile and Todo) */
+        .dark-theme input[type="text"],
+        .dark-theme input[type="email"],
+        .dark-theme #todo-input {
+            background-color: #4b5563 !important; /* Darker input background */
+            border-color: #6b7280 !important; /* Darker border */
+            color: #f3f4f6 !important; /* Light text color */
+        }
+        .dark-theme input::placeholder {
+            color: #d1d5db !important;
+        }
+
+        /* FIX: Navigation Button Styling for unselected buttons */
+        .dark-theme nav .bg-gray-200 {
+            background-color: #4b5563 !important; /* Darker button base */
+            color: #f3f4f6 !important;
+        }
+        .dark-theme nav .hover\:bg-gray-300:hover {
+            background-color: #6b7280 !important;
+        }
+
+        /* NEW FIX: Internal White Backgrounds (Todo list items, Settings Card) */
+        .dark-theme #dashboard-content .bg-white, /* Todo List Container */
+        .dark-theme #settings .bg-white { /* Theme Toggle Card */
+            background-color: #4b5563 !important;
+            border-color: #6b7280 !important;
+        }
+
+        /* NEW FIX: Text Colors (ensure text is light in dark mode) */
+        .dark-theme .text-gray-800,
+        .dark-theme .text-gray-900,
+        .dark-theme .text-gray-700 {
+            color: #f3f4f6 !important;
+        }
+
+    </style>
+</head>
+<body class="light-theme min-h-screen p-4 md:p-8">
+
+    <div id="app" class="max-w-4xl mx-auto shadow-xl rounded-xl p-6 md:p-10">
+        <header class="mb-8 border-b pb-4">
+            <h1 class="text-3xl font-bold text-indigo-700">應用程式儀表板 (Application Dashboard)</h1>
+            <p class="text-gray-500">歡迎來到已修復的應用程式！請使用下面的導航。</p>
+        </header>
+
+        <!-- Navigation Buttons -->
+        <nav class="flex space-x-4 mb-8">
+            <button
+                onclick="switchModule('home')"
+                class="px-4 py-2 rounded-lg font-medium transition duration-150 ease-in-out bg-indigo-500 hover:bg-indigo-600 text-white shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">
+                主頁模組 (Home Module)
+            </button>
+            <button
+                onclick="switchModule('settings')"
+                class="px-4 py-2 rounded-lg font-medium transition duration-150 ease-in-out bg-gray-200 hover:bg-gray-300 text-gray-800 shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50">
+                設定模組 (Settings Module)
+            </button>
+            <button
+                onclick="switchModule('profile')"
+                class="px-4 py-2 rounded-lg font-medium transition duration-150 ease-in-out bg-gray-200 hover:bg-gray-300 text-gray-800 shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50">
+                個人資料模組 (Profile Module)
+            </button>
+        </nav>
+
+        <!-- Module Views -->
+        <div id="module-container">
+            <!-- HOME MODULE -->
+            <div id="home" class="module p-6 border border-indigo-200 bg-indigo-50 rounded-lg">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-2">主頁視圖 (Home View)</h2>
+                <p id="welcome-message" class="text-xl font-semibold text-indigo-800 mb-4">
+                    載入歡迎訊息... (Loading welcome message...)
+                </p>
+
+                <!-- Dashboard Content Area: To-Do List -->
+                <div id="dashboard-content" class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-medium text-gray-700 mb-4 border-b pb-2">待辦事項列表 (To-Do List)</h3>
+
+                    <!-- Input and Add Button -->
+                    <div class="flex space-x-2 mb-4">
+                        <input type="text" id="todo-input" class="flex-grow rounded-md border-gray-300 shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="新增一個待辦事項...">
+                        <button onclick="addTodo()" id="add-todo-btn" class="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-500 hover:bg-indigo-600 text-white shadow-md transition duration-150 disabled:opacity-50" disabled>
+                            新增 (Add)
+                        </button>
+                    </div>
+
+                    <!-- To-Do List -->
+                    <ul id="todo-list" class="space-y-2">
+                        <li class="text-gray-500 italic p-2">載入待辦事項... (Loading todos...)</li>
+                    </ul>
+                </div>
+
+                <p class="mt-4 text-sm text-gray-500">當前使用者 ID: <span id="user-id">Loading...</span></p>
+            </div>
+
+            <!-- UPDATED SETTINGS MODULE -->
+            <div id="settings" class="module p-6 border border-gray-200 bg-gray-50 rounded-lg hidden">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-6">設定視圖 (Settings View)</h2>
+
+                <div class="space-y-6">
+                    <!-- Theme Switcher -->
+                    <div class="flex justify-between items-center p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div class="flex flex-col">
+                            <label class="text-lg font-medium text-gray-900">應用程式主題 (App Theme)</label>
+                            <span class="text-sm text-gray-500">切換應用程式的淺色或深色外觀。</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" value="" id="theme-toggle" class="sr-only peer" onclick="toggleTheme(this.checked)">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                            <span id="theme-label" class="ml-3 text-sm font-medium text-gray-900">淺色模式 (Light)</span>
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- PROFILE MODULE -->
+            <div id="profile" class="module p-6 border border-gray-200 bg-gray-50 rounded-lg hidden">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-6">個人資料 (Profile View)</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="profile-name" class="block text-sm font-medium text-gray-700">姓名 (Name)</label>
+                        <input type="text" id="profile-name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2" placeholder="請輸入您的姓名">
+                    </div>
+                    <div>
+                        <label for="profile-email" class="block text-sm font-medium text-gray-700">電子郵件 (Email)</label>
+                        <input type="email" id="profile-email" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2" placeholder="請輸入您的電子郵件">
+                    </div>
+                    <button
+                        onclick="saveProfile()"
+                        id="save-profile-btn"
+                        class="w-full px-4 py-2 rounded-lg font-medium transition duration-150 ease-in-out bg-green-500 hover:bg-green-600 text-white shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:opacity-50" disabled>
+                        儲存個人資料 (Save Profile)
+                    </button>
+                    <!-- Display status messages here -->
+                    <div id="profile-message" class="text-sm pt-2 h-6 text-center font-medium"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK Imports and Initialization -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // Import necessary Firestore functions for Profile, ToDos, and Settings
+        import { getFirestore, doc, onSnapshot, collection, setDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // FIXED: Corrected reference from __initialAuthToken to __initial_auth_token
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialize Firebase
+        let app, db, auth;
+        let userId = 'loading';
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            console.log("Firebase initialized successfully.");
+
+            // Authentication logic
+            if (initialAuthToken) {
+                signInWithCustomToken(auth, initialAuthToken)
+                    .catch(error => {
+                        console.error("Custom token sign-in failed, falling back to anonymous:", error);
+                        signInAnonymously(auth);
+                    });
+            } else {
+                signInAnonymously(auth);
+            }
+
+            // Auth State Listener
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    console.log("User authenticated with UID:", userId);
+                    document.getElementById('user-id').textContent = userId;
+
+                    // Start data listeners after successful authentication
+                    window.setupProfileListener();
+                    window.setupTodoListListener();
+                    window.setupSettingsListener(); // START SETTINGS LISTENER
+
+                } else {
+                    // User is signed out or anonymous sign-in failed
+                    userId = crypto.randomUUID(); // Fallback ID
+                    document.getElementById('user-id').textContent = '匿名使用者 (' + userId.substring(0, 8) + '...)';
+                    console.warn("No active user. Using temporary ID:", userId);
+                    // Disable buttons and show default views if not authenticated
+                    document.getElementById('add-todo-btn').disabled = true;
+                    document.getElementById('save-profile-btn').disabled = true;
+                }
+            });
+
+        } catch (e) {
+            console.error("Failed to initialize Firebase:", e);
+        }
+
+        // --- THEME SWITCHING FUNCTIONS ---
+
+        /**
+         * Applies the theme preference to the body element.
+         * @param {boolean} isDark - True for dark theme, false for light theme.
+         */
+        const applyTheme = (isDark) => {
+            const body = document.body;
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeLabel = document.getElementById('theme-label');
+
+            if (isDark) {
+                body.classList.remove('light-theme');
+                body.classList.add('dark-theme');
+                if (themeToggle) themeToggle.checked = true;
+                if (themeLabel) themeLabel.textContent = '深色模式 (Dark)';
+            } else {
+                body.classList.remove('dark-theme');
+                body.classList.add('light-theme');
+                if (themeToggle) themeToggle.checked = false;
+                if (themeLabel) themeLabel.textContent = '淺色模式 (Light)';
+            }
+        }
+
+        /**
+         * Toggles the theme and saves the preference to Firestore.
+         * This function is called by the UI checkbox.
+         * @param {boolean} isDark - The new theme state.
+         */
+        window.toggleTheme = async (isDark) => {
+             if (!db || !auth.currentUser) {
+                console.error("Database or User not ready for saving settings.");
+                return;
+            }
+
+            const currentUserId = auth.currentUser.uid;
+            // Private settings path: /artifacts/{appId}/users/{userId}/settings/preferences
+            const settingsDocRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'settings', 'preferences');
+
+            // Apply the theme immediately for a smooth experience
+            applyTheme(isDark);
+
+            try {
+                // Save the preference to Firestore
+                await setDoc(settingsDocRef, {
+                    isDarkTheme: isDark
+                });
+                console.log(`Theme set to ${isDark ? 'Dark' : 'Light'} and saved.`);
+            } catch (e) {
+                console.error("Error saving theme preference:", e);
+                // Revert theme or show error if save fails
+                applyTheme(!isDark);
+            }
+        }
+
+        /**
+         * Real-time listener for the user's settings data.
+         */
+        window.setupSettingsListener = () => {
+            if (!db || !auth.currentUser) {
+                console.error("Database or User not ready for settings listener.");
+                applyTheme(false); // Default to light theme
+                return;
+            }
+
+            const currentUserId = auth.currentUser.uid;
+            const settingsDocRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'settings', 'preferences');
+
+            onSnapshot(settingsDocRef, (docSnap) => {
+                let isDark = false;
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    // Default to false if data is missing
+                    isDark = !!data.isDarkTheme;
+                    console.log(`Settings loaded: Dark theme is ${isDark}`);
+                }
+                // Apply the loaded theme
+                applyTheme(isDark);
+
+            }, (error) => {
+                console.error("Error setting up settings listener:", error);
+                applyTheme(false); // Default to light theme on error
+            });
+        };
+
+
+        // --- HOME VIEW FUNCTIONS ---
+
+        /**
+         * Updates the Home Module content based on the latest profile data.
+         * @param {object} data The profile document data (or null if it doesn't exist).
+         */
+        const updateHomeView = (data) => {
+            const welcomeEl = document.getElementById('welcome-message');
+            const name = data?.name;
+
+            if (welcomeEl) {
+                if (name && name.length > 0) {
+                    welcomeEl.textContent = `歡迎回來, ${name}! (Welcome back, ${name}!)`;
+                } else {
+                    welcomeEl.textContent = '歡迎來到儀表板! (Welcome to the dashboard!)';
+                }
+            }
+        }
+
+        // --- PROFILE FUNCTIONS ---
+
+        /**
+         * Real-time listener for the user's profile data.
+         * This function is exposed globally via window.setupProfileListener
+         */
+        window.setupProfileListener = () => {
+            if (!db || !auth.currentUser) {
+                console.error("Database or User not ready for profile listener.");
+                updateHomeView(null);
+                return;
+            }
+
+            const currentUserId = auth.currentUser.uid;
+            const profileDocRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'profile', 'details');
+
+            document.getElementById('save-profile-btn').disabled = false;
+
+            onSnapshot(profileDocRef, (docSnap) => {
+                const nameInput = document.getElementById('profile-name');
+                const emailInput = document.getElementById('profile-email');
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    nameInput.value = data.name || '';
+                    emailInput.value = data.email || '';
+                    updateHomeView(data);
+
+                } else {
+                    nameInput.value = '';
+                    emailInput.value = '';
+                    updateHomeView(null);
+                }
+            }, (error) => {
+                console.error("Error setting up profile listener:", error);
+                document.getElementById('profile-message').textContent = '資料載入失敗 (Data load failed)';
+                document.getElementById('profile-message').classList.add('text-red-500');
+                updateHomeView(null);
+            });
+        };
+
+        /**
+         * Saves the data from the profile form to Firestore.
+         */
+        window.saveProfile = async () => {
+            if (!db || !auth.currentUser) {
+                console.error("Database or User not ready for saving profile.");
+                return;
+            }
+
+            const messageEl = document.getElementById('profile-message');
+            messageEl.textContent = '儲存中... (Saving...)';
+            messageEl.classList.remove('text-red-500', 'text-green-500');
+            messageEl.classList.add('text-indigo-500');
+
+            const name = document.getElementById('profile-name').value.trim();
+            const email = document.getElementById('profile-email').value.trim();
+
+            const currentUserId = auth.currentUser.uid;
+            const profileDocRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'profile', 'details');
+
+            try {
+                await setDoc(profileDocRef, {
+                    name: name,
+                    email: email,
+                    updatedAt: new Date().toISOString()
+                });
+                messageEl.textContent = '儲存成功! (Save successful!)';
+                messageEl.classList.remove('text-indigo-500');
+                messageEl.classList.add('text-green-500');
+
+                setTimeout(() => messageEl.textContent = '', 3000);
+
+            } catch (e) {
+                console.error("Error saving profile:", e);
+                messageEl.textContent = `儲存失敗: ${e.message}`;
+                messageEl.classList.remove('text-indigo-500');
+                messageEl.classList.add('text-red-500');
+            }
+        };
+
+        // --- TODO LIST FUNCTIONS ---
+
+        /**
+         * Renders the list of todos to the DOM.
+         * @param {Array<Object>} todos - Array of todo objects with {id, text, createdAt}.
+         */
+        const renderTodos = (todos) => {
+            const todoListEl = document.getElementById('todo-list');
+            todoListEl.innerHTML = ''; // Clear existing list
+
+            if (todos.length === 0) {
+                todoListEl.innerHTML = '<li class="text-gray-500 italic p-2 border-b">目前沒有待辦事項。(No todos yet.)</li>';
+                return;
+            }
+
+            todos.forEach(todo => {
+                const li = document.createElement('li');
+                // FIXED: Removed conflicting dark:bg-gray-600 and rely on custom CSS override for dark theme
+                li.className = 'flex justify-between items-center p-2 bg-white rounded-lg shadow-md border border-gray-100 hover:border-indigo-200 transition duration-150';
+                li.innerHTML = `
+                    <span class="text-gray-800 break-words pr-2 flex-grow">${todo.text}</span>
+                    <button onclick="deleteTodo('${todo.id}')" class="text-red-500 hover:text-red-700 ml-2 p-1 rounded-full bg-red-50 hover:bg-red-100 transition duration-150 flex-shrink-0" title="刪除">
+                        <!-- Trash icon (using inline SVG) -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                `;
+                todoListEl.appendChild(li);
+            });
+        };
+
+        /**
+         * Sets up the real-time listener for the user's todo list.
+         */
+        window.setupTodoListListener = () => {
+            if (!db || !auth.currentUser) {
+                console.error("Database or User not ready for todo listener.");
+                renderTodos([]);
+                return;
+            }
+
+            const currentUserId = auth.currentUser.uid;
+            // Private collection path: /artifacts/{appId}/users/{userId}/todos
+            const todosCollectionRef = collection(db, 'artifacts', appId, 'users', currentUserId, 'todos');
+
+            document.getElementById('add-todo-btn').disabled = false;
+
+            onSnapshot(todosCollectionRef, (querySnapshot) => {
+                const todos = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    todos.push({
+                        id: doc.id,
+                        text: data.text,
+                        // Use createdAt for sorting. Fallback to current time if missing.
+                        createdAt: data.createdAt || Date.now()
+                    });
+                });
+
+                // Sort the todos by creation time in JavaScript (ascending order)
+                todos.sort((a, b) => a.createdAt - b.createdAt);
+
+                console.log(`Loaded ${todos.length} todo items.`);
+                renderTodos(todos);
+
+            }, (error) => {
+                console.error("Error setting up todo list listener:", error);
+                document.getElementById('todo-list').innerHTML = '<li class="text-red-500 italic p-2 border-b">待辦事項載入失敗 (Todo load failed)</li>';
+            });
+        };
+
+        /**
+         * Adds a new todo item to Firestore.
+         */
+        window.addTodo = async () => {
+            if (!db || !auth.currentUser) {
+                console.error("Database or User not ready for saving todo.");
+                return;
+            }
+
+            const inputEl = document.getElementById('todo-input');
+            const text = inputEl.value.trim();
+
+            if (text === '') {
+                inputEl.placeholder = '內容不能為空！(Cannot be empty!)';
+                // Briefly flash the warning placeholder
+                setTimeout(() => inputEl.placeholder = '新增一個待辦事項...', 1500);
+                return;
+            }
+
+            const currentUserId = auth.currentUser.uid;
+            const todosCollectionRef = collection(db, 'artifacts', appId, 'users', currentUserId, 'todos');
+
+            try {
+                document.getElementById('add-todo-btn').disabled = true; // Disable while saving
+                await addDoc(todosCollectionRef, {
+                    text: text,
+                    createdAt: Date.now() // Use a numeric timestamp for sorting
+                });
+                inputEl.value = ''; // Clear input on success
+                inputEl.focus();
+                console.log("Todo added successfully.");
+            } catch (e) {
+                console.error("Error adding todo:", e);
+            } finally {
+                document.getElementById('add-todo-btn').disabled = false; // Re-enable button
+            }
+        };
+
+        /**
+         * Deletes a todo item from Firestore.
+         * @param {string} todoId - The ID of the document to delete.
+         */
+        window.deleteTodo = async (todoId) => {
+            if (!db || !auth.currentUser) {
+                console.error("Database or User not ready for deleting todo.");
+                return;
+            }
+
+            const currentUserId = auth.currentUser.uid;
+            const todoDocRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'todos', todoId);
+
+            try {
+                await deleteDoc(todoDocRef);
+                console.log(`Todo ${todoId} deleted successfully.`);
+            } catch (e) {
+                console.error("Error deleting todo:", e);
+            }
+        };
+
+
+        // --- UI SWITCHING FUNCTIONS ---
+
+        // Expose the global function from the module scope to the window scope
+        window.switchModule = (viewName) => {
+            // Get all module views
+            const modules = document.querySelectorAll('.module');
+
+            // Hide all modules
+            modules.forEach(module => {
+                module.classList.add('hidden');
+            });
+
+            // Show the requested module
+            const targetModule = document.getElementById(viewName);
+            if (targetModule) {
+                targetModule.classList.remove('hidden');
+                console.log(`Switched to module: ${viewName}`);
+
+                // Update button styles to reflect the active module
+                document.querySelectorAll('nav button').forEach(button => {
+                    // Extract the view name from the onclick attribute string
+                    const buttonView = button.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+                    if (buttonView === viewName) {
+                        button.classList.remove('bg-gray-200', 'hover:bg-gray-300', 'text-gray-800');
+                        button.classList.add('bg-indigo-500', 'hover:bg-indigo-600', 'text-white');
+                    } else {
+                        // Ensure the dark mode classes are used for unselected buttons
+                        button.classList.add('bg-gray-200', 'hover:bg-gray-300', 'text-gray-800');
+                        button.classList.remove('bg-indigo-500', 'hover:bg-indigo-600', 'text-white');
+                    }
+                });
+            } else {
+                console.error(`Module '${viewName}' not found.`);
+            }
+        };
+
+        // Call the initial module switch on load
+        window.onload = () => {
+             // Ensure the initial view is correctly set up
+             window.switchModule('home');
+        };
+
+    </script>
+</body>
+</html>

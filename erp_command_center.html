@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP 2.0 戰略指揮中心</title>
+
+    <!-- 使用可靠的 Chart.js CDN 路徑 和 Tailwind CSS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* 自定義字體和深色主題 */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+        :root {
+            --primary-color: #3b82f6; /* Blue-500 */
+            --bg-dark: #1f2937;      /* Gray-800 */
+            --bg-deep: #111827;      /* Gray-900 */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-deep);
+            color: #d1d5db; /* Light Gray */
+            min-height: 100vh;
+        }
+
+        .dashboard-card {
+            background-color: var(--bg-dark);
+            border: 1px solid #374151; /* Gray-700 */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            border-radius: 0.5rem;
+        }
+
+        .nav-link.active {
+            background-color: #374151; /* Gray-700 */
+            border-left: 4px solid var(--primary-color);
+            color: white;
+        }
+
+        /* 通用圖標樣式，現在使用 Emoji */
+        .icon {
+            display: inline-block;
+            line-height: 1;
+        }
+
+        /* 響應式佈局：側邊欄在小螢幕上隱藏或變為頂部導航 */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                border-bottom: 1px solid #374151;
+            }
+            .content-area {
+                padding-top: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="flex flex-col lg:flex-row min-h-screen">
+        <!-- 側邊欄/導航 (Sidebar) -->
+        <nav class="sidebar lg:w-64 bg-gray-900 lg:h-screen p-4 flex-shrink-0">
+            <div class="text-2xl font-bold text-blue-400 mb-8 mt-2 tracking-wider border-b border-gray-700 pb-4">
+                ERP 2.0 指揮中心
+            </div>
+            <div id="nav-container" class="lg:space-y-2 flex lg:block overflow-x-auto space-x-2 lg:space-x-0">
+                <!-- 導航連結將由 JS 渲染 -->
+            </div>
+
+            <div class="mt-8 pt-4 border-t border-gray-700">
+                <p class="text-xs text-gray-500">系統狀態: <span id="system-status" class="text-yellow-400">載入中...</span></p>
+                <!-- 顯示完整的 User ID -->
+                <p class="text-xs text-gray-500 mt-1">用戶 ID: <span id="user-id" class="font-mono text-xs break-all text-yellow-400">正在等待身份驗證...</span></p>
+
+                <!-- 新增 Google 登入按鈕容器 -->
+                <div id="auth-actions" class="mt-4">
+                    <!-- 按鈕將由 JS 渲染 (登入或登出) -->
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主要內容區域 (Main Content) -->
+        <main class="flex-grow p-4 lg:p-8 content-area">
+            <h2 id="module-title" class="text-3xl font-semibold text-white mb-6">歡迎使用 ERP 2.0 戰略指揮中心</h2>
+            <div id="module-content" class="min-h-[70vh]">
+                <!-- 初始歡迎內容，將在 JS 初始化後被覆蓋 -->
+                <div class="dashboard-card p-10 text-center">
+                    <p class="text-xl text-blue-400 mb-4">請從左側導航選擇一個模組</p>
+                    <p class="text-gray-400">整合了財務、採購和審批的核心功能，為您的戰略決策提供實時數據支持。</p>
+                    <div class="mt-8 flex justify-center space-x-4">
+                        <button onclick="renderModule('AccountingAnalysis')" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">查看財務 KPI</button>
+                        <button onclick="renderModule('Procurement')" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">進入採購中心</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新增: 錯誤日誌面板 -->
+            <div id="error-log-panel" class="dashboard-card p-4 mt-8 hidden">
+                <h3 class="text-lg font-semibold text-red-400 mb-3 border-b border-gray-700 pb-2">🚨 系統錯誤日誌 (Firebase)</h3>
+                <ul id="error-log-list" class="space-y-1 text-sm text-red-300 max-h-40 overflow-y-auto">
+                    <!-- 錯誤訊息將被插入此處 -->
+                </ul>
+                <p class="text-xs text-gray-500 mt-3">如果操作失敗，請將上方訊息截圖或複製給我。</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- 模態框/通知區域 (取代 alert/confirm) -->
+    <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"></div>
+
+    <script type="module">
+        // =========================================================
+        // 核心設定與初始化
+        // =========================================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        // 引入 Google 登入所需的新模組
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // 引入實時監聽所需函數
+        import { getFirestore, collection, addDoc, setLogLevel, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 設定 Firebase Log Level
+        setLogLevel('Debug');
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // 環境變數
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let revenueCostChart = null;
+        let mdmDoughnutChart = null;
+        let currentUserId = null;
+        let currentModule = 'Home';
+        let isAuthReady = false; // 新增狀態追蹤
+
+        // 核心數據狀態：用於儲存從 Firestore 實時獲取的記錄
+        let expenses = [];
+        let purchaseOrders = [];
+        let transactions = [];
+
+        // 所有帶有提交功能的按鈕 ID 列表
+        const submitButtonIds = ['expense-submit-btn', 'po-submit-btn', 'finance-submit-btn'];
+
+
+        /**
+         * 新增錯誤日誌功能
+         * @param {string} message 錯誤訊息
+         */
+        const logError = (message) => {
+            const logPanel = document.getElementById('error-log-panel');
+            const logList = document.getElementById('error-log-list');
+            const timestamp = new Date().toLocaleTimeString('zh-TW');
+
+            const listItem = document.createElement('li');
+            listItem.className = 'bg-gray-900 p-2 rounded';
+            listItem.innerHTML = `<strong class="text-gray-400">[${timestamp}]</strong> ${message}`;
+
+            logList.prepend(listItem);
+            logPanel.classList.remove('hidden');
+
+            // 保持列表不超過 10 條記錄
+            while (logList.children.length > 10) {
+                logList.removeChild(logList.lastChild);
+            }
+            customAlert('操作失敗：請查看底部的錯誤日誌以獲取詳細資訊。', 'red');
+        };
+
+        /**
+         * 根據認證狀態更新單個提交按鈕的狀態
+         * @param {string} buttonId
+         */
+        const updateSubmitButtonState = (buttonId) => {
+            const btn = document.getElementById(buttonId);
+            if (!btn) return;
+
+            btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-red-600', 'bg-blue-600', 'bg-green-600', 'bg-indigo-600');
+
+            if (!isAuthReady) {
+                btn.disabled = true;
+                btn.textContent = '認證載入中...';
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else if (!currentUserId) {
+                btn.disabled = true;
+                btn.textContent = '❌ 認證失敗，無法提交';
+                btn.classList.add('bg-red-600', 'opacity-75', 'cursor-not-allowed');
+            } else {
+                btn.disabled = false;
+                btn.textContent =
+                    buttonId === 'po-submit-btn' ? '提交 PO' :
+                    (buttonId === 'expense-submit-btn' ? '提交審批請求' :
+                    (buttonId === 'finance-submit-btn' ? '記錄交易' : '提交'));
+
+                // 恢復模組特定的顏色
+                btn.classList.add(
+                    buttonId === 'po-submit-btn' ? 'bg-blue-600' :
+                    (buttonId === 'expense-submit-btn' ? 'bg-green-600' :
+                    (buttonId === 'finance-submit-btn' ? 'bg-indigo-600' : 'bg-gray-600'))
+                );
+            }
+        };
+
+        /**
+         * 更新所有模組中提交按鈕的狀態
+         */
+        const updateAllSubmitButtons = () => {
+            submitButtonIds.forEach(id => updateSubmitButtonState(id));
+        };
+
+        /**
+         * 渲染 Google 登入/登出按鈕
+         */
+        const renderAuthActions = () => {
+            const authActions = document.getElementById('auth-actions');
+            if (!authActions) return;
+
+            authActions.innerHTML = '';
+
+            if (currentUserId && !auth.currentUser?.isAnonymous) {
+                // 如果已登入且非匿名用戶，顯示登出按鈕
+                authActions.innerHTML = `
+                    <button id="sign-out-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded-lg transition duration-200 text-sm flex items-center justify-center space-x-2">
+                        <span>🚪 登出 (${auth.currentUser?.email || '用戶'})</span>
+                    </button>
+                `;
+                document.getElementById('sign-out-btn').onclick = handleSignOut;
+            } else if (!currentUserId || auth.currentUser?.isAnonymous) {
+                // 如果未登入或匿名登入，顯示 Google 登入按鈕
+                authActions.innerHTML = `
+                    <p class="text-xs text-gray-500 mb-2">或切換身份：</p>
+                    <button id="google-sign-in-btn" class="w-full bg-white text-gray-800 font-medium py-2 rounded-lg transition duration-200 text-sm flex items-center justify-center space-x-2 shadow-md hover:bg-gray-200">
+                        <!-- Google SVG Icon -->
+                        <svg class="w-4 h-4" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M44.5 20h-2.5V18c0-.55-.45-1-1-1h-3c-.55 0-1 .45-1 1v2H34c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1h3v2c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-2h2.5c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1z" fill="#4285F4"/>
+                            <path d="M44.5 20h-2.5V18c0-.55-.45-1-1-1h-3c-.55 0-1 .45-1 1v2H34c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1h3v2c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-2h2.5c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1z" fill="#4285F4"/>
+                            <path d="M22.5 8c2.4 0 4.6.8 6.4 2.2l4.1-4.1C29.2 3.7 26 2 22.5 2 13.9 2 6.5 7 3 14h6.3C10.7 9.8 16 6.5 22.5 6.5c3.5 0 6.6 1.1 9.3 2.8l-4.2 4.2c-1.8-1.2-4-2-6.4-2zm-.1 6.5c-3.1 0-5.7 1.8-6.9 4.3H33c-1.3-2.5-3.8-4.3-6.9-4.3zm-7.6 13.5c0-1.8.3-3.6.9-5.3l-5-4.1c-1 1.7-1.6 3.6-1.6 5.4s.6 3.7 1.6 5.4zM24 39c-4.4 0-8.2-2.7-9.8-6.4h20.6c-1.7 3.7-5.5 6.4-9.8 6.4zm8.6-13.5c0 1.8-.3 3.6-.9 5.3l5 4.1c1-1.7 1.6-3.6 1.6-5.4s-.6-3.7-1.6-5.4zM22.5 31c-3.5 0-6.6-1.1-9.3-2.8l4.2-4.2c1.8 1.2 4 2 6.4 2zm-7.6-13.5c0-1.8-.3-3.6-.9-5.3l-5-4.1c-1 1.7-1.6 3.6-1.6 5.4s.6 3.7 1.6 5.4z"/>
+                            <path d="M12.9 23.5c0 1.8.3 3.6.9 5.3l5 4.1c1-1.7 1.6-3.6 1.6-5.4s-.6-3.7-1.6-5.4z" fill="#FFC107"/>
+                            <path d="M22.5 8c2.4 0 4.6.8 6.4 2.2l4.1-4.1C29.2 3.7 26 2 22.5 2 13.9 2 6.5 7 3 14h6.3C10.7 9.8 16 6.5 22.5 6.5c3.5 0 6.6 1.1 9.3 2.8l-4.2 4.2c-1.8-1.2-4-2-6.4-2zm-.1 6.5c-3.1 0-5.7 1.8-6.9 4.3H33c-1.3-2.5-3.8-4.3-6.9-4.3zm-7.6 13.5c0-1.8.3-3.6.9-5.3l-5-4.1c-1 1.7-1.6 3.6-1.6 5.4s.6 3.7 1.6 5.4zM24 39c-4.4 0-8.2-2.7-9.8-6.4h20.6c-1.7 3.7-5.5 6.4-9.8 6.4zm8.6-13.5c0 1.8-.3 3.6-.9 5.3l5 4.1c1-1.7 1.6-3.6 1.6-5.4s-.6-3.7-1.6-5.4zM22.5 31c-3.5 0-6.6-1.1-9.3-2.8l4.2-4.2c1.8 1.2 4 2 6.4 2zm-7.6-13.5c0-1.8-.3-3.6-.9-5.3l-5-4.1c-1 1.7-1.6 3.6-1.6 5.4s.6 3.7 1.6 5.4z"/>
+                            <path d="M44.5 20h-2.5V18c0-.55-.45-1-1-1h-3c-.55 0-1 .45-1 1v2H34c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1h3v2c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-2h2.5c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1z" fill="#4285F4"/>
+                            <path d="M44.5 20h-2.5V18c0-.55-.45-1-1-1h-3c-.55 0-1 .45-1 1v2H34c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1h3v2c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-2h2.5c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1z" fill="#4285F4"/>
+                            <path d="M12.9 23.5c0 1.8.3 3.6.9 5.3l5 4.1c1-1.7 1.6-3.6 1.6-5.4s-.6-3.7-1.6-5.4z" fill="#4285F4"/>
+                            <path d="M22.5 8c2.4 0 4.6.8 6.4 2.2l4.1-4.1C29.2 3.7 26 2 22.5 2 13.9 2 6.5 7 3 14h6.3C10.7 9.8 16 6.5 22.5 6.5c3.5 0 6.6 1.1 9.3 2.8l-4.2 4.2c-1.8-1.2-4-2-6.4-2zm-.1 6.5c-3.1 0-5.7 1.8-6.9 4.3H33c-1.3-2.5-3.8-4.3-6.9-4.3zm-7.6 13.5c0-1.8.3-3.6.9-5.3l-5-4.1c-1 1.7-1.6 3.6-1.6 5.4s.6 3.7 1.6 5.4zM24 39c-4.4 0-8.2-2.7-9.8-6.4h20.6c-1.7 3.7-5.5 6.4-9.8 6.4zm8.6-13.5c0 1.8-.3 3.6-.9 5.3l5 4.1c1-1.7 1.6-3.6 1.6-5.4s-.6-3.7-1.6-5.4zM22.5 31c-3.5 0-6.6-1.1-9.3-2.8l4.2-4.2c1.8 1.2 4 2 6.4 2zm-7.6-13.5c0-1.8-.3-3.6-.9-5.3l-5-4.1c-1 1.7-1.6 3.6-1.6 5.4s.6 3.7 1.6 5.4z"/>
+                            <path d="M44.5 20h-2.5V18c0-.55-.45-1-1-1h-3c-.55 0-1 .45-1 1v2H34c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1h3v2c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-2h2.5c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1z" fill="#4285F4"/>
+                            <path d="M44.5 20h-2.5V18c0-.55-.45-1-1-1h-3c-.55 0-1 .45-1 1v2H34c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1h3v2c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-2h2.5c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1z" fill="#4285F4"/>
+                            <path d="M12.9 23.5c0 1.8.3 3.6.9 5.3l5 4.1c1-1.7 1.6-3.6 1.6-5.4s-.6-3.7-1.6-5.4z" fill="#4285F4"/>
+                            <path d="M12.9 23.5c0 1.8.3 3.6.9 5.3l5 4.1c1-1.7 1.6-3.6 1.6-5.4s-.6-3.7-1.6-5.4z" fill="#4285F4"/>
+                            <path d="M22.5 8c2.4 0 4.6.8 6.4 2.2l4.1-4.1C29.2 3.7 26 2 22.5 2 13.9 2 6.5 7 3 14h6.3C10.7 9.8 16 6.5 22.5 6.5c3.5 0 6.6 1.1 9.3 2.8l-4.2 4.2c-1.8-1.2-4-2-6.4-2zm-.1 6.5c-3.1 0-5.7 1.8-6.9 4.3H33c-1.3-2.5-3.8-4.3-6.9-4.3zm-7.6 13.5c0-1.8.3-3.6.9-5.3l-5-4.1c-1 1.7-1.6 3.6-1.6 5.4s.6 3.7 1.6 5.4zM24 39c-4.4 0-8.2-2.7-9.8-6.4h20.6c-1.7 3.7-5.5 6.4-9.8 6.4zm8.6-13.5c0 1.8-.3 3.6-.9 5.3l5 4.1c1-1.7 1.6-3.6 1.6-5.4s-.6-3.7-1.6-5.4zM22.5 31c-3.5 0-6.6-1.1-9.3-2.8l4.2-4.2c1.8 1.2 4 2 6.4 2zm-7.6-13.5c0-1.8-.3-3.6-.9-5.3l-5-4.1c-1 1.7-1.6 3.6-1.6 5.4s.6 3.7 1.6 5.4z"/>
+                            <path d="M12.9 23.5c0 1.8.3 3.6.9 5.3l5 4.1c1-1.7 1.6-3.6 1.6-5.4s-.6-3.7-1.6-5.4z" fill="#FFC107"/>
+                            <path d="M12.9 23.5c0 1.8.3 3.6.9 5.3l5 4.1c1-1.7 1.6-3.6 1.6-5.4s-.6-3.7-1.6-5.4z" fill="#FFC107"/>
+                            <path d="M44.5 20h-2.5V18c0-.55-.45-1-1-1h-3c-.55 0-1 .45-1 1v2H34c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1h3v2c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-2h2.5c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1z" fill="#4285F4"/>
+                            <path d="M44.5 20h-2.5V18c0-.55-.45-1-1-1h-3c-.55 0-1 .45-1 1v2H34c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1h3v2c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-2h2.5c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1z" fill="#4285F4"/>
+                            <path d="M22.5 8c2.4 0 4.6.8 6.4 2.2l4.1-4.1C29.2 3.7 26 2 22.5 2 13.9 2 6.5 7 3 14h6.3C10.7 9.8 16 6.5 22.5 6.5c3.5 0 6.6 1.1 9.3 2.8l-4.2 4.2c-1.8-1.2-4-2-6.4-2zm-.1 6.5c-3.1 0-5.7 1.8-6.9 4.3H33c-1.3-2.5-3.8-4.3-6.9-4.3zm-7.6 13.5c0-1.8.3-3.6.9-5.3l-5-4.1c-1 1.7-1.6 3.6-1.6 5.4s.6 3.7 1.6 5.4zM24 39c-4.4 0-8.2-2.7-9.8-6.4h20.6c-1.7 3.7-5.5 6.4-9.8 6.4zm8.6-13.5c0 1.8-.3 3.6-.9 5.3l5 4.1c1-1.7 1.6-3.6 1.6-5.4s-.6-3.7-1.6-5.4zM22.5 31c-3.5 0-6.6-1.1-9.3-2.8l4.2-4.2c1.8 1.2 4 2 6.4 2zm-7.6-13.5c0-1.8-.3-3.6-.9-5.3l-5-4.1c-1 1.7-1.6 3.6-1.6 5.4s.6 3.7 1.6 5.4z"/>
+                        </svg>
+                        <span>使用 Google 登入/註冊</span>
+                    </button>
+                `;
+                document.getElementById('google-sign-in-btn').onclick = handleGoogleSignIn;
+            }
+        };
+
+
+        /**
+         * 處理 Google 登入 (使用彈出視窗)
+         */
+        const handleGoogleSignIn = async () => {
+            const provider = new GoogleAuthProvider();
+            try {
+                // 如果已經是匿名用戶，Firebase 會自動將其鏈接到新的 Google 帳戶
+                const result = await signInWithPopup(auth, provider);
+                // const user = result.user; // 用戶已在 onAuthStateChanged 中處理
+                customAlert('✅ Google 登入成功！', 'green');
+            } catch (error) {
+                console.error("Google 登入失敗:", error);
+                logError(`Google 登入失敗: ${error.message}`);
+            }
+        };
+
+        /**
+         * 處理登出
+         */
+        const handleSignOut = async () => {
+            try {
+                await signOut(auth);
+                // 登出後自動切換回匿名登入 (保持連線狀態)
+                await signInAnonymously(auth);
+                customAlert('🚪 您已成功登出，目前為匿名身份。', 'blue');
+            } catch (error) {
+                console.error("登出失敗:", error);
+                logError(`登出失敗: ${error.message}`);
+            }
+        };
+
+
+        /**
+         * 設定所有模組的實時數據訂閱 (onSnapshot)
+         * @param {string} userId 當前用戶 ID
+         */
+        const subscribeToAllData = (userId) => {
+             // 移除舊的訂閱 (如果存在) - 雖然 onSnapshot 本身會返回一個取消函數，但由於我們在認證時重新初始化，這裡主要依靠 onAuthStateChanged 的單次觸發。
+             // 為了避免重複訂閱，在實際生產環境中應使用 cancellation token。在單文件環境中，我們確保只在用戶 ID 確定後執行一次。
+
+            const collectionsToSubscribe = [
+                // 費用審批
+                { name: 'expenses', setter: (data) => expenses = data, renderer: renderExpenseApproval },
+                // IGB ERP 採購
+                { name: 'purchase_orders', setter: (data) => purchaseOrders = data, renderer: renderProcurement },
+                // 財務追蹤器
+                { name: 'transactions', setter: (data) => transactions = data, renderer: renderFinanceTracker },
+            ];
+
+            collectionsToSubscribe.forEach(({ name, setter, renderer }) => {
+                // 注意：如果用戶從匿名切換到 Google 登入，這個路徑也會改變
+                // 這是私有資料 (private data) 的路徑
+                const path = `artifacts/${appId}/users/${userId}/${name}`;
+                // 實時監聽查詢
+                const q = query(collection(db, path));
+
+                onSnapshot(q, (snapshot) => {
+                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                    // 客戶端排序：按提交時間戳 (降序)
+                    data.sort((a, b) => (b.submittedAt || b.created || b.recordedAt) - (a.submittedAt || a.created || a.recordedAt));
+
+                    setter(data);
+                    console.log(`[Firestore Realtime] ${name} updated. Count: ${data.length}`);
+
+                    // 檢查當前模組是否需要重新渲染列表
+                    const moduleKey = name === 'expenses' ? 'ExpenseApproval' :
+                                    (name === 'purchase_orders' ? 'Procurement' :
+                                    (name === 'transactions' ? 'FinanceTracker' : null));
+
+                    if (moduleKey && moduleKey === currentModule) {
+                        // 延遲渲染以確保 DOM 已準備就緒
+                        setTimeout(() => renderer(true), 10);
+                    }
+                }, (error) => {
+                    console.error(`Error subscribing to ${name}:`, error);
+                    logError(`實時訂閱失敗 (${name}): ${error.message}`);
+                });
+            });
+        };
+
+
+        /**
+         * 處理 Firebase 認證邏輯：優先使用 Custom Token，否則匿名登入。
+         */
+        const initializeAuth = async () => {
+            const userIdElement = document.getElementById('user-id');
+            const statusElement = document.getElementById('system-status');
+
+            // 1. 設定初始狀態
+            statusElement.textContent = '連線中...';
+            userIdElement.textContent = '等待身份驗證...'; // 更清晰的佔位符
+            renderAuthActions(); // 渲染初始按鈕
+
+            // 2. 設定狀態觀察者 (Listener) - 必須在登入前設定
+            let unsubscribeFromData = null; // 用於儲存取消訂閱的函數
+
+            onAuthStateChanged(auth, (user) => {
+                isAuthReady = true; // 認證程序執行完畢
+                updateAllSubmitButtons(); // 更新按鈕狀態
+
+                // 清除之前的數據訂閱
+                if (unsubscribeFromData) {
+                    unsubscribeFromData();
+                    unsubscribeFromData = null;
+                }
+
+                if (user) {
+                    // 成功狀態
+                    currentUserId = user.uid;
+                    userIdElement.textContent = user.email || user.uid; // 如果有 email 則顯示 email
+                    userIdElement.className = 'font-mono text-xs break-all ' + (user.isAnonymous ? 'text-yellow-400' : 'text-green-400');
+                    statusElement.textContent = user.isAnonymous ? '⚠️ 匿名連線' : '✅ 連線成功';
+                    statusElement.className = user.isAnonymous ? 'text-yellow-400' : 'text-green-400';
+                    console.log("Firebase Authentication OK. User ID:", currentUserId, "isAnonymous:", user.isAnonymous);
+
+                    // 成功認證後，開始實時數據訂閱
+                    // 這裡我們不使用 subscribeToAllData，因為 onSnapshot 會被多次呼叫
+                    // 由於 onSnapshot 本身會返回一個取消函數，我們需要在實際生產環境中處理
+                    // 在此單文件應用中，我們簡單地依賴 onAuthStateChanged 觸發，並重新渲染登入操作
+                    subscribeToAllData(currentUserId);
+                    renderAuthActions();
+
+                } else {
+                    // 登出狀態
+                    currentUserId = null;
+                    console.warn("用戶未登入。");
+                    statusElement.textContent = '⚠ 已登出';
+                    statusElement.className = 'text-red-400';
+                    userIdElement.textContent = '請登入或刷新頁面';
+                    renderAuthActions();
+                }
+            });
+
+            // 3. 執行初始登入 (這將觸發 onAuthStateChanged)
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                // 4. 登入錯誤處理
+                console.error("Firebase 登入初始化失敗:", error);
+                statusElement.textContent = '❌ 登入錯誤';
+                statusElement.className = 'text-red-400';
+                userIdElement.textContent = '初始化失敗';
+                logError("Firebase 登入初始化錯誤：" + error.message);
+
+                isAuthReady = true;
+                updateAllSubmitButtons();
+            }
+        };
+
+
+        // =========================================================
+        // UI 渲染與導航邏輯
+        // =========================================================
+
+        const modules = {
+            'ExpenseApproval': { title: '費用審批系統', icon: 'Wallet', render: renderExpenseApproval },
+            'AccountingAnalysis': { title: '會計分析應用程式', icon: 'BarChart3', render: renderAccountingAnalysis },
+            'Procurement': { title: 'IGB ERP 採購', icon: 'ShoppingBag', render: renderProcurement },
+            'FinanceTracker': { title: '財務追蹤器', icon: 'DollarSign', render: renderFinanceTracker }
+        };
+
+        // 導航渲染
+        const renderNavigation = () => {
+            const navContainer = document.getElementById('nav-container');
+            navContainer.innerHTML = '';
+
+            const iconMap = {
+                'Wallet': '💰',
+                'BarChart3': '📊',
+                'ShoppingBag': '🛍️',
+                'DollarSign': '💵'
+            };
+
+            Object.keys(modules).forEach(key => {
+                const module = modules[key];
+                const isActive = key === currentModule ? 'active' : '';
+
+                const iconSymbol = iconMap[module.icon] || '⚙️';
+
+                const link = document.createElement('a');
+                link.href = `#${key}`;
+                link.className = `nav-link ${isActive} flex items-center p-3 text-sm font-medium rounded-lg hover:bg-gray-700 transition duration-150 ease-in-out`;
+                link.innerHTML = `<span class="icon mr-3 text-lg">${iconSymbol}</span> ${module.title}`;
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    renderModule(key);
+                };
+                navContainer.appendChild(link);
+            });
+        };
+
+        // 核心模組渲染函數
+        window.renderModule = (moduleKey) => {
+            const moduleInfo = modules[moduleKey];
+            const content = document.getElementById('module-content');
+
+            // 處理 Home 模組或無效模組鍵
+            if (!moduleInfo || moduleKey === 'Home') {
+                currentModule = 'Home';
+                document.getElementById('module-title').textContent = '歡迎使用 ERP 2.0 戰略指揮中心';
+                content.innerHTML = `
+                    <div class="dashboard-card p-10 text-center">
+                        <p class="text-xl text-blue-400 mb-4">請從左側導航選擇一個模組</p>
+                        <p class="text-gray-400">整合了財務、採購和審批的核心功能，為您的戰略決策提供實時數據支持。</p>
+                        <div class="mt-8 flex justify-center space-x-4">
+                            <button onclick="renderModule('AccountingAnalysis')" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">查看財務 KPI</button>
+                            <button onclick="renderModule('Procurement')" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">進入採購中心</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (moduleInfo) {
+                currentModule = moduleKey;
+                document.getElementById('module-title').textContent = moduleInfo.title;
+                // 呼叫模組渲染，非實時更新模式 (false)
+                moduleInfo.render(false);
+            }
+
+            // 更新導航列的 active 狀態
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            const activeLink = document.querySelector(`.nav-link[href="#${currentModule}"]`);
+            if (activeLink) {
+                 activeLink.classList.add('active');
+            }
+        };
+
+        // =========================================================
+        // 模組 1: 費用審批系統 (Expense Approval System)
+        // =========================================================
+
+        /** 渲染單個審批項目的 HTML 樣式 */
+        const renderApprovalItem = (type, title, amount, status, color) => {
+            const displayStatus = status || '待審批'; // Default status
+            let displayColor = color || 'yellow';
+
+            if (displayStatus === '待審批') displayColor = 'yellow';
+            else if (displayStatus === '已通過') displayColor = 'green';
+            else if (displayStatus === '已拒絕') displayColor = 'red';
+
+            return `
+                <div class="flex justify-between items-center p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition duration-150">
+                    <div class="flex-grow">
+                        <p class="text-sm font-medium text-white">${title} (${type})</p>
+                        <p class="text-xs text-gray-400">NT$ ${amount.toLocaleString()}</p>
+                    </div>
+                    <span class="text-xs font-bold px-3 py-1 rounded-full bg-${displayColor}-500/20 text-${displayColor}-400">${displayStatus}</span>
+                    <button class="ml-4 text-blue-400 hover:text-blue-200 text-sm font-semibold">審批</button>
+                </div>
+            `;
+        };
+
+        /** 渲染費用列表 */
+        const renderExpenseList = (data) => {
+            const listContainer = document.getElementById('expense-list');
+            const countElement = document.getElementById('expense-count');
+
+            if (!listContainer) return;
+
+            if (countElement) countElement.textContent = data.length;
+
+            listContainer.innerHTML = data.length === 0
+                ? '<p class="text-gray-500 italic">目前沒有費用請求記錄。</p>'
+                : data.map(item => {
+                    return renderApprovalItem('費用', item.title, item.amount, item.status || '待審批', item.status === '已通過' ? 'green' : (item.status === '已拒絕' ? 'red' : 'yellow'));
+                }).join('');
+        }
+
+        /** 渲染費用審批模組主體 */
+        function renderExpenseApproval(isRealtimeUpdate = false) {
+            const content = document.getElementById('module-content');
+
+            // 只有在第一次載入或非實時更新時才重新繪製整個模組結構
+            if (!isRealtimeUpdate) {
+                content.innerHTML = `
+                    <div class="dashboard-card p-6">
+                        <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">待審批請求 (<span id="expense-count">0</span> 筆)</h3>
+                        <div id="expense-list" class="space-y-3">
+                            <!-- 費用列表將被實時更新 -->
+                        </div>
+
+                        <h3 class="text-xl font-semibold text-blue-300 mb-4 mt-8 border-b border-gray-700 pb-2">提交新請求</h3>
+                        <form id="expense-form" class="space-y-4">
+                            <input type="text" id="expense-title" placeholder="標題 (e.g. 差旅, 報銷)" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                            <input type="number" id="expense-amount" placeholder="金額 (TWD)" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                            <textarea id="expense-details" placeholder="詳細說明" rows="3" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500 resize-none"></textarea>
+                            <button type="submit" id="expense-submit-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg transition duration-200">提交審批請求</button>
+                        </form>
+                    </div>
+                `;
+                document.getElementById('expense-form').onsubmit = handleExpenseSubmission;
+                updateSubmitButtonState('expense-submit-btn'); // 確保渲染時更新按鈕狀態
+            }
+
+            // 實時更新費用列表
+            renderExpenseList(expenses);
+        }
+
+        const handleExpenseSubmission = async (e) => {
+            e.preventDefault();
+
+            // 增強日誌檢查
+            console.log(`%c[Submission Check - Expense] isAuthReady: ${isAuthReady}, currentUserId: ${currentUserId}`, 'color: yellow; font-weight: bold;');
+
+
+            if (!isAuthReady) {
+                logError('應用程式仍在初始化中，請稍候再提交。');
+                return;
+            }
+            if (!currentUserId) {
+                logError('錯誤：用戶身份未確定 (User ID is null)，無法提交。');
+                return;
+            }
+
+            const title = document.getElementById('expense-title').value;
+            const amount = document.getElementById('expense-amount').value;
+            const details = document.getElementById('expense-details').value;
+
+            try {
+                const path = `artifacts/${appId}/users/${currentUserId}/expenses`;
+                await addDoc(collection(db, path), {
+                    title, amount: parseFloat(amount), details, status: '待審批', submittedAt: Date.now()
+                });
+                customAlert('費用請求已成功提交！', 'green');
+                document.getElementById('expense-form').reset();
+            } catch (error) {
+                console.error("費用提交失敗:", error);
+                logError(`費用提交失敗: ${error.message}. 請檢查您的 Firestore 寫入權限。`);
+            }
+        };
+
+
+        // =========================================================
+        // 圖表數據模型與核心繪圖函式 (省略，未改動)
+        // =========================================================
+
+        // 模擬數據
+        const chartData = [
+            { month: "2024-05", revenue: 1200000, cost: 750000 },
+            { month: "2024-06", revenue: 1350000, cost: 800000 },
+            { month: "2024-07", revenue: 1500000, cost: 900000 },
+            { month: "2024-08", revenue: 1600000, cost: 950000 },
+            { month: "2024-09", revenue: 1800000, cost: 1050000 },
+            { month: "2024-10", revenue: 1950000, cost: 1100000 },
+            { month: "2024-11", revenue: 2100000, cost: 1200000 },
+            { month: "2024-12", revenue: 2200000, cost: 1250000 },
+            { month: "2025-01", revenue: 2400000, cost: 1350000 },
+            { month: "2025-02", revenue: 2600000, cost: 1400000 },
+            { month: "2025-03", revenue: 2800000, cost: 1500000 },
+            { month: "2024-04", revenue: 3000000, cost: 1600000 },
+        ];
+        let mdmChartData = {
+            labels: ['已完成', '進行中', '已取消', '待處理'],
+            data: [45, 30, 15, 10]
+        };
+
+        const formatCurrency = (num) => {
+            return 'NT$ ' + Math.round(num).toLocaleString('en-US', { minimumFractionDigits: 0 });
+        };
+        const formatPercentage = (num) => num.toFixed(1) + '%';
+
+
+        const renderRevenueCostChart = (data) => {
+            const ctx = document.getElementById('revenueCostChart');
+            if (!ctx || typeof window.Chart === 'undefined') {
+                console.error("Chart.js 未載入或 canvas ID 不存在");
+                return;
+            }
+
+            if (revenueCostChart) revenueCostChart.destroy();
+
+            const labels = data.map(d => d.month);
+            const revenues = data.map(d => d.revenue);
+            const costs = data.map(d => d.cost);
+
+            revenueCostChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        type: 'line',
+                        label: '銷貨收入',
+                        data: revenues,
+                        borderColor: '#3b82f6', // 藍色
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        fill: false,
+                        yAxisID: 'y'
+                    }, {
+                        type: 'bar',
+                        label: '銷貨成本',
+                        data: costs,
+                        backgroundColor: '#ef4444', // 紅色
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: { callbacks: { label: (context) => context.dataset.label + ': ' + formatCurrency(context.parsed.y) } }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear', display: true, position: 'left',
+                            title: { display: true, text: '金額 ($)' },
+                            ticks: { callback: (value) => formatCurrency(value) }
+                        },
+                        y1: {
+                            type: 'linear', display: false, position: 'right', grid: { drawOnChartArea: false },
+                        }
+                    }
+                }
+            });
+        };
+
+        const createMdmDoughnutChart = () => {
+            const ctx = document.getElementById('mdmDoughnutChart');
+            if (!ctx || typeof window.Chart === 'undefined') return;
+
+            if (mdmDoughnutChart) mdmDoughnutChart.destroy();
+
+            mdmDoughnutChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: mdmChartData.labels,
+                    datasets: [{
+                        data: mdmChartData.data,
+                        backgroundColor: ['#3b82f6', '#f97316', '#16a34a', '#ef4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const value = context.parsed;
+                                    const percentage = formatPercentage((value / total) * 100);
+                                    return `${context.label}: ${value} (${percentage})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        const filterChartData = (data, startMonth, endMonth) => {
+            return data.filter(d => d.month >= startMonth && d.month <= endMonth);
+        };
+
+        const updateKPIs = (data) => {
+            const totalRevenue = data.reduce((sum, d) => sum + d.revenue, 0);
+            const totalCost = data.reduce((sum, d) => sum + d.cost, 0);
+            const grossProfit = totalRevenue - totalCost;
+
+            const revenueElement = document.getElementById('totalRevenue');
+            const costElement = document.getElementById('totalCost');
+            const profitElement = document.getElementById('grossProfit');
+
+            if (revenueElement) revenueElement.textContent = formatCurrency(totalRevenue);
+            if (costElement) costElement.textContent = formatCurrency(totalCost);
+            if (profitElement) profitElement.textContent = formatCurrency(grossProfit);
+        };
+
+        const applyFiltersAndRender = () => {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            let dataToRender = chartData;
+
+            if (startDate && endDate) {
+                dataToRender = filterChartData(chartData, startDate, endDate);
+            }
+
+            renderRevenueCostChart(dataToRender);
+            updateKPIs(dataToRender);
+        };
+
+        const setupAccountingAnalysisCharts = () => {
+            renderRevenueCostChart(chartData);
+            createMdmDoughnutChart();
+            updateKPIs(chartData);
+
+            const startDateElement = document.getElementById('startDate');
+            const endDateElement = document.getElementById('endDate');
+
+            if (startDateElement && endDateElement) {
+                startDateElement.addEventListener('change', applyFiltersAndRender);
+                endDateElement.addEventListener('change', applyFiltersAndRender);
+            }
+        };
+
+
+        // =========================================================
+        // 模組 2: 會計分析應用程式 (Accounting Analysis App)
+        // =========================================================
+        function renderAccountingAnalysis() {
+            const content = document.getElementById('module-content');
+            content.innerHTML = `
+                <!-- 篩選器區塊 -->
+                <div class="dashboard-card p-4 mb-6 flex space-x-4 items-center flex-wrap">
+                    <h3 class="text-lg font-semibold text-gray-400 mr-4 my-1">數據範圍:</h3>
+                    <div class="flex items-center space-x-2 my-1">
+                        <label for="startDate" class="text-sm font-medium text-gray-500">起始月份:</label>
+                        <input type="month" id="startDate" class="border border-gray-600 rounded-md p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-700 text-white">
+                    </div>
+                    <div class="flex items-center space-x-2 my-1">
+                        <label for="endDate" class="text-sm font-medium text-gray-500">結束月份:</label>
+                        <input type="month" id="endDate" class="border border-gray-600 rounded-md p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-700 text-white">
+                    </div>
+                </div>
+
+                <!-- KPI 區塊 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    ${renderKpiCard('總收入 (區間)', '<span id="totalRevenue">NT$ 0</span>', '區間總和', 'green')}
+                    ${renderKpiCard('總毛利', '<span id="grossProfit">NT$ 0</span>', '淨利潤計算', 'red')}
+                    ${renderKpiCard('銷貨成本', '<span id="totalCost">NT$ 0</span>', '區間總和', 'yellow')}
+                </div>
+
+                <!-- 圖表區塊 -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                    <!-- 銷貨收入與成本趨勢圖 -->
+                    <div class="col-span-1 lg:col-span-2 dashboard-card p-6">
+                        <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">銷貨收入與成本趨勢圖 (月份)</h3>
+                        <div class="h-80">
+                            <canvas id="revenueCostChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- MDM 狀態分佈甜甜圈圖 -->
+                    <div class="col-span-1 lg:col-span-1 dashboard-card p-6">
+                        <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">MDM 狀態分佈</h3>
+                        <div class="h-80 flex items-center justify-center">
+                            <canvas id="mdmDoughnutChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            setupAccountingAnalysisCharts();
+        }
+
+
+        const renderKpiCard = (title, value, trend, color) => `
+            <div class="dashboard-card p-5 border-l-4 border-${color}-500">
+                <p class="text-sm font-medium text-gray-400">${title}</p>
+                <p class="text-3xl font-bold text-white mt-1">${value}</p>
+                <div class="flex items-center mt-2">
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-${color}-500/20 text-${color}-400">${trend}</span>
+                </div>
+            </div>
+        `;
+
+        // =========================================================
+        // 模組 3: IGB ERP 採購 (Procurement)
+        // =========================================================
+
+        /** 渲染單個 PO 項目的 HTML 樣式 */
+        const renderPOItem = (supplier, item, quantity, price, status) => `
+            <div class="flex justify-between items-center p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition duration-150">
+                <div class="flex-grow">
+                    <p class="text-sm font-medium text-white">${item} (${supplier})</p>
+                    <p class="text-xs text-gray-400">數量: ${quantity} x NT$ ${price.toLocaleString()} = NT$ ${(quantity * price).toLocaleString()}</p>
+                </div>
+                <span class="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/20 text-blue-400">${status}</span>
+                <button class="ml-4 text-green-400 hover:text-green-200 text-sm font-semibold">更新</button>
+            </div>
+        `;
+
+        /** 渲染採購訂單列表 */
+        const renderPOList = (data) => {
+            const listContainer = document.getElementById('po-list');
+            const countElement = document.getElementById('po-count');
+
+            if (!listContainer) return;
+
+            if (countElement) countElement.textContent = data.length;
+
+            listContainer.innerHTML = data.length === 0
+                ? '<p class="text-gray-500 italic">目前沒有採購訂單記錄。</p>'
+                : data.map(item => {
+                    return renderPOItem(item.supplier, item.item, item.quantity, item.price, item.status || '待發送');
+                }).join('');
+        }
+
+        /** 渲染採購模組主體 */
+        function renderProcurement(isRealtimeUpdate = false) {
+            const content = document.getElementById('module-content');
+
+            if (!isRealtimeUpdate) {
+                content.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- 建立 PO 區塊 -->
+                        <div class="lg:col-span-1 dashboard-card p-6 h-fit">
+                            <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">建立採購訂單 (PO)</h3>
+                            <form id="po-form" class="space-y-4">
+                                <input type="text" id="supplier" placeholder="供應商名稱" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                                <input type="text" id="item" placeholder="採購項目/SKU" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                                <input type="number" id="quantity" placeholder="數量" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                                <input type="number" id="price" placeholder="單價 (TWD)" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                                <button type="submit" id="po-submit-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition duration-200">提交 PO</button>
+                            </form>
+                        </div>
+
+                        <!-- 庫存警告與最近訂單 -->
+                        <div class="lg:col-span-2 space-y-6">
+                            <!-- 庫存警告 (保持模擬數據) -->
+                            <div class="dashboard-card p-6">
+                                <h3 class="text-xl font-semibold text-red-400 mb-4 border-b border-gray-700 pb-2">庫存預警 (低於安全庫存)</h3>
+                                <div class="space-y-3">
+                                    ${renderInventoryItem('晶片組 (A-100)', 45, 100, 'red')}
+                                    ${renderInventoryItem('主機板 (B-200)', 80, 100, 'red')}
+                                    ${renderInventoryItem('記憶體模組', 250, 200, 'green')}
+                                </div>
+                            </div>
+
+                            <!-- 最近 PO (實時更新區塊) -->
+                            <div class="dashboard-card p-6">
+                                <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">最近採購訂單 (<span id="po-count">0</span> 筆)</h3>
+                                <div id="po-list" class="space-y-3">
+                                    <!-- 採購訂單列表將被實時更新 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('po-form').onsubmit = handlePOFormSubmission;
+                updateSubmitButtonState('po-submit-btn'); // 確保渲染時更新按鈕狀態
+            }
+
+            // 實時更新採購列表
+            renderPOList(purchaseOrders);
+        }
+
+        const renderInventoryItem = (item, current, safety, color) => `
+            <div class="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
+                <p class="text-sm font-medium text-white">${item}</p>
+                <div class="flex space-x-4 items-center">
+                    <span class="text-xs text-gray-400">目前: ${current} / 安全庫存: ${safety}</span>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-${color}-500/20 text-${color}-400">${current < safety ? '需補貨' : '充足'}</span>
+                </div>
+            </div>
+        `;
+
+        const handlePOFormSubmission = async (e) => {
+            e.preventDefault();
+
+            // 增強日誌檢查
+            console.log(`%c[Submission Check - PO] isAuthReady: ${isAuthReady}, currentUserId: ${currentUserId}`, 'color: yellow; font-weight: bold;');
+
+
+            if (!isAuthReady) {
+                logError('應用程式仍在初始化中，請稍候再提交。');
+                return;
+            }
+            if (!currentUserId) {
+                logError('錯誤：用戶身份未確定 (User ID is null)，無法提交。');
+                return;
+            }
+
+            const supplier = document.getElementById('supplier').value;
+            const item = document.getElementById('item').value;
+            const quantity = document.getElementById('quantity').value;
+            const price = document.getElementById('price').value;
+
+            try {
+                const total = parseInt(quantity) * parseFloat(price);
+                const path = `artifacts/${appId}/users/${currentUserId}/purchase_orders`;
+                await addDoc(collection(db, path), {
+                    supplier, item, quantity: parseInt(quantity), price: parseFloat(price), total: total, status: '待發送', created: Date.now()
+                });
+                customAlert(`PO [${item}] 已建立，總計 NT$ ${total.toLocaleString()}。`, 'blue');
+                document.getElementById('po-form').reset();
+            } catch (error) {
+                console.error("PO 提交失敗:", error);
+                logError(`PO 提交失敗: ${error.message}. 請檢查您的 Firestore 寫入權限。`);
+            }
+        };
+
+        // =========================================================
+        // 模組 4: 財務追蹤器 (Finance Tracker)
+        // =========================================================
+
+        /** 渲染單個交易項目的 HTML 樣式 */
+        const renderTransactionItem = (type, desc, amount, date, color) => `
+            <div class="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
+                <div class="flex items-center space-x-3">
+                    <span class="text-xl text-${color}-400">${type === '收入' ? '⬆️' : '⬇️'}</span>
+                    <div class="flex-grow">
+                        <p class="text-sm font-medium text-white">${desc}</p>
+                        <p class="text-xs text-gray-400">${date}</p>
+                    </div>
+                </div>
+                <span class="text-base font-bold text-${color}-400">${type === '收入' ? '+' : '-'} NT$ ${amount.toLocaleString()}</span>
+            </div>
+        `;
+
+        /** 渲染交易列表 */
+        const renderTransactionList = (data) => {
+            const listContainer = document.getElementById('transaction-list');
+            const countElement = document.getElementById('transaction-count');
+
+            if (!listContainer) return;
+
+            if (countElement) countElement.textContent = data.length;
+
+            listContainer.innerHTML = data.length === 0
+                ? '<p class="text-gray-500 italic">目前沒有交易記錄。</p>'
+                : data.map(item => {
+                    const color = item.type === '收入' ? 'green' : 'red';
+                    const date = new Date(item.recordedAt).toLocaleDateString('zh-TW');
+                    return renderTransactionItem(item.type, item.description, item.amount, date, color);
+                }).join('');
+        }
+
+        /** 渲染財務追蹤器主體 */
+        function renderFinanceTracker(isRealtimeUpdate = false) {
+            const content = document.getElementById('module-content');
+
+            if (!isRealtimeUpdate) {
+                content.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        ${renderBalanceCard('本月總收入', 850000, 'green')}
+                        ${renderBalanceCard('本月總支出', 420000, 'red')}
+                    </div>
+
+                    <div class="dashboard-card p-6 mt-6">
+                        <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">新增交易記錄</h3>
+                        <form id="finance-form" class="space-y-4">
+                            <select id="type" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                                <option value="收入">收入</option>
+                                <option value="支出">支出</option>
+                            </select>
+                            <input type="text" id="description" placeholder="描述 (e.g. 薪資入帳, 辦公用品)" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                            <input type="number" id="amount" placeholder="金額 (TWD)" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                            <button type="submit" id="finance-submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-lg transition duration-200">記錄交易</button>
+                        </form>
+                    </div>
+
+                    <div class="dashboard-card p-6 mt-6">
+                        <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">最近交易 (<span id="transaction-count">0</span> 筆)</h3>
+                        <div id="transaction-list" class="space-y-2">
+                            <!-- 交易列表將被實時更新 -->
+                        </div>
+                    </div>
+                `;
+                document.getElementById('finance-form').onsubmit = handleFinanceFormSubmission;
+                updateSubmitButtonState('finance-submit-btn'); // 確保渲染時更新按鈕狀態
+            }
+
+            // 實時更新交易列表
+            renderTransactionList(transactions);
+        }
+
+        const renderBalanceCard = (title, amount, color) => `
+            <div class="dashboard-card p-5 border-b-4 border-${color}-500">
+                <p class="text-sm font-medium text-gray-400">${title}</p>
+                <p class="text-3xl font-bold text-white mt-1 text-${color}-400">NT$ ${amount.toLocaleString()}</p>
+            </div>
+        `;
+
+        const handleFinanceFormSubmission = async (e) => {
+            e.preventDefault();
+
+            // 增強日誌檢查
+            console.log(`%c[Submission Check - Finance] isAuthReady: ${isAuthReady}, currentUserId: ${currentUserId}`, 'color: yellow; font-weight: bold;');
+
+
+            if (!isAuthReady) {
+                logError('應用程式仍在初始化中，請稍候再提交。');
+                return;
+            }
+            if (!currentUserId) {
+                logError('錯誤：用戶身份未確定 (User ID is null)，無法提交。');
+                return;
+            }
+
+            const type = document.getElementById('type').value;
+            const description = document.getElementById('description').value;
+            const amount = document.getElementById('amount').value;
+
+            try {
+                const path = `artifacts/${appId}/users/${currentUserId}/transactions`;
+                await addDoc(collection(db, path), {
+                    type, description, amount: parseFloat(amount), recordedAt: Date.now()
+                });
+                customAlert(`成功記錄一筆 ${type} 交易：NT$ ${parseFloat(amount).toLocaleString()}。`, 'indigo');
+                document.getElementById('finance-form').reset();
+            } catch (error) {
+                console.error("交易記錄失敗:", error);
+                logError(`交易記錄失敗: ${error.message}. 請檢查您的 Firestore 寫入權限。`);
+            }
+        };
+
+        // =========================================================
+        // 通用 UI 函數 (取代 alert 和 confirm)
+        // =========================================================
+
+        // 模態框/通知
+        const customAlert = (message, color = 'blue') => {
+            const bgColorMap = { 'blue': 'bg-blue-600', 'green': 'bg-green-600', 'red': 'bg-red-600', 'indigo': 'bg-indigo-600' };
+            const bgColor = bgColorMap[color] || bgColorMap['blue'];
+
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `fixed bottom-4 right-4 z-[60] ${bgColor} text-white p-4 rounded-xl shadow-2xl transition-opacity duration-300 transform translate-y-0 opacity-100`;
+            alertDiv.textContent = message;
+
+            document.body.appendChild(alertDiv);
+
+            setTimeout(() => {
+                alertDiv.style.opacity = '0';
+                alertDiv.style.transform = 'translateY(20px)';
+                setTimeout(() => alertDiv.remove(), 300);
+            }, 3000);
+        };
+
+        // 頁面載入完成後初始化
+        window.onload = () => {
+            initializeAuth(); // 確保認證在所有內容渲染前啟動
+            renderNavigation();
+
+            // 【修復】明確呼叫 renderModule 以確保內容區域顯示
+            const initialModule = window.location.hash ? window.location.hash.substring(1) : 'Home';
+            renderModule(initialModule);
+
+            updateAllSubmitButtons(); // 初始化時禁用所有按鈕
+        };
+
+    </script>
+</body>
+</html>

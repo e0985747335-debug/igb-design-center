@@ -1,0 +1,72 @@
+services:
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: igb_fastapi
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    ports:
+      - "8000:8000"
+    networks:
+      - igb-net
+    expose:
+      - "8000"
+
+  postgres:
+    image: postgres:15
+    container_name: igb_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: igbadmin
+      POSTGRES_PASSWORD: 7aciYMUu
+      POSTGRES_DB: igbdb
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - igb-net
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: igb_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: wooderiven@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: 7aciYMUu
+    volumes:
+      - ./data/pgadmin:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - igb-net
+
+  caddy:
+    image: caddy:2
+    container_name: igb_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./srv:/srv
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - fastapi
+      - pgadmin
+    networks:
+      - igb-net
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  igb-net:
+    driver: bridge

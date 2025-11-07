@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>銷售數據視覺化儀表板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* 確保中文文字可以正確顯示，並設定基本字體 */
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-100 bg-opacity-80 flex items-center justify-center z-50">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+        <p class="ml-4 text-lg text-gray-700">數據載入中...</p>
+    </div>
+
+    <div class="container mx-auto p-4 md:p-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">
+            所有圖表皆已串接 Firestore 實時數據
+        </h1>
+
+        <!-- Dashboard Grid Layout (2x2) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- 1. 每月銷售長條圖 (sales_data) -->
+            <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition duration-300">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">每月銷售長條圖 (sales_data)</h2>
+                <div class="h-64">
+                    <canvas id="monthlySalesChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 2. 年度趨勢折線圖 (growth_data) -->
+            <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition duration-300">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">年度趨勢折線圖 (growth_data)</h2>
+                <div class="h-64">
+                    <canvas id="annualGrowthChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 3. 產品類別圓餅圖 (category_data) -->
+            <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition duration-300">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">產品類別圓餅圖 (category_data)</h2>
+                <div class="h-64 flex items-center justify-center">
+                    <canvas id="categoryPieChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 4. 新增：每週銷售額折線圖 (weekly_sales_data) -->
+            <div class="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition duration-300">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">每週銷售額折線圖 (weekly_sales_data)</h2>
+                <div class="h-64">
+                    <canvas id="weeklySalesChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, query, onSnapshot, orderBy, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 設定 Firebase Debug Log
+        setLogLevel('Debug');
+
+        // --- 全局變數 ---
+        let app;
+        let db;
+        let auth;
+        let userId = null;
+
+        // 圖表實例儲存
+        let monthlySalesChartInstance = null;
+        let annualGrowthChartInstance = null;
+        let categoryPieChartInstance = null;
+        let weeklySalesChartInstance = null; // 新增：每週銷售折線圖實例
+
+        // 使用 Canvas 提供的全局變數
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        if (!firebaseConfig) {
+            console.error("Firebase config is missing.");
+        }
+
+        // --- 輔助函數：初始化 Firebase 與登入 ---
+        async function initializeFirebase() {
+            try {
+                if (firebaseConfig) {
+                    app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                } else {
+                    return;
+                }
+
+                // 嘗試使用自定義 token 登入，如果沒有則匿名登入
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                    console.log("Signed in with custom token.");
+                } else {
+                    await signInAnonymously(auth);
+                    console.log("Signed in anonymously.");
+                }
+
+                // 監聽登入狀態變化
+                onAuthStateChanged(auth, (user) => {
+                    document.getElementById('loading-overlay').classList.add('hidden');
+                    if (user) {
+                        userId = user.uid;
+                        console.log("User authenticated. UID:", userId);
+                        setupDataListeners(); // 登入成功後開始監聽數據
+                    } else {
+                        // 如果登出或未登入，仍然嘗試獲取匿名ID
+                        userId = crypto.randomUUID();
+                        console.log("User not signed in. Using generated ID:", userId);
+                        setupDataListeners(); // 仍然嘗試監聽公共數據
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase initialization or sign-in failed:", error);
+                document.getElementById('loading-overlay').classList.add('hidden');
+            }
+        }
+
+        // --- 圖表繪製函數 ---
+
+        // 1. 每月銷售長條圖 (Bar Chart)
+        function drawMonthlySalesChart(data) {
+            const ctx = document.getElementById('monthlySalesChart').getContext('2d');
+
+            // 根據 month_order 排序
+            const sortedData = data.sort((a, b) => a.month_order - b.month_order);
+            const labels = sortedData.map(d => d.month);
+            const sales = sortedData.map(d => d.sales);
+
+            if (monthlySalesChartInstance) {
+                monthlySalesChartInstance.data.labels = labels;
+                monthlySalesChartInstance.data.datasets[0].data = sales;
+                monthlySalesChartInstance.update();
+                return;
+            }
+
+            monthlySalesChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '銷售額 (萬元)',
+                        data: sales,
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)', // Blue
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1,
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '銷售額'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. 年度趨勢折線圖 (Line Chart)
+        function drawAnnualGrowthChart(data) {
+            const ctx = document.getElementById('annualGrowthChart').getContext('2d');
+
+            // 根據 year 排序
+            const sortedData = data.sort((a, b) => a.year - b.year);
+            const labels = sortedData.map(d => d.year);
+            const users = sortedData.map(d => d.users);
+
+            if (annualGrowthChartInstance) {
+                annualGrowthChartInstance.data.labels = labels;
+                annualGrowthChartInstance.data.datasets[0].data = users;
+                annualGrowthChartInstance.update();
+                return;
+            }
+
+            annualGrowthChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '用戶增長人數',
+                        data: users,
+                        fill: true,
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)', // Green light fill
+                        borderColor: 'rgba(16, 185, 129, 1)', // Green line
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '人數'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 3. 產品類別圓餅圖 (Doughnut Chart)
+        function drawCategoryPieChart(data) {
+            const ctx = document.getElementById('categoryPieChart').getContext('2d');
+            const labels = data.map(d => d.category);
+            const values = data.map(d => d.value);
+
+            const colors = [
+                '#3B82F6', // Blue
+                '#F59E0B', // Amber
+                '#10B981', // Emerald
+                '#EF4444'  // Red
+            ];
+
+            if (categoryPieChartInstance) {
+                categoryPieChartInstance.data.labels = labels;
+                categoryPieChartInstance.data.datasets[0].data = values;
+                categoryPieChartInstance.update();
+                return;
+            }
+
+            categoryPieChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors.slice(0, labels.length),
+                        hoverOffset: 8,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 4. 新增：每週銷售額折線圖 (Weekly Line Chart)
+        function drawWeeklySalesChart(data) {
+            const ctx = document.getElementById('weeklySalesChart').getContext('2d');
+
+            // 根據 week_order 排序
+            const sortedData = data.sort((a, b) => a.week_order - b.week_order);
+            const labels = sortedData.map(d => d.week);
+            const sales = sortedData.map(d => d.sales);
+
+            if (weeklySalesChartInstance) {
+                weeklySalesChartInstance.data.labels = labels;
+                weeklySalesChartInstance.data.datasets[0].data = sales;
+                weeklySalesChartInstance.update();
+                return;
+            }
+
+            weeklySalesChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '每週銷售 (萬元)',
+                        data: sales,
+                        fill: false, // 不填充陰影
+                        borderColor: 'rgba(239, 68, 68, 1)', // Red line
+                        tension: 0.4, // 曲線平滑度
+                        pointRadius: 5,
+                        pointBackgroundColor: 'rgba(239, 68, 68, 1)',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '銷售額'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+
+        // --- 數據監聽器設定 ---
+        function setupDataListeners() {
+            // 基礎集合路徑 (公共數據)
+            const basePath = `/artifacts/${appId}/public/data/`;
+
+            // 1. 監聽 monthly_sales (Bar Chart)
+            const salesQuery = query(collection(db, `${basePath}sales_data`));
+            onSnapshot(salesQuery, (snapshot) => {
+                const data = snapshot.docs.map(doc => doc.data());
+                console.log("Sales data updated:", data);
+                drawMonthlySalesChart(data);
+            }, (error) => {
+                console.error("Error fetching sales data:", error);
+            });
+
+            // 2. 監聽 annual_growth (Line Chart)
+            const growthQuery = query(collection(db, `${basePath}growth_data`));
+            onSnapshot(growthQuery, (snapshot) => {
+                const data = snapshot.docs.map(doc => doc.data());
+                console.log("Growth data updated:", data);
+                drawAnnualGrowthChart(data);
+            }, (error) => {
+                console.error("Error fetching growth data:", error);
+            });
+
+            // 3. 監聽 product_category (Doughnut Chart)
+            const categoryQuery = query(collection(db, `${basePath}category_data`));
+            onSnapshot(categoryQuery, (snapshot) => {
+                const data = snapshot.docs.map(doc => doc.data());
+                console.log("Category data updated:", data);
+                drawCategoryPieChart(data);
+            }, (error) => {
+                console.error("Error fetching category data:", error);
+            });
+
+            // 4. 新增：監聽 weekly_sales (Weekly Line Chart)
+            const weeklySalesQuery = query(collection(db, `${basePath}weekly_sales_data`));
+            onSnapshot(weeklySalesQuery, (snapshot) => {
+                const data = snapshot.docs.map(doc => doc.data());
+                console.log("Weekly Sales data updated:", data);
+                drawWeeklySalesChart(data);
+            }, (error) => {
+                console.error("Error fetching weekly sales data:", error);
+            });
+        }
+
+        // 啟動應用
+        document.addEventListener('DOMContentLoaded', initializeFirebase);
+    </script>
+</body>
+</html>

@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB 企業戰情中心儀表板</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 Chart.js (用於圖表) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <style>
+        /* 確保字體和排版在不同區塊的背景下保持可讀性 */
+        body {
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        /* 自定義 QDP 內容區塊的樣式，使其更具可讀性 */
+        .qdp-content h2 {
+            @apply text-3xl font-bold text-gray-800 mt-8 mb-4 border-b border-gray-200 pb-2;
+        }
+        .qdp-content h3 {
+            @apply text-xl font-semibold text-gray-700 mt-6 mb-3;
+        }
+        .qdp-content ul, .qdp-content ol {
+            @apply space-y-2 mb-6;
+        }
+        .qdp-table {
+            @apply w-full border-collapse rounded-xl overflow-hidden shadow-lg my-6;
+        }
+        .qdp-table th, .qdp-table td {
+            @apply p-4 border border-gray-200 text-left;
+        }
+        .qdp-table th {
+            @apply bg-logo-blue-light text-white font-bold;
+        }
+        .qdp-table tr:nth-child(even) {
+            @apply bg-gray-50;
+        }
+        .qdp-table tr:hover {
+            @apply bg-logo-blue-light bg-opacity-10 transition duration-150;
+        }
+        /* 指揮中心表格樣式調整 */
+        .data-table thead th {
+            @apply px-6 py-3 text-left text-xs font-medium uppercase tracking-wider bg-gray-600 text-gray-200;
+        }
+        .data-table tbody td {
+            @apply border-b border-gray-700;
+        }
+
+    </style>
+    <!-- Tailwind 配置，定義了自定義顏色 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'logo-blue': '#1e40af', // Base blue (深藍)
+                        'logo-blue-light': '#3b82f6', // Light blue for cards/buttons (亮藍)
+                        'logo-blue-dark': '#1d3f9b', // Darker blue for selected state (深藍點綴)
+                        'logo-red': '#dc2626', // Red for accents/alerts (紅)
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        </script>
+</head>
+<body class="bg-f7f9fb text-gray-800 font-sans min-h-screen flex flex-col">
+
+    <div id="app-container" class="flex flex-col min-h-screen">
+        <!-- 頂部標頭 -->
+        <header class="bg-white shadow-md p-4 sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <svg class="w-8 h-8 text-logo-red" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-7-9a1 1 111-1h1.793l.904 1.144a.2.2 0 00.318-.046l.832-1.664a.2.2 0 01.32-.016l1.246 1.87a.2.2 0 00.32-.016l.832-1.664a.2.2 0 00.318-.046l.904 1.144H16a1 1 0 110 2h-1.793l-.904-1.144a.2.2 0 00-.318.046l-.832 1.664a.2.2 0 01-.32.016l-1.246-1.87a.2.2 0 00-.32.016l-.832 1.664a.2.2 0 00-.318.046l-.904-1.144H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg>
+                    <h1 class="text-2xl font-bold text-gray-900">IGB 企業戰情中心</h1>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="text-gray-500 text-sm hidden sm:inline">用戶: IGB_Admin (UUID: 75d1f0...)</span>
+                    <div class="w-10 h-10 bg-logo-blue rounded-full flex items-center justify-center text-white font-semibold">AD</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主導航欄 -->
+        <nav class="bg-logo-blue p-3 shadow-lg">
+            <div class="max-w-7xl mx-auto flex flex-wrap justify-center sm:justify-start gap-3">
+                <button class="nav-link bg-logo-blue-light text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-logo-blue-dark transition duration-300 transform hover:scale-[1.01]"
+                        data-section="system-overview" onclick="showSection('system-overview')">
+                    系統總覽
+                </button>
+                <button class="nav-link bg-logo-blue-light text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-logo-blue-dark transition duration-300 transform hover:scale-[1.01]"
+                        data-section="command-center" onclick="showSection('command-center')">
+                    策略指揮中心
+                </button>
+                <button class="nav-link bg-logo-blue-light text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-logo-blue-dark transition duration-300 transform hover:scale-[1.01]"
+                        data-section="qdp-overview" onclick="showSection('qdp-overview')">
+                    QDP 績效概覽
+                </button>
+            </div>
+        </nav>
+
+        <!-- 主要內容區塊 -->
+        <main class="flex-grow p-4 sm:p-8">
+            <div class="max-w-7xl mx-auto">
+
+                <!-- 區塊 1: 系統總覽 (預設顯示) -->
+                <section id="system-overview" class="mb-12">
+                    <h2 class="text-4xl font-extrabold text-gray-900 mb-6 border-b-4 border-logo-blue pb-2">核心系統總覽與健康度</h2>
+                    <p class="text-xl text-gray-600 mb-8">此儀表板展示了 IGB ERP 核心系統的關鍵運行指標、即時健康度與資源利用情況。</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- 卡片 1 -->
+                        <div class="bg-white rounded-xl p-6 shadow-2xl border-l-4 border-green-500 transform hover:scale-[1.02] transition duration-300">
+                            <h3 class="text-lg font-semibold text-gray-500 uppercase">交易量 (24H)</h3>
+                            <p class="text-4xl font-bold text-gray-900 mt-2">1,208,450</p>
+                            <div class="flex items-center text-sm mt-3">
+                                <span class="text-green-600 font-medium">+15.2%</span>
+                                <span class="text-gray-500 ml-1">較前日</span>
+                            </div>
+                        </div>
+
+                        <!-- 卡片 2 -->
+                        <div class="bg-white rounded-xl p-6 shadow-2xl border-l-4 border-yellow-500 transform hover:scale-[1.02] transition duration-300">
+                            <h3 class="text-lg font-semibold text-gray-500 uppercase">平均響應時間 (95th PCTL)</h3>
+                            <p class="text-4xl font-bold text-gray-900 mt-2">185 ms</p>
+                            <div class="flex items-center text-sm mt-3">
+                                <span class="text-yellow-600 font-medium">穩定</span>
+                                <span class="text-gray-500 ml-1">目標: < 200 ms</span>
+                            </div>
+                        </div>
+
+                        <!-- 卡片 3 -->
+                        <div class="bg-white rounded-xl p-6 shadow-2xl border-l-4 border-red-500 transform hover:scale-[1.02] transition duration-300">
+                            <h3 class="text-lg font-semibold text-gray-500 uppercase">活躍警告數</h3>
+                            <p class="text-4xl font-bold text-gray-900 mt-2 text-logo-red">3</p>
+                            <div class="flex items-center text-sm mt-3">
+                                <span class="text-gray-500 font-medium">2 個 L3, 1 個 L2</span>
+                                <span class="text-gray-500 ml-1">級別事件</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 資源利用圖表 Placeholder (替換為 Canvas) -->
+                    <div class="bg-white rounded-xl p-6 shadow-2xl mt-8">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-4">雲端資源利用趨勢</h3>
+                        <div class="h-64 flex items-center justify-center border border-dashed rounded-lg p-2">
+                            <!-- 圖表將在這裡呈現 -->
+                            <canvas id="resourceChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 區塊 2: 策略指揮中心 (預設隱藏) -->
+                <section id="command-center" class="hidden">
+                    <h2 class="text-4xl font-extrabold text-gray-200 mb-6 border-b-4 border-logo-blue pb-2">策略指揮中心：技術棧與合規性</h2>
+                    <p class="text-xl text-gray-400 mb-8">專為高階決策者設計，提供即時運營狀態、關鍵技術棧細節與合規性概況。</p>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                        <!-- 即時狀態卡片 -->
+                        <div class="bg-gray-800 rounded-xl p-6 shadow-2xl border-l-4 border-logo-red">
+                            <h3 class="text-lg font-semibold text-gray-400 uppercase">系統狀態</h3>
+                            <p class="text-4xl font-bold text-red-400 mt-2">重大影響</p>
+                            <p class="text-sm text-gray-500 mt-3">當前時間: <span id="timestamp" class="font-mono text-gray-300"></span></p>
+                        </div>
+                        <!-- 服務健康卡片 -->
+                        <div class="bg-gray-800 rounded-xl p-6 shadow-2xl border-l-4 border-yellow-500">
+                            <h3 class="text-lg font-semibold text-gray-400 uppercase">關鍵服務健康度</h3>
+                            <p class="text-4xl font-bold text-yellow-400 mt-2">8/10 正常</p>
+                            <p class="text-sm text-gray-500 mt-3">兩個次要 API 群集響應緩慢</p>
+                        </div>
+                        <!-- 預算消耗卡片 -->
+                        <div class="bg-gray-800 rounded-xl p-6 shadow-2xl border-l-4 border-green-500">
+                            <h3 class="text-lg font-semibold text-gray-400 uppercase">本月雲端預算</h3>
+                            <p class="text-4xl font-bold text-green-400 mt-2">92% 已消耗</p>
+                            <p class="text-sm text-gray-500 mt-3">預計超出: $8,500 USD (3 天)</p>
+                        </div>
+                    </div>
+
+                    <!-- 技術棧與合規性表格 -->
+                    <div class="bg-gray-800 rounded-xl p-6 shadow-2xl">
+                        <h3 class="text-2xl font-bold text-gray-200 mb-4">系統技術棧與責任矩陣</h3>
+                        <div class="overflow-x-auto">
+                            <table class="data-table min-w-full divide-y divide-gray-700">
+                                <thead>
+                                    <tr>
+                                        <th class="px-6 py-3">項目</th>
+                                        <th class="px-6 py-3">細節</th>
+                                        <th class="px-6 py-3">負責組別</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-gray-800 divide-y divide-gray-700 text-white">
+                                    <tr class="hover:bg-gray-700 transition duration-150">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">後端核心</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">Java Spring Boot 3 / PostgreSQL 16</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-logo-blue">系統核心組</td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-700 transition duration-150">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">數據倉庫</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">Google BigQuery / Apache Kafka</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-logo-blue">數據智能組</td>
+                                    </tr>
+                                    <!-- 提供的程式碼片段從這裡開始 -->
+                                    <tr class="hover:bg-gray-700 transition duration-150">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">前端技術</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">ReactJS / TailwindCSS</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-logo-blue">前端團隊</td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-700 transition duration-150">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">API 閘道</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">Kong Gateway (Rate Limiting)</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-logo-blue">雲端整合組</td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-700 transition duration-150">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">上次完整稽核日</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">2025 年 03 月 28 日</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-logo-blue">總稽核部門</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 區塊 3: IGB 量子數據處理器 (QDP) 績效概覽 (預設隱藏) -->
+                <section id="qdp-overview" class="hidden">
+                    <!-- 新增標題，確保切換時有內容顯示 -->
+                    <h2 class="text-4xl font-extrabold text-gray-900 mb-6 border-b-4 border-logo-red pb-2">IGB 量子數據處理器 (QDP) 績效概覽</h2>
+                    <p class="text-xl text-gray-600 mb-8">本頁提供 IGB QDP 核心性能指標、技術規格與商業應用潛力的詳細介紹。</p>
+
+                    <div class="bg-white rounded-xl p-8 shadow-2xl card-light">
+                        <div class="qdp-content max-w-none">
+                            <h1 class="hidden">IGB 量子數據處理器 (QDP) 績效概覽</h1>
+                            <!-- 註：主標題已移至區塊頂部，這裡隱藏避免重複 -->
+
+                            <h2>一、 引言：IGB 量子數據處理器 (QDP) 介紹</h2>
+                            <p class="text-gray-600">IGB 量子數據處理器（Quantum Data Processor, QDP）是 IGB 科技公司開發的一款尖端量子計算硬體平台。QDP 旨在利用量子力學原理（如疊加態和量子糾纏）來執行傳統計算機無法有效處理的複雜運算。本概覽將聚焦於評估 IGB QDP 的核心績效，證明其在推動量子計算商業化應用方面的領導地位。</p>
+
+                            <h2>二、 核心績效指標 (KPIs)</h2>
+                            <p class="text-gray-600">IGB QDP 的性能評估主要基於以下量子計算的關鍵指標：</p>
+
+                            <h3>1. 量子位元數 (Qubit Count)</h3>
+      　                     <ul class="list-disc ml-6 text-gray-600">
+                                <li>**當前規格：** IGB QDP 最新版本配備 **127 個超導量子位元**。</li>
+                                <li>**意義：** 量子位元數量是衡量量子電腦規模的基礎指標。IGB 的 127 量子位元設計，使其能夠處理具有高維度希爾伯特空間的量子電路。</li>
+                            </ul>
+
+                            <h3>2. 量子位元品質 (Qubit Quality)</h3>
+                            <ul class="list-disc ml-6 text-gray-600">
+                                <li>**平均單量子位元閘保真度 (Average 1-Qubit Gate Fidelity)：** 典型值為 $\ge 99.99\%$。
+                                    <ul class="list-disc ml-6 mt-1">
+                                        <li>**定義：** 衡量在單個量子位元上執行基本操作的精確度。高保真度是減少錯誤累積的關鍵。</li>
+                                    </ul>
+                                </li>
+                                <li>**平均雙量子位元閘保真度 (Average 2-Qubit Gate Fidelity)：** 典型值為 $\ge 99.4\%$。
+                                    <ul class="list-disc ml-6 mt-1">
+                                        <li>**定義：** 衡量在兩個量子位元之間執行量子糾纏操作（如 CNOT 閘）的精確度。這是量子計算中最複雜且最容易出錯的操作。</li>
+                                    </ul>
+                                </li>
+                            </ul>
+
+                            <h3>3. 量子相干時間 (Coherence Time)</h3>
+                            <ul class="list-disc ml-6 text-gray-600">
+                                <li>**$T_1$ 弛豫時間 (Relaxation Time)：** 平均 $\ge 200 \mu s$。</li>
+                                <li>**$T_2$ 散相時間 (Dephasing Time)：** 平均 $\ge 150 \mu s$。</li>
+                                <li>**意義：** 相干時間代表量子位元維持其量子狀態而不受環境干擾的能力。IGB QDP 在相干性上的表現優於業界平均水平，允許運行更長的量子電路。</li>
+                            </ul>
+
+                            <h3>4. 量子體積 (Quantum Volume, QV) </h3>
+                            <ul class="list-disc ml-6 text-gray-600">
+                                <li>**測試結果：** IGB QDP 在標準基準測試中達到了 **QV 65536**（即 $2^{16}$）的量級。</li>
+                                <li>**定義：** 量子體積是一種綜合性指標，它同時考量量子位元數、連通性和錯誤率，用以衡量量子電腦處理複雜問題的整體能力。高 QV 值代表更高的計算可靠性和有效深度。</li>
+              傳                       </ul>
+
+                            <h3>5. 連通性和架構 (Connectivity and Architecture)</h3>
+                            <ul class="list-disc ml-6 text-gray-600">
+                                <li>**拓撲結構：** 採用優化的 **蜂窩狀（Honeycomb）連通性**。</li>
+                                <li>**優勢：** 這種高連通性設計大幅減少了運行複雜量子電路所需的交換（SWAP）操作，從而降低了總體計算時間和誤差累積。</li>
+                            </ul>
+
+                            <h2>三、 實際應用與優勢</h2>
+
+                            <table class="qdp-table border border-gray-300">
+                                <thead>
+          　                       <tr>
+                                        <th>應用領域</th>
+                                        <th>QDP 核心優勢</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>**金融建模**</td>
+                                        <td>快速執行複雜的蒙特卡羅模擬和優化問題，例如投資組合優化和風險分析。</td>
+                                    </tr>
+                                    <tr>
+                                        <td>**新藥研發**</td>
+                                        <td>準確模擬複雜分子結構的基態能量 (Ground State Energy)，加速新材料和新藥的發現。</td>
+                                    </tr>
+                                    <tr>
+                                        <td>**人工智慧**</td>
+                                        <td>支援量子機器學習 (QML) 算法，特別是在分類和數據模式識別方面，實現指數級加速。</td>
+                                    </tr>
+                                    <tr>
+            實                             <td>**優化問題**</td>
+                                        <td>解決旅行推銷員問題 (TSP) 和物流優化等 NP-Hard 問題，提供近乎即時的解決方案。</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <h2>四、 結論與展望</h2>
+                            <p class="text-gray-600">IGB 量子數據處理器 (QDP) 通過其高達 127 個量子位元的規模、卓越的閘保真度（特別是雙量子位元閘）以及領先的量子體積，鞏固了其在量子計算領域的頂級地位。</p>
+
+                            <p class="text-gray-600 font-bold mt-4">展望未來，IGB 將重點投入於：</p>
+                            <ol class="list-decimal ml-6 text-gray-600">
+                                <li>**錯誤校正 (Error Correction)：** 繼續開發更強大的容錯量子位元 (Logical Qubits)，將量子保真度提升至商用級別。</li>
+                                <li>**規模擴展：** 探索模組化架構，以實現 1000 個以上量子位元的系統級擴展。</li>
+                                <li>**軟硬體整合：** 強化 QDP 與 IGB 量子軟體開發工具包（SDK）的無縫整合，讓研究人員和開發者能更容易地存取和編程。</li>
+                            </ol>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- 頁腳 -->
+        <footer class="bg-gray-900 text-white p-6 mt-12">
+            <div class="max-w-7xl mx-auto text-center text-sm">
+                &copy; 2025 <span class="text-logo-red font-semibold">IGB ERP Solution</span>. All rights reserved. | 模組化、高效率、雲端部署
+            </div>
+            <div id="footer-logo-ad" class="text-center mt-3">
+                <span class="text-xs text-gray-500">
+                    
+                </span>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // 獲取所有區塊元素
+        const overviewSection = document.getElementById('system-overview');
+        const commandCenterSection = document.getElementById('command-center');
+        const qdpOverviewSection = document.getElementById('qdp-overview');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const timestampElement = document.getElementById('timestamp');
+
+        // Chart.js 實例變數
+        let resourceChartInstance = null;
+        const chartData = {
+            labels: ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'],
+            datasets: [
+                {
+                    label: 'CPU 利用率 (%)',
+                    data: [35, 42, 58, 75, 81, 65, 52, 45],
+                    borderColor: 'rgb(59, 130, 246)', // logo-blue-light
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 3,
+                },
+                {
+                    label: 'Memory 利用率 (%)',
+                    data: [55, 61, 68, 72, 78, 85, 80, 75],
+                    borderColor: 'rgb(220, 38, 38)', // logo-red
+                    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 3,
+                }
+            ]
+        };
+
+        /**
+        * 創建或更新資源利用率圖表
+        */
+        function initializeResourceChart() {
+            const ctx = document.getElementById('resourceChart');
+            
+            // 如果圖表已經存在，先銷毀它以避免重複渲染錯誤
+            if (resourceChartInstance) {
+                resourceChartInstance.destroy();
+            }
+
+            resourceChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#1f2937', // 淺色模式下的標籤顏色
+                            }
+                        },
+                        title: {
+                            display: false,
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: '利用率 (%)',
+                                color: '#4b5563' // gray-600
+                            },
+                            ticks: {
+                                color: '#4b5563' // gray-600
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '時間 (過去 24 小時)',
+                                color: '#4b5563' // gray-600
+                            },
+                            ticks: {
+                                color: '#4b5563' // gray-600
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+
+        /**
+        * 顯示指定的區塊並更新導航按鈕的樣式。
+        * @param {string} sectionId - 要顯示的區塊 ID ('system-overview' 或 'command-center' 或 'qdp-overview')
+        */
+        function showSection(sectionId) {
+            // 隱藏所有區塊
+            overviewSection.classList.add('hidden');
+            commandCenterSection.classList.add('hidden');
+            qdpOverviewSection.classList.add('hidden');
+
+            // 移除 header 和 footer 的深色背景，待會兒重新設定
+            const header = document.querySelector('header');
+            const footer = document.querySelector('footer');
+
+            // 設置整體背景和文字顏色
+            if (sectionId === 'command-center') {
+                // 指揮中心使用深色模式
+                document.body.style.backgroundColor = '#111827';
+                document.body.style.color = '#f3f4f6';
+                commandCenterSection.classList.remove('hidden');
+
+                header.classList.remove('bg-white', 'shadow-md');
+                header.classList.add('bg-gray-900', 'shadow-xl');
+
+                footer.classList.remove('bg-gray-900');
+                footer.classList.add('bg-gray-800');
+
+                // 更新 header 內文字顏色，確保可讀性
+                document.querySelector('header h1').classList.add('text-gray-200');
+                document.querySelector('header h1').classList.remove('text-gray-900');
+
+            } else {
+                // 系統總覽和 QDP 概覽使用淺色模式
+                document.body.style.backgroundColor = '#f7f9fb';
+                document.body.style.color = '#1f2937';
+
+                header.classList.remove('bg-gray-900', 'shadow-xl');
+                header.classList.add('bg-white', 'shadow-md');
+
+                footer.classList.remove('bg-gray-800');
+                footer.classList.add('bg-gray-900');
+
+                // 更新 header 內文字顏色，確保可讀性
+                document.querySelector('header h1').classList.add('text-gray-900');
+                document.querySelector('header h1').classList.remove('text-gray-200');
+
+
+                if (sectionId === 'qdp-overview') {
+                    qdpOverviewSection.classList.remove('hidden');
+                } else {
+                    overviewSection.classList.remove('hidden');
+                    // 只有在顯示系統總覽時才初始化圖表
+                    if (!resourceChartInstance) {
+                        initializeResourceChart();
+                    }
+                }
+            }
+
+            // 更新導航按鈕樣式
+            navLinks.forEach(link => {
+                const isSelected = link.getAttribute('data-section') === sectionId;
+
+                // 統一設置：移除 hover 效果
+                link.classList.remove('hover:bg-logo-blue-dark');
+                link.classList.remove('bg-logo-blue-dark');
+                link.classList.add('bg-logo-blue-light');
+
+                if (isSelected) {
+                    // 選中狀態：背景使用深藍色，移除 hover 效果
+                    link.classList.remove('bg-logo-blue-light');
+                    link.classList.add('bg-logo-blue-dark');
+                } else {
+                    // 未選中狀態：背景使用亮藍色，並添加 hover 效果
+                    link.classList.remove('bg-logo-blue-dark');
+                    link.classList.add('bg-logo-blue-light', 'hover:bg-logo-blue-dark');
+                }
+            });
+        }
+
+        // 模擬即時時間更新 (僅適用於策略指揮中心區塊的時間戳)
+        function updateTimestamp() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+
+            if (timestampElement) {
+                timestampElement.textContent = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            }
+        }
+
+        // 初始化：顯示系統總覽
+        window.onload = function() {
+            // 設定初始時間
+            updateTimestamp();
+            setInterval(updateTimestamp, 1000);
+
+            // 預設顯示系統總覽並初始化圖表
+            showSection('system-overview');
+        }
+    </script>
+</body>
+</html>

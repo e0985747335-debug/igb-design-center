@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB WEB 2.0 個人財務儀表板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Noto Sans TC', 'Inter', sans-serif;
+            background-color: #f7f9fb; /* Light background */
+        }
+        .scroll-container {
+            max-height: 400px; /* Constrain height for transaction list */
+            overflow-y: auto;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+        }
+        /* Custom scrollbar style for aesthetics */
+        .scroll-container::-webkit-scrollbar { width: 8px; }
+        .scroll-container::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+        .scroll-container::-webkit-scrollbar-track { background-color: #f1f5f9; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Header and Status Display -->
+    <header class="bg-blue-600 shadow-lg p-4 text-white">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-3xl font-bold">IGB WEB 2.0 個人財務儀表板</h1>
+            <div class="text-right text-sm">
+                <!-- 顯示 Firebase 狀態 -->
+                <p id="storage-status" class="font-medium text-yellow-300">儲存狀態: 正在連線到 Firebase...</p>
+                <p id="user-id-status" class="text-xs opacity-80 break-all"></p>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-8">
+        <!-- Message Box -->
+        <div id="message-box" class="hidden p-3 mb-4 rounded-lg text-sm font-medium" role="alert"></div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Transaction Form -->
+            <div class="lg:col-span-1">
+                <div class="bg-white p-6 rounded-xl shadow-2xl border border-gray-200">
+                    <h2 class="text-2xl font-semibold mb-6 text-gray-800 border-b pb-3">新增交易 (會計分錄)</h2>
+                    <form id="transaction-form" class="space-y-4">
+                        <div>
+                            <label for="type" class="block text-sm font-medium text-gray-700 mb-1">類型</label>
+                            <select id="type" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out bg-white">
+                                <option value="" disabled selected>請選擇交易類型...</option>
+                                <option value="Income">收入 (Income)</option>
+                                <option value="Expense">支出 (Expense)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="category" class="block text-sm font-medium text-gray-700 mb-1">會計科目 (類別)</label>
+                            <select id="category" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out bg-white">
+                                <option value="" disabled selected>請先選擇交易類型...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">金額 (NTD)</label>
+                            <input type="number" id="amount" required min="0.01" step="0.01" placeholder="例如: 5000" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="voucherFile" class="block text-sm font-medium text-gray-700 mb-1">上傳憑證/收據 (可選)</label>
+                            <input type="file" id="voucherFile" accept="image/*" class="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                            <p class="text-xs text-gray-500 mt-1">（此處僅記錄檔名，實際檔案不儲存）</p>
+                        </div>
+
+                        <div>
+                            <label for="description" class="block text-sm font-medium text-gray-700 mb-1">備註/摘要 (可選)</label>
+                            <textarea id="description" rows="2" placeholder="詳細說明或交易摘要" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-200 ease-in-out shadow-md">儲存交易</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right Column: Summary & Chart -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-green-500">
+                        <p class="text-sm font-medium text-gray-500">總收入</p>
+                        <p id="total-income" class="text-3xl font-bold text-green-600 mt-1">NT$ 0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-red-500">
+                        <p class="text-sm font-medium text-gray-500">總支出</p>
+                        <p id="total-expense" class="text-3xl font-bold text-red-600 mt-1">NT$ 0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-blue-500">
+                        <p class="text-sm font-medium text-gray-500">淨結餘</p>
+                        <p id="net-balance" class="text-3xl font-bold text-blue-600 mt-1">NT$ 0</p>
+                    </div>
+                </div>
+
+                <!-- Monthly Chart -->
+                <div class="bg-white p-6 rounded-xl shadow-2xl border border-gray-200">
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">收支趨勢圖</h2>
+                    <div class="chart-container">
+                        <canvas id="balanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction List -->
+        <div class="mt-8 bg-white p-6 rounded-xl shadow-2xl border border-gray-200">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">所有交易記錄</h2>
+            <div class="scroll-container">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">類型</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">金額 (NTD)</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">會計科目</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">憑證</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">備註</th>
+                            <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactions-list" class="bg-white divide-y divide-gray-200">
+                        <!-- Transactions will be inserted here by JavaScript -->
+                        <tr><td colspan="7" class="p-6 text-center text-gray-500">載入中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- REPORT SECTION (UNCHANGED) -->
+        <div class="mt-8 bg-white p-6 rounded-xl shadow-2xl border border-gray-200">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b pb-3">收支分類報告</h2>
+            
+            <!-- Report Filter -->
+            <div class="flex items-center space-x-4 mb-6">
+                <label for="report-month-filter" class="text-sm font-medium text-gray-700">篩選月份：</label>
+                <select id="report-month-filter" class="p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white"></select>
+                <button id="print-report-btn" class="px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition duration-200 ease-in-out shadow-md">列印報表 (匯出)</button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Income Report Table -->
+                <div class="bg-green-50 p-4 rounded-xl shadow-inner border border-green-200">
+                    <h3 class="text-xl font-semibold mb-3 text-green-700">收入細項分析</h3>
+                    <table class="min-w-full">
+                        <thead>
+                            <tr>
+                                <th class="py-2 text-left text-sm font-medium text-green-600">類別</th>
+                                <th class="py-2 text-right text-sm font-medium text-green-600">總額 (NTD)</th>
+                                <th class="py-2 text-right text-sm font-medium text-green-600">佔比</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-income-body">
+                            <tr><td colspan="3" class="text-center py-4 text-gray-500">載入中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Expense Report Table -->
+                <div class="bg-red-50 p-4 rounded-xl shadow-inner border border-red-200">
+                    <h3 class="text-xl font-semibold mb-3 text-red-700">支出細項分析</h3>
+                    <table class="min-w-full">
+                        <thead>
+                            <tr>
+                                <th class="py-2 text-left text-sm font-medium text-red-600">類別</th>
+                                <th class="py-2 text-right text-sm font-medium text-red-600">總額 (NTD)</th>
+                                <th class="py-2 text-right text-sm font-medium text-red-600">佔比</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-expense-body">
+                             <tr><td colspan="3" class="text-center py-4 text-gray-500">載入中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- END OF REPORT SECTION -->
+        
+    </main>
+    
+    <!-- Custom Delete Confirmation Modal (刪除確認框) -->
+    <div id="delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden flex items-center justify-center z-50 transition-opacity duration-300">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
+            <h3 class="text-xl font-bold mb-4 text-red-600">確認刪除</h3>
+            <p class="text-gray-700 mb-6">您確定要永久刪除這筆交易記錄嗎？此操作不可撤銷。</p>
+            <div class="flex justify-end space-x-3">
+                <button type="button" id="cancel-delete-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">取消</button>
+                <button type="button" id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">確定刪除</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NEW: Custom Edit Modal (修改視窗) -->
+    <div id="edit-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden flex items-center justify-center z-50 transition-opacity duration-300">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-lg w-full transform transition-all duration-300">
+            <h3 class="text-2xl font-bold mb-4 text-blue-600 border-b pb-2">修改交易記錄</h3>
+            <form id="edit-form" class="space-y-4">
+                <input type="hidden" id="edit-id">
+                
+                <!-- Type -->
+                <div>
+                    <label for="edit-type" class="block text-sm font-medium text-gray-700 mb-1">類型</label>
+                    <select id="edit-type" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out bg-white">
+                        <option value="Income">收入 (Income)</option>
+                        <option value="Expense">支出 (Expense)</option>
+                    </select>
+                </div>
+                
+                <!-- Category (Must update based on Type) -->
+                <div>
+                    <label for="edit-category" class="block text-sm font-medium text-gray-700 mb-1">會計科目 (類別)</label>
+                    <select id="edit-category" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out bg-white"></select>
+                </div>
+                
+                <!-- Amount -->
+                <div>
+                    <label for="edit-amount" class="block text-sm font-medium text-gray-700 mb-1">金額 (NTD)</label>
+                    <input type="number" id="edit-amount" required min="0.01" step="0.01" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <!-- Description -->
+                <div>
+                    <label for="edit-description" class="block text-sm font-medium text-gray-700 mb-1">備註/摘要 (可選)</label>
+                    <textarea id="edit-description" rows="2" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+
+                 <!-- Date/Timestamp Display -->
+                 <div class="text-sm text-gray-500">
+                    記錄時間: <span id="edit-timestamp-display"></span>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" id="cancel-edit-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">取消</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition">儲存修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Application Script (Firebase Enabled) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 設定 Firebase Debug Log
+        setLogLevel('debug');
+        
+        // --- 1. Global Variables & Constants ---
+        let chartInstance = null;
+        let docIdToDelete = null; 
+        
+        // Firebase Globals
+        let app;
+        let db;
+        let auth;
+        let currentUserId = null;
+        let transactionCollectionRef = null;
+
+        // 會計科目定義 (Chart of Accounts)
+        const ACCOUNT_CATEGORIES = {
+            Income: [
+                '薪資收入 (Salary)', 
+                '投資收益 (Investment)', 
+                '兼職收入 (Part-time)', 
+                '禮金/贈與 (Gifts)', 
+                '其他收入 (Other Income)'
+            ],
+            Expense: [
+                '餐飲費 (Food & Drink)', 
+                '交通費 (Transportation)', 
+                '房租/房貸 (Rent/Mortgage)', 
+                '水電瓦斯 (Utilities)', 
+                '娛樂休閒 (Entertainment)', 
+                '醫療保健 (Medical)', 
+                '服飾美容 (Apparel & Beauty)', 
+                '教育進修 (Education)', 
+                '投資支出 (Investment Out)',
+                '其他支出 (Other Expense)'
+            ]
+        };
+
+        // UI Elements
+        const storageStatus = document.getElementById('storage-status');
+        const userIdStatus = document.getElementById('user-id-status');
+        const listBody = document.getElementById('transactions-list');
+        const reportMonthFilter = document.getElementById('report-month-filter');
+
+        // Helper function to show floating message
+        function showMessage(message, classes) {
+            const box = document.getElementById('message-box');
+            box.textContent = message;
+            box.className = 'p-3 mb-4 rounded-lg text-sm font-medium ' + classes;
+            box.classList.remove('hidden');
+            setTimeout(() => {
+                box.classList.add('hidden');
+            }, 5000); 
+        }
+        
+        // --- Custom Modal Handlers (刪除確認框 & 修改視窗) ---
+        
+        const deleteModal = document.getElementById('delete-modal');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+        const editModal = document.getElementById('edit-modal');
+        const editForm = document.getElementById('edit-form');
+        const editIdInput = document.getElementById('edit-id');
+        const editTypeSelect = document.getElementById('edit-type');
+        const editCategorySelect = document.getElementById('edit-category');
+        const editAmountInput = document.getElementById('edit-amount');
+        const editDescriptionTextarea = document.getElementById('edit-description');
+        const editTimestampDisplay = document.getElementById('edit-timestamp-display');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        
+        // 刪除確認視窗控制
+        function showConfirmModal(docId) {
+            docIdToDelete = docId;
+            deleteModal.classList.remove('hidden');
+        }
+
+        function hideConfirmModal() {
+            docIdToDelete = null;
+            deleteModal.classList.add('hidden');
+        }
+        
+        // 修改視窗控制
+        function showEditModal() {
+            editModal.classList.remove('hidden');
+        }
+
+        function hideEditModal() {
+            editModal.classList.add('hidden');
+        }
+
+        // Modal Event Listeners
+        cancelDeleteBtn.addEventListener('click', hideConfirmModal);
+        confirmDeleteBtn.addEventListener('click', () => {
+            if (docIdToDelete) {
+                deleteTransaction(docIdToDelete);
+            }
+            hideConfirmModal();
+        });
+        
+        cancelEditBtn.addEventListener('click', hideEditModal);
+        editTypeSelect.addEventListener('change', () => {
+            const selectedType = editTypeSelect.value;
+            populateCategoryDropdown(selectedType, editCategorySelect, true); 
+        });
+        editForm.addEventListener('submit', saveEditedTransaction);
+
+        // --- 2. Form & Dropdown Logic ---
+        const transactionForm = document.getElementById('transaction-form');
+        const typeSelect = document.getElementById('type');
+        const categorySelect = document.getElementById('category');
+
+        /**
+         * 根據選擇的交易類型 (Income/Expense) 載入對應的會計科目到下拉選單。
+         */
+        function populateCategoryDropdown(type, selectElement, keepSelection = false) {
+            const currentValue = selectElement.value;
+            selectElement.innerHTML = '<option value="" disabled selected>請選擇科目...</option>';
+            const categories = ACCOUNT_CATEGORIES[type] || [];
+            
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                selectElement.appendChild(option);
+            });
+            
+            selectElement.disabled = !type || categories.length === 0;
+            if (selectElement.disabled && type) {
+                 selectElement.innerHTML = '<option value="" disabled selected>無可用科目</option>';
+            } else if (!type) {
+                 selectElement.innerHTML = '<option value="" disabled selected>請先選擇交易類型...</option>';
+            }
+
+            if (keepSelection && currentValue && categories.includes(currentValue)) {
+                selectElement.value = currentValue;
+            } 
+        }
+
+        // 當「類型」改變時，動態更新「會計科目」下拉選單
+        typeSelect.addEventListener('change', () => {
+            const selectedType = typeSelect.value;
+            populateCategoryDropdown(selectedType, categorySelect);
+        });
+
+        transactionForm.addEventListener('submit', saveTransaction);
+
+        // --- 3. Firebase Operations (CRUD) ---
+
+        /**
+         * 將新的交易記錄儲存到 Firestore。
+         */
+        async function saveTransaction(event) {
+            event.preventDefault();
+
+            if (!transactionCollectionRef) {
+                showMessage('錯誤：Firebase 尚未初始化或未登入。', 'bg-red-100 text-red-800');
+                return;
+            }
+
+            const type = typeSelect.value;
+            const category = categorySelect.value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const description = document.getElementById('description').value.trim();
+            const voucherFile = document.getElementById('voucherFile').files[0];
+            
+            let voucherPath = voucherFile ? `[MOCK_VOUCHER] ${voucherFile.name}` : '';
+            
+            if (isNaN(amount) || amount <= 0 || !category || !type) {
+                showMessage('錯誤：請檢查所有必填欄位 (類型、科目、金額)。', 'bg-red-100 text-red-800');
+                return;
+            }
+
+            const newTransaction = {
+                type,
+                amount,
+                category,
+                description,
+                voucherPath,
+                timestamp: new Date().toISOString(), // 儲存時間戳
+                // Firestore 會自動生成 ID
+            };
+
+            try {
+                await addDoc(transactionCollectionRef, newTransaction);
+                
+                showMessage('交易儲存成功！', 'bg-green-100 text-green-800');
+                transactionForm.reset();
+                populateCategoryDropdown('', categorySelect); // 重設下拉選單
+            } catch (e) {
+                console.error("Error adding document to Firestore: ", e);
+                showMessage(`交易儲存失敗: ${e.message}`, 'bg-red-100 text-red-800');
+            }
+        }
+        
+        /**
+         * 載入交易資料到修改視窗 (Edit Modal)。
+         * (此函數僅從 onSnapshot 提供的即時資料中查找，不需單獨 Firestore 讀取)
+         */
+        function loadTransactionForEdit(docId, currentTransactions) {
+            const transaction = currentTransactions.find(t => t.id === docId);
+
+            if (!transaction) {
+                showMessage('錯誤：找不到要修改的交易記錄。', 'bg-red-100 text-red-800');
+                return;
+            }
+
+            // 填充表單
+            editIdInput.value = transaction.id;
+            editTypeSelect.value = transaction.type;
+            editAmountInput.value = transaction.amount;
+            editDescriptionTextarea.value = transaction.description || '';
+            editTimestampDisplay.textContent = new Date(transaction.timestamp).toLocaleString('zh-TW');
+
+            // 填充類別下拉選單
+            populateCategoryDropdown(transaction.type, editCategorySelect, true);
+            editCategorySelect.value = transaction.category; // 設置選中的類別
+
+            showEditModal();
+        }
+
+        /**
+         * 儲存修改後的交易記錄 (Update Firestore)。
+         */
+        async function saveEditedTransaction(event) {
+            event.preventDefault();
+
+            const docId = editIdInput.value;
+            const type = editTypeSelect.value;
+            const category = editCategorySelect.value;
+            const amount = parseFloat(editAmountInput.value);
+            const description = editDescriptionTextarea.value.trim();
+            
+            if (!transactionCollectionRef) return;
+
+            if (isNaN(amount) || amount <= 0 || !category || !type) {
+                showMessage('錯誤：請檢查所有必填欄位 (類型、科目、金額)。', 'bg-red-100 text-red-800');
+                return;
+            }
+            
+            try {
+                const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/transactions`, docId);
+                
+                await updateDoc(docRef, {
+                    type,
+                    category,
+                    amount,
+                    description,
+                    // 不更新 timestamp, voucherPath 保持不變
+                });
+
+                showMessage('交易修改成功！', 'bg-blue-100 text-blue-800');
+                hideEditModal();
+            } catch (e) {
+                console.error("Error updating document in Firestore: ", e);
+                showMessage(`交易修改失敗: ${e.message}`, 'bg-red-100 text-red-800');
+            }
+        }
+
+
+        /**
+         * 從 Firestore 刪除指定的交易記錄。
+         */
+        async function deleteTransaction(docId) {
+            if (!transactionCollectionRef) return;
+
+            try {
+                const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/transactions`, docId);
+                await deleteDoc(docRef);
+
+                showMessage('交易已刪除。', 'bg-yellow-100 text-yellow-800');
+            } catch (e) {
+                console.error("Error deleting document from Firestore: ", e);
+                showMessage(`刪除失敗: ${e.message}`, 'bg-red-100 text-red-800');
+            }
+        }
+
+        // --- 4. Firestore Listener and UI Update Logic ---
+        
+        let allTransactionsCache = []; // 用於儲存即時監聽的資料
+
+        /**
+         * 建立 Firestore 上的即時監聽。
+         */
+        function setupFirestoreListener() {
+            if (!db || !currentUserId) {
+                console.error("Firestore or User ID is not ready.");
+                return;
+            }
+
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const TRANSACTION_PATH = `artifacts/${appId}/users/${currentUserId}/transactions`;
+            transactionCollectionRef = collection(db, TRANSACTION_PATH);
+            
+            // 使用 onSnapshot 監聽即時變化
+            const q = query(transactionCollectionRef);
+            
+            onSnapshot(q, (snapshot) => {
+                const transactions = [];
+                snapshot.forEach(doc => {
+                    // 將 Firestore Document ID 作為交易的 ID
+                    transactions.push({ id: doc.id, ...doc.data() });
+                });
+
+                // 排序 (在客戶端進行，以避免 Firestore 需要 index 的問題)
+                transactions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                allTransactionsCache = transactions; // 更新緩存
+                updateUI(transactions);
+            }, (error) => {
+                console.error("Firestore Listener Error:", error);
+                showMessage(`資料載入失敗: ${error.message}`, 'bg-red-100 text-red-800');
+                listBody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-red-500">載入錯誤，請檢查連線。</td></tr>`;
+            });
+        }
+
+
+        /**
+         * 更新頁面上的所有 UI 元素。
+         * @param {Array<Object>} transactions - 排序後的交易記錄陣列。
+         */
+        function updateUI(transactions) {
+            let totalIncome = 0;
+            let totalExpense = 0;
+            
+            listBody.innerHTML = ''; 
+
+            if (transactions.length === 0) {
+                listBody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500">尚無交易記錄。</td></tr>`;
+            }
+
+            transactions.forEach(t => {
+                const date = new Date(t.timestamp).toLocaleDateString('zh-TW');
+                
+                const sign = t.type === 'Income' ? '+' : '-' ;
+                const amountClass = t.type === 'Income' ? 'text-green-600 font-bold' : 'text-red-600 font-bold';
+                const hasVoucher = t.voucherPath && t.voucherPath !== '';
+                const voucherDisplay = hasVoucher 
+                    ? `<span class="text-blue-500 cursor-pointer hover:underline" title="${t.voucherPath}">已附</span>`
+                    : '<span class="text-gray-400">-</span>';
+
+                if (t.type === 'Income') {
+                    totalIncome += t.amount;
+                } else {
+                    totalExpense += t.amount;
+                }
+
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition duration-100';
+                row.innerHTML = `
+                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">${date}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm font-medium ${t.type === 'Income' ? 'text-green-600' : 'text-red-600'}">${t.type === 'Income' ? '收入' : '支出'}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm ${amountClass}">${sign} NT$ ${t.amount.toLocaleString('zh-TW')}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-700">${t.category}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm">${voucherDisplay}</td>
+                    <td class="px-3 py-4 text-sm text-gray-500 max-w-xs truncate" title="${t.description || '-'}">${t.description || '-'}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <button class="text-blue-600 hover:text-blue-900 transition duration-150 edit-btn" data-id="${t.id}">修改</button>
+                        <button class="text-red-600 hover:text-red-900 transition duration-150 delete-btn" data-id="${t.id}">刪除</button>
+                    </td>
+                `;
+                listBody.appendChild(row);
+            });
+
+            // Update Summary Cards
+            const netBalance = totalIncome - totalExpense;
+            document.getElementById('total-income').textContent = `NT$ ${totalIncome.toLocaleString('zh-TW')}`;
+            document.getElementById('total-expense').textContent = `NT$ ${totalExpense.toLocaleString('zh-TW')}`;
+            document.getElementById('net-balance').textContent = `NT$ ${netBalance.toLocaleString('zh-TW')}`;
+            document.getElementById('net-balance').classList.toggle('text-red-600', netBalance < 0);
+            document.getElementById('net-balance').classList.toggle('text-blue-600', netBalance >= 0);
+
+            // Attach action listeners
+            listBody.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const docId = e.target.dataset.id;
+                    showConfirmModal(docId); 
+                });
+            });
+            listBody.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const docId = e.target.dataset.id;
+                    // 使用緩存的資料進行編輯視窗的載入
+                    loadTransactionForEdit(docId, allTransactionsCache); 
+                });
+            });
+
+
+            // Update Chart and Report Filter options
+            updateChart(transactions);
+            populateReportMonthFilter(transactions);
+            generateReport(); // Generate report for the currently selected month
+        }
+
+        // --- 5. Chart.js Implementation (Completed) ---
+
+        function updateChart(transactions) {
+            const monthlyData = {}; // { 'YYYY-MM': { income: 0, expense: 0 } }
+
+            transactions.forEach(t => {
+                const date = new Date(t.timestamp);
+                if (isNaN(date.getTime())) return; 
+
+                const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+                if (!monthlyData[yearMonth]) {
+                    monthlyData[yearMonth] = { income: 0, expense: 0 };
+                }
+
+                if (t.type === 'Income') {
+                    monthlyData[yearMonth].income += t.amount;
+                } else {
+                    monthlyData[yearMonth].expense += t.amount;
+                }
+            });
+
+            // 1. 準備圖表資料
+            const labels = Object.keys(monthlyData).sort();
+            const incomeData = labels.map(key => monthlyData[key].income);
+            const expenseData = labels.map(key => monthlyData[key].expense);
+            const balanceData = labels.map(key => monthlyData[key].income - monthlyData[key].expense);
+
+            const ctx = document.getElementById('balanceChart').getContext('2d');
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '總收入 (NTD)',
+                            data: incomeData,
+                            backgroundColor: 'rgba(52, 211, 153, 0.7)', // Green
+                            stack: 'Stack 0',
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: '總支出 (NTD)',
+                            data: expenseData.map(e => -e), // 顯示為負值以便堆疊在下方
+                            backgroundColor: 'rgba(248, 113, 113, 0.7)', // Red
+                            stack: 'Stack 0',
+                            yAxisID: 'y'
+                        },
+                        {
+                            type: 'line',
+                            label: '淨結餘 (NTD)',
+                            data: balanceData,
+                            borderColor: 'rgb(59, 130, 246)', // Blue
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                            fill: false,
+                            tension: 0.3,
+                            yAxisID: 'y1' // 使用不同的 Y 軸
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: { display: false }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            title: { display: true, text: '收入/支出 (NTD)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            title: { display: true, text: '淨結餘 (NTD)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    let value = context.parsed.y;
+                                    // 確保支出顯示為正數但在圖表上顯示為負
+                                    if (context.dataset.label.includes('支出')) {
+                                        value = -value;
+                                    }
+                                    return label + 'NT$ ' + value.toLocaleString('zh-TW');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // --- 6. Report Logic (Completed) ---
+        
+        /**
+         * 填充報表篩選器的月份下拉選單。
+         */
+        function populateReportMonthFilter(transactions) {
+            const months = new Set();
+            transactions.forEach(t => {
+                const date = new Date(t.timestamp);
+                if (!isNaN(date.getTime())) {
+                    const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    months.add(yearMonth);
+                }
+            });
+
+            const sortedMonths = Array.from(months).sort().reverse();
+            const currentSelected = reportMonthFilter.value;
+            reportMonthFilter.innerHTML = '';
+            
+            if (sortedMonths.length === 0) {
+                reportMonthFilter.innerHTML = '<option value="" selected>無記錄</option>';
+            }
+
+            sortedMonths.forEach(month => {
+                const option = document.createElement('option');
+                option.value = month;
+                option.textContent = month;
+                reportMonthFilter.appendChild(option);
+            });
+
+            // 嘗試保留選中的月份，否則選中最新的月份
+            if (currentSelected && sortedMonths.includes(currentSelected)) {
+                reportMonthFilter.value = currentSelected;
+            } else if (sortedMonths.length > 0) {
+                reportMonthFilter.value = sortedMonths[0];
+            }
+        }
+        
+        reportMonthFilter.addEventListener('change', generateReport);
+        
+        /**
+         * 根據篩選器生成並顯示收支分類報告。
+         */
+        function generateReport() {
+            const selectedMonth = reportMonthFilter.value;
+            const incomeBody = document.getElementById('report-income-body');
+            const expenseBody = document.getElementById('report-expense-body');
+            
+            incomeBody.innerHTML = '';
+            expenseBody.innerHTML = '';
+
+            if (!selectedMonth) {
+                incomeBody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">請選擇月份。</td></tr>';
+                expenseBody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">請選擇月份。</td></tr>';
+                return;
+            }
+
+            const filteredTransactions = allTransactionsCache.filter(t => 
+                t.timestamp.startsWith(selectedMonth)
+            );
+
+            const reportData = { income: {}, expense: {} };
+            let totalIncome = 0;
+            let totalExpense = 0;
+            
+            filteredTransactions.forEach(t => {
+                if (t.type === 'Income') {
+                    reportData.income[t.category] = (reportData.income[t.category] || 0) + t.amount;
+                    totalIncome += t.amount;
+                } else if (t.type === 'Expense') {
+                    reportData.expense[t.category] = (reportData.expense[t.category] || 0) + t.amount;
+                    totalExpense += t.amount;
+                }
+            });
+
+            // 渲染收入報告
+            if (totalIncome === 0) {
+                incomeBody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">本月沒有收入記錄。</td></tr>';
+            } else {
+                for (const category in reportData.income) {
+                    const amount = reportData.income[category];
+                    const percentage = (amount / totalIncome * 100).toFixed(1);
+                    incomeBody.innerHTML += `
+                        <tr>
+                            <td class="py-2 text-left text-sm text-gray-700">${category}</td>
+                            <td class="py-2 text-right text-sm text-green-600">${amount.toLocaleString('zh-TW')}</td>
+                            <td class="py-2 text-right text-sm text-gray-700">${percentage}%</td>
+                        </tr>
+                    `;
+                }
+            }
+
+            // 渲染支出報告
+            if (totalExpense === 0) {
+                expenseBody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">本月沒有支出記錄。</td></tr>';
+            } else {
+                for (const category in reportData.expense) {
+                    const amount = reportData.expense[category];
+                    const percentage = (amount / totalExpense * 100).toFixed(1);
+                    expenseBody.innerHTML += `
+                        <tr>
+                            <td class="py-2 text-left text-sm text-gray-700">${category}</td>
+                            <td class="py-2 text-right text-sm text-red-600">${amount.toLocaleString('zh-TW')}</td>
+                            <td class="py-2 text-right text-sm text-gray-700">${percentage}%</td>
+                        </tr>
+                    `;
+                }
+            }
+        }
+        
+        // --- 7. Initialization ---
+
+        let isAuthReady = false;
+        let authAttempts = 0;
+
+        /**
+         * 初始化 Firebase 應用程式和身份驗證。
+         */
+        async function initApp() {
+            storageStatus.textContent = '連線中...';
+            
+            try {
+                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+            } catch (e) {
+                storageStatus.textContent = '❌ Firebase 初始化失敗';
+                console.error("Firebase initialization failed:", e);
+                showMessage(`Firebase 初始化錯誤: ${e.message}`, 'bg-red-100 text-red-800');
+                return;
+            }
+
+            // 處理身份驗證
+            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+            
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUserId = user.uid;
+                    isAuthReady = true;
+                    storageStatus.textContent = '✅ Firebase & Firestore 連線成功';
+                    userIdStatus.textContent = `使用者 ID: ${currentUserId}`;
+                    
+                    // 一旦登入，立即設定即時監聽
+                    setupFirestoreListener(); 
+                } else {
+                    // 如果沒有登入，嘗試使用 custom token 或匿名登入
+                    if (!isAuthReady && authAttempts < 1) {
+                         try {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                            authAttempts++;
+                        } catch (e) {
+                            storageStatus.textContent = '❌ 登入失敗';
+                            userIdStatus.textContent = 'N/A';
+                            console.error("Authentication failed:", e);
+                            showMessage(`身份驗證失敗: ${e.message}`, 'bg-red-100 text-red-800');
+                        }
+                    } else {
+                        // 匿名登入或 token 登入失敗後的最終狀態
+                        storageStatus.textContent = '⚠️ 未登入，資料無法存取';
+                        userIdStatus.textContent = '請檢查權限。';
+                    }
+                }
+            });
+            
+            // 啟用報表列印按鈕的模擬功能
+            document.getElementById('print-report-btn').addEventListener('click', () => {
+                showMessage('模擬報表匯出功能已觸發！', 'bg-purple-100 text-purple-800');
+            });
+
+            // 初始化交易表單的下拉選單
+            populateCategoryDropdown('', categorySelect);
+        }
+
+        window.onload = initApp;
+
+    </script>
+</body>
+</html>

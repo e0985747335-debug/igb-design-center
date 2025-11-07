@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- 你自己的自訂樣式可寫在這裡 --- */
+
+/* 範例：讓頁面背景柔和一點 */
+body {
+  @apply bg-gray-50 text-gray-800;
+}

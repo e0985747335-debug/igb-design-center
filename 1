@@ -1,0 +1,179 @@
+import React, { useState, useEffect } from 'react';
+// 為了在單一檔案環境中運行，我們直接導入 Firebase 函式
+import { initializeApp } from 'firebase/app';
+import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+
+// 1. 模擬環境變數和配置 (對應 .env.local 和 firebase_init.js 的內容)
+// 在實際專案中，這些值會從 process.env 自動載入。
+const firebaseConfig = {
+  apiKey: "AIzaSy...MockAPIKey...kExA",
+  authDomain: "your-project-id.firebaseapp.com",
+  projectId: "your-project-id",
+  storageBucket: "your-project-id.appspot.com",
+  messagingSenderId: "1234567890",
+  appId: "1:1234567890:web:abcdefghijklmno",
+  measurementId: "G-ABCDEFG"
+};
+
+// 2. 初始化 Firebase (對應 firebase_init.js 的邏輯)
+// 確保只初始化一次
+let app;
+try {
+  app = initializeApp(firebaseConfig);
+} catch (error) {
+  console.error("Firebase 初始化失敗:", error);
+}
+
+// 獲取 Auth 服務實例
+const auth = app ? getAuth(app) : null;
+
+// 主要應用程式元件
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // 3. 狀態監聽邏輯 (對應 AuthStatusComponent.jsx 的內容)
+  useEffect(() => {
+    if (!auth) {
+      setError("Firebase Auth 服務未初始化。請檢查配置。");
+      setLoading(false);
+      return;
+    }
+
+    // onAuthStateChanged 監聽器
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+
+    // 元件卸載時清理監聽器
+    return () => unsubscribe();
+  }, []);
+
+  // 匿名登入處理
+  const handleSignInAnonymously = async () => {
+    if (!auth) {
+      setError("Auth 服務不可用。");
+      return;
+    }
+    setLoading(true);
+    try {
+      await signInAnonymously(auth);
+      // onAuthStateChanged 會自動更新狀態
+    } catch (err) {
+      console.error("匿名登入失敗:", err);
+      setError(`登入錯誤: ${err.message}`);
+      setLoading(false);
+    }
+  };
+
+  // 登出處理 (方便測試)
+  const handleSignOut = async () => {
+    if (!auth) return;
+    try {
+      setLoading(true);
+      await auth.signOut();
+      // onAuthStateChanged 會自動更新狀態
+    } catch (err) {
+      console.error("登出失敗:", err);
+      setError(`登出錯誤: ${err.message}`);
+      setLoading(false);
+    }
+  };
+
+
+  if (!auth) {
+      return (
+          <div className="min-h-screen bg-red-100 flex items-center justify-center p-4">
+              <p className="text-xl font-bold text-red-700">配置錯誤：Firebase Auth 服務未成功初始化。</p>
+          </div>
+      );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-gray-50 p-4">
+        <div className="text-xl font-semibold text-blue-600 animate-pulse bg-white p-4 rounded-xl shadow-lg">
+          載入中，檢查身份驗證狀態...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+      {/* 載入 Tailwind CSS */}
+      <script src="https://cdn.tailwindcss.com"></script>
+      <style>{`
+        /* 確保字體好看 */
+        body { font-family: 'Inter', sans-serif; }
+      `}</style>
+
+      <h1 className="text-4xl font-extrabold text-gray-800 mb-2 tracking-tight">
+        Firebase 身份驗證狀態儀表板
+      </h1>
+      <p className="text-sm text-gray-500 mb-8">使用 `onAuthStateChanged` 實時監聽狀態。</p>
+
+      {error && (
+        <div className="w-full max-w-md bg-red-500 text-white p-3 rounded-lg mb-4 shadow-md">
+          <p className="font-semibold">錯誤:</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
+
+      <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl p-6 md:p-10 border-t-8 border-indigo-600">
+        
+        {/* 狀態標籤 */}
+        <div className={`text-center py-3 px-4 rounded-xl font-bold transition duration-300 mb-6 shadow-lg ${user ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+          <span className="text-2xl">{user ? '✅ 已登入' : '❌ 未登入'}</span>
+        </div>
+
+        <div className="space-y-4">
+          
+          <p className="text-lg font-semibold text-gray-700">用戶 ID (UID):</p>
+          <div className={`p-4 rounded-lg border ${user ? 'border-indigo-400 bg-indigo-50' : 'border-red-400 bg-red-50'}`}>
+            <code className="block text-sm break-all text-gray-800 font-mono">
+              {user ? user.uid : 'N/A (請點擊下方按鈕登入)'}
+            </code>
+          </div>
+
+          <p className="text-lg font-semibold text-gray-700 pt-4">提供者:</p>
+          <div className="p-4 rounded-lg border border-gray-300 bg-gray-50">
+            <code className="block text-sm break-all text-gray-700 font-mono">
+              {user ? (user.isAnonymous ? '匿名 (Anonymous)' : user.providerData[0]?.providerId || '未知') : 'N/A'}
+            </code>
+          </div>
+
+        </div>
+
+        {/* 互動按鈕 */}
+        <div className="mt-8 flex flex-col space-y-4">
+            {!user ? (
+                <button 
+                    onClick={handleSignInAnonymously}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg rounded-xl shadow-xl transition duration-300 transform hover:scale-[1.01] focus:outline-none focus:ring-4 focus:ring-indigo-500"
+                >
+                    🚀 使用匿名帳號登入
+                </button>
+            ) : (
+                 <button 
+                    onClick={handleSignOut}
+                    className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-lg rounded-xl shadow-xl transition duration-300 transform hover:scale-[1.01] focus:outline-none focus:ring-4 focus:ring-red-500"
+                >
+                    🚪 登出
+                </button>
+            )}
+        </div>
+      </div>
+
+      <footer className="mt-10 text-sm text-gray-500 text-center max-w-lg">
+        此範例已整合您的三個程式碼片段：配置、初始化以及 React 的 Auth 監聽組件。
+        <br/>
+        **注意：** 由於未提供有效的 Firebase 金鑰，此應用程式的登入操作不會實際與 Google 的 Firebase 服務連線。
+      </footer>
+    </div>
+  );
+};
+
+export default App;

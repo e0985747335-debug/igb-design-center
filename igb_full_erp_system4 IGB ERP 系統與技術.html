@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 系統全貌：功能總覽、策略指揮中心與 QDP 績效概覽</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* 設置 Inter 字體 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb; /* 淺色背景為主，儀表板區塊將使用深色 */
+            color: #1f2937;
+        }
+
+        /* IGB Logo 色系定義 */
+        :root {
+            --logo-blue: #00A3FF; /* 亮藍色 (主色) */
+            --logo-red: #E5001A;  /* 鮮紅色 (強調/警示色) */
+            --status-green: #10B981; /* 綠色 (正常狀態) */
+            --status-yellow: #F59E0B; /* 黃色 (降級/警告) */
+            --status-red: #E5001A; /* 紅色 (嚴重異常) */
+        }
+        .bg-logo-blue { background-color: var(--logo-blue); }
+        .text-logo-blue { color: var(--logo-blue); }
+        .border-logo-blue { border-color: var(--logo-blue); }
+        .bg-status-green { background-color: var(--status-green); }
+        .text-status-green { color: var(--status-green); }
+        .bg-status-yellow { background-color: var(--status-yellow); }
+        .text-status-yellow { color: var(--status-yellow); }
+        .bg-logo-red { background-color: var(--logo-red); }
+        .text-logo-red { color: var(--logo-red); }
+        .bg-logo-blue-dark { background-color: #0087D8; }
+
+        /* 儀表板卡片樣式 - 策略指揮中心區塊專用 */
+        .dashboard-card {
+            background-color: #1f2937; /* 深灰色背景 */
+            color: #f3f4f6;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .health-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        /* 功能總覽卡片樣式 */
+        .card-light {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease;
+        }
+        .card-light:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+        }
+
+        /* SVG 流程動畫 */
+        @keyframes pulse-flow {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -20; } /* 調整為負值使流動方向正確 */
+        }
+        .flow-line {
+            stroke-dasharray: 8 8;
+            animation: pulse-flow 2s linear infinite;
+        }
+
+        /* 導航標籤樣式 */
+        .nav-link {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        /* QDP 概覽專用樣式 */
+        .qdp-content h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+            border-bottom: 4px solid var(--logo-red);
+            padding-bottom: 0.5rem;
+        }
+
+        .qdp-content h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+            color: var(--logo-blue);
+        }
+
+        .qdp-content h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 1.5rem;
+            color: #374151;
+        }
+
+        .qdp-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        .qdp-content th, .qdp-content td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .qdp-content th {
+            background-color: #f3f4f6;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .qdp-content tr:last-child td {
+            border-bottom: none;
+        }
+        .qdp-content ul, .qdp-content ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+            list-style: disc;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="min-h-screen">
+        <!-- 導覽列 (Navigation) -->
+        <header class="bg-logo-blue text-white shadow-lg sticky top-0 z-20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap justify-between items-center">
+                <h1 class="text-2xl font-bold tracking-tight">IGB ERP 系統與技術</h1>
+                <nav class="flex space-x-4 mt-2 sm:mt-0">
+                    <button id="nav-system-overview" onclick="showSection('system-overview')" class="nav-link px-3 py-2 rounded-lg bg-logo-blue-dark hover:bg-white hover:text-logo-blue" data-section="system-overview">系統總覽 & 架構</button>
+                    <button id="nav-command-center" onclick="showSection('command-center')" class="nav-link px-3 py-2 rounded-lg hover:bg-logo-blue-dark" data-section="command-center">策略指揮中心</button>
+                    <button id="nav-qdp-overview" onclick="showSection('qdp-overview')" class="nav-link px-3 py-2 rounded-lg hover:bg-logo-blue-dark" data-section="qdp-overview">QDP 績效概覽</button>
+                </nav>
+            </div>
+        </header>
+
+        <main class="py-12">
+            <!-- 容器：用於控制最大寬度 -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+                <!-- 區塊 1: 系統總覽與架構 (預設顯示) -->
+                <section id="system-overview" class="mb-16">
+
+                    <h2 class="text-4xl font-extrabold text-gray-900 mb-6 border-b-4 border-logo-blue pb-2">功能總覽：數位化企業的核心</h2>
+                    <p class="text-xl text-gray-600 mb-8">IGB ERP 系統提供統一的資訊平台，覆蓋企業關鍵環節，實現營運效率最大化。</p>
+
+                    <!-- 總覽卡片 -->
+                    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+                        <div class="card-light p-6 bg-white rounded-xl border border-gray-200">
+                            <svg class="w-8 h-8 text-logo-blue mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                            <h3 class="text-xl font-semibold text-gray-900 mb-2">即時數據決策</h3>
+                            <p class="text-gray-500 text-sm">數據即時同步，輔助管理層迅速決策。</p>
+                        </div>
+                        <div class="card-light p-6 bg-white rounded-xl border border-gray-200">
+                            <svg class="w-8 h-8 text-logo-blue mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7h16M4 7l-2-2m2 2l2-2m-2 2l-2 2m4-2h4M7 7h.01M17 7h.01M12 2v20"></path></svg>
+                            <h3 class="text-xl font-semibold text-gray-900 mb-2">端到端流程自動化</h3>
+                            <p class="text-gray-500 text-sm">統一流程，減少人工干預，確保數據準確性。</p>
+                        </div>
+                        <div class="card-light p-6 bg-white rounded-xl border border-gray-200">
+                            <svg class="w-8 h-8 text-logo-blue mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <h3 class="text-xl font-semibold text-gray-900 mb-2">單一數據來源 (SSOT)</h3>
+                            <p class="text-gray-500 text-sm">所有模組共用資料庫，消除資訊孤島。</p>
+                        </div>
+                        <div class="card-light p-6 bg-white rounded-xl border border-gray-200">
+                            <svg class="w-8 h-8 text-logo-blue mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                            <h3 class="text-xl font-semibold text-gray-900 mb-2">彈性擴展架構</h3>
+                            <p class="text-gray-500 text-sm">基於雲端技術，可依據企業成長隨時擴展。</p>
+                        </div>
+                    </div>
+
+                    <!-- 核心模組 (Core Modules) -->
+                    <h2 class="text-4xl font-extrabold text-gray-900 mb-6 border-b-4 border-logo-red pb-2">核心模組：八大功能領域</h2>
+                    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+                        <!-- 模組 1: 財務會計 -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-logo-red flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-red-100 text-logo-red rounded-full mb-3">💰</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">財務會計</h4>
+                            <p class="text-sm text-gray-500">總帳、應收/應付、資產管理。</p>
+                        </div>
+                        <!-- 模組 2: 進銷存 (ISP) -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-logo-blue flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-blue-100 text-logo-blue rounded-full mb-3">📦</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">進銷存 (ISP)</h4>
+                            <p class="text-sm text-gray-500">採購單、銷售訂單、庫存追蹤。</p>
+                        </div>
+                        <!-- 模組 3: 商品管理 -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-status-green flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-green-100 text-green-700 rounded-full mb-3">🏷️</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">商品管理</h4>
+                            <p class="text-sm text-gray-500">物料主檔、BOM、規格與版本控制。</p>
+                        </div>
+                        <!-- 模組 4: 廠商管理 -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-status-yellow flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-yellow-100 text-yellow-700 rounded-full mb-3">🤝</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">廠商管理</h4>
+                            <p class="text-sm text-gray-500">供應商資料、評級、詢報價流程。</p>
+                        </div>
+                        <!-- 模組 5: 人事管理 -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-teal-500 flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-teal-100 text-teal-700 rounded-full mb-3">👤</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">人事管理</h4>
+                            <p class="text-sm text-gray-500">考勤、薪資計算、績效評估。</p>
+                        </div>
+                        <!-- 模組 6: ERP 管理 -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-purple-500 flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-purple-100 text-purple-700 rounded-full mb-3">⚙️</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">ERP 管理</h4>
+                            <p class="text-sm text-gray-500">用戶權限、流程配置、參數設定。</p>
+                        </div>
+                        <!-- 模組 7: ERP 雲端整合 -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-logo-blue flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-blue-100 text-logo-blue rounded-full mb-3">☁️</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">ERP 雲端整合</h4>
+                            <p class="text-sm text-gray-500">API Gateway、外部系統串接。</p>
+                        </div>
+                        <!-- 模組 8: 數據中心 / BI -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-logo-red flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-red-100 text-logo-red rounded-full mb-3">📊</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">數據中心 / BI</h4>
+                            <p class="text-sm text-gray-500">即時儀表板、趨勢分析與報表。</p>
+                        </div>
+                    </div>
+
+                    <!-- 系統架構圖 (System Architecture Diagram) -->
+                    <h2 class="text-4xl font-extrabold text-gray-900 mb-8 border-b-4 border-logo-blue pb-2">系統架構圖：IGB ERP 技術分層</h2>
+                    <div class="bg-white p-6 md:p-10 rounded-xl card-light overflow-x-auto">
+                        <!-- 響應式 SVG 架構圖 -->
+                        <svg viewBox="0 0 900 650" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="var(--logo-blue)" />
+                                </marker>
+                                <filter id="shadow">
+                                    <feDropShadow dx="2" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.1"/>
+                                </filter>
+                            </defs>
+
+                            <!-- 圖層 1: 呈現層 (Presentation Layer) - Y=50 -->
+                            <rect x="50" y="20" width="800" height="80" fill="#e0f2fe" rx="15" ry="15" filter="url(#shadow)"/>
+                            <text x="450" y="65" text-anchor="middle" font-size="28" font-weight="bold" fill="#0c4a6e">呈現層 (Presentation Layer)</text>
+
+                            <!-- 呈現層子元件 -->
+                            <rect x="100" y="30" width="150" height="60" fill="#ffffff" rx="10" ry="10" stroke="var(--logo-blue)" stroke-width="2"/>
+                            <text x="175" y="65" text-anchor="middle" font-size="18" fill="#0c4a6e">Web/Desktop UI</text>
+
+                            <rect x="375" y="30" width="150" height="60" fill="#ffffff" rx="10" ry="10" stroke="var(--logo-blue)" stroke-width="2"/>
+                            <text x="450" y="65" text-anchor="middle" font-size="18" fill="#0c4a6e">Mobile Apps</text>
+
+                            <rect x="650" y="30" width="150" height="60" fill="#ffffff" rx="10" ry="10" stroke="var(--logo-blue)" stroke-width="2"/>
+                            <text x="725" y="65" text-anchor="middle" font-size="18" fill="#0c4a6e">API Gateway</text>
+
+                            <!-- 流程線 (L1 -> L2) -->
+                            <line x1="450" y1="100" x2="450" y2="120" stroke="var(--logo-blue)" stroke-width="3" marker-end="url(#arrowhead-blue)" class="flow-line"/>
+
+                            <!-- 圖層 2: 應用層 (Application Layer) - Y=200 -->
+                            <rect x="50" y="120" width="800" height="160" fill="#ccfbf1" rx="15" ry="15" filter="url(#shadow)"/>
+                            <text x="450" y="150" text-anchor="middle" font-size="28" font-weight="bold" fill="#065f46">應用層 (Application Layer)</text>
+
+                            <!-- 應用層子元件 -->
+                            <rect x="100" y="180" width="250" height="80" fill="#ffffff" rx="10" ry="10" stroke="var(--status-green)" stroke-width="2"/>
+                            <text x="225" y="225" text-anchor="middle" font-size="20" fill="#065f46">ERP 核心模組 (業務/財務)</text>
+
+                            <rect x="500" y="180" width="350" height="80" fill="#ffffff" rx="10" ry="10" stroke="var(--status-green)" stroke-width="2"/>
+                            <text x="675" y="225" text-anchor="middle" font-size="20" fill="#065f46">業務邏輯、工作流程引擎 (BPM)</text>
+
+                            <!-- 流程線 (L2 -> L3) -->
+                            <line x1="450" y1="280" x2="450" y2="310" stroke="var(--logo-blue)" stroke-width="3" marker-end="url(#arrowhead-blue)" class="flow-line"/>
+
+                            <!-- 圖層 3: 資料層 (Data Layer) - Y=350 -->
+                            <rect x="50" y="310" width="800" height="80" fill="#ffe4e6" rx="15" ry="15" filter="url(#shadow)"/>
+                            <text x="450" y="355" text-anchor="middle" font-size="28" font-weight="bold" fill="#9f1239">資料層 (Data Layer)</text>
+
+                            <!-- 資料層子元件 -->
+                            <rect x="150" y="325" width="200" height="50" fill="#ffffff" rx="10" ry="10" stroke="var(--logo-red)" stroke-width="2"/>
+                            <text x="250" y="355" text-anchor="middle" font-size="18" fill="#9f1239">核心交易資料庫 (SQL)</text>
+
+                            <rect x="550" y="325" width="200" height="50" fill="#ffffff" rx="10" ry="10" stroke="var(--logo-red)" stroke-width="2"/>
+                            <text x="650" y="355" text-anchor="middle" font-size="18" fill="#9f1239">文件/快取 (NoSQL/Cache)</text>
+
+                            <!-- 流程線 (L3 -> L4) -->
+                            <line x1="450" y1="390" x2="450" y2="420" stroke="var(--logo-blue)" stroke-width="3" marker-end="url(#arrowhead-blue)" class="flow-line"/>
+
+                            <!-- 圖層 4: 數據中心 / BI 層 (BI Layer) - Y=450 -->
+                            <rect x="50" y="420" width="800" height="80" fill="#fae8ff" rx="15" ry="15" filter="url(#shadow)"/>
+                            <text x="450" y="465" text-anchor="middle" font-size="28" font-weight="bold" fill="#701a75">數據中心 / BI 層</text>
+
+                            <!-- 數據中心子元件 -->
+                            <rect x="150" y="435" width="200" height="50" fill="#ffffff" rx="10" ry="10" stroke="#a855f7" stroke-width="2"/>
+                            <text x="250" y="465" text-anchor="middle" font-size="18" fill="#701a75">ETL / 資料倉儲</text>
+
+                            <rect x="550" y="435" width="200" height="50" fill="#ffffff" rx="10" ry="10" stroke="#a855f7" stroke-width="2"/>
+                            <text x="650" y="465" text-anchor="middle" font-size="18" fill="#701a75">報告與分析工具</text>
+
+                            <!-- 流程線 (L2 <-> L5 - 雲端整合) -->
+                            <line x1="850" y1="220" x2="880" y2="220" stroke="var(--logo-blue)" stroke-width="2" marker-end="url(#arrowhead-blue)"/>
+                            <line x1="880" y1="220" x2="880" y2="560" stroke="var(--logo-blue)" stroke-width="2"/>
+                            <line x1="880" y1="560" x2="850" y2="560" stroke="var(--logo-blue)" stroke-width="2" marker-end="url(#arrowhead-blue)"/>
+                            <text x="885" y="390" text-anchor="start" font-size="16" fill="#0c4a6e" transform="rotate(90, 885, 390)">外部整合層</text>
+                            
+                            <!-- 圖層 5: 外部系統 (External Systems) - Y=550 -->
+                            <rect x="50" y="520" width="800" height="80" fill="#fef9c3" rx="15" ry="15" filter="url(#shadow)"/>
+                            <text x="450" y="565" text-anchor="middle" font-size="28" font-weight="bold" fill="#a16207">外部整合與服務 (APIs)</text>
+
+                        </svg>
+                    </div>
+
+                </section>
+
+                <!-- 區塊 2: 策略指揮中心 (Command Center) -->
+                <section id="command-center" class="mb-16 hidden">
+                    <div class="dashboard-card p-8">
+                        <h2 class="text-4xl font-extrabold text-white mb-8 border-b-4 border-status-green pb-2">策略指揮中心：即時營運監控</h2>
+                        <p class="text-lg text-gray-400 mb-10">此儀表板提供關鍵業務指標 (KBI) 和系統健康狀態的即時概覽，協助高層迅速掌握企業脈動。</p>
+
+                        <!-- 系統健康總覽 -->
+                        <div class="mb-10">
+                            <h3 class="text-2xl font-bold text-status-green mb-4 flex items-center">
+                                <span class="health-indicator bg-status-green"></span>
+                                系統健康狀態：GREEN (全面運作)
+                            </h3>
+                            <div class="grid md:grid-cols-3 gap-6 text-gray-200">
+                                <div class="bg-gray-800 p-5 rounded-lg">
+                                    <p class="text-sm text-gray-400">平均交易延遲 (毫秒)</p>
+                                    <p id="latency-value" class="text-3xl font-extrabold text-white mt-1">45 ms</p>
+                                    <p class="text-xs text-status-green">目標 < 100 ms</p>
+                                </div>
+                                <div class="bg-gray-800 p-5 rounded-lg">
+                                    <p class="text-sm text-gray-400">API 請求量 (過去一小時)</p>
+                                    <p id="api-rate" class="text-3xl font-extrabold text-white mt-1">1,250 次</p>
+                                    <p class="text-xs text-status-green">運行穩定</p>
+                                </div>
+                                <div class="bg-gray-800 p-5 rounded-lg">
+                                    <p class="text-sm text-gray-400">數據同步狀態</p>
+                                    <p id="sync-status" class="text-3xl font-extrabold text-status-green mt-1">100% 同步</p>
+                                    <p class="text-xs text-gray-400">上次更新: 07:30:15 AM</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 關鍵業務指標 (KBI) -->
+                        <h3 class="text-2xl font-bold text-logo-blue mb-4">關鍵業務指標 (KBI)</h3>
+                        <div class="grid lg:grid-cols-2 gap-6">
+                            <!-- KBI 卡片 1: 訂單處理效率 -->
+                            <div class="bg-gray-800 p-6 rounded-lg border-l-4 border-logo-blue">
+                                <p class="text-lg font-semibold text-white mb-2">訂單處理效率 (OTD)</p>
+                                <div class="flex justify-between items-end">
+                                    <p id="otd-value" class="text-4xl font-extrabold text-logo-blue">98.5%</p>
+                                    <span class="text-sm text-status-green font-medium">+0.3% (本週趨勢)</span>
+                                </div>
+                                <p class="text-sm text-gray-400 mt-2">目標達成率高，庫存模組協同良好。</p>
+                            </div>
+
+                            <!-- KBI 卡片 2: 應收帳款天數 (DSO) -->
+                            <div class="bg-gray-800 p-6 rounded-lg border-l-4 border-logo-red">
+                                <p class="text-lg font-semibold text-white mb-2">應收帳款天數 (DSO)</p>
+                                <div class="flex justify-between items-end">
+                                    <p id="dso-value" class="text-4xl font-extrabold text-logo-red">42 天</p>
+                                    <span class="text-sm text-status-red font-medium">+2 天 (超標)</span>
+                                </div>
+                                <p class="text-sm text-gray-400 mt-2">財務模組發出警示：兩大客戶延遲付款。</p>
+                            </div>
+                        </div>
+
+                        <!-- 流程警示區 -->
+                        <h3 class="text-2xl font-bold text-status-yellow mt-10 mb-4">即時流程警示</h3>
+                        <ul id="alert-list" class="space-y-3">
+                            <li class="bg-yellow-900/50 p-4 rounded-lg flex justify-between items-center text-status-yellow">
+                                <span>⚠️ 供應商 A 的交貨延遲 48 小時，影響 3 筆生產訂單。</span>
+                                <span class="text-xs text-gray-400">ISP 模組</span>
+                            </li>
+                            <li class="bg-red-900/50 p-4 rounded-lg flex justify-between items-center text-logo-red">
+                                <span>❌ 庫存水平低於安全閾值：關鍵零件 (P/N: XZ-400) 存貨已耗盡。</span>
+                                <span class="text-xs text-gray-400">商品/進銷存模組</span>
+                            </li>
+                            <li class="bg-gray-800 p-4 rounded-lg flex justify-between items-center text-status-green">
+                                <span>✅ 今日所有日結報表已成功生成並分發。</span>
+                                <span class="text-xs text-gray-400">數據中心模組</span>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- 區塊 3: QDP 績效概覽 (QDP Performance Overview) -->
+                <section id="qdp-overview" class="mb-16 hidden qdp-content bg-white p-8 rounded-xl card-light">
+                    <h1>IGB 企業營運績效：QDP 概覽</h1>
+                    <p class="text-lg text-gray-600 mb-6">QDP (Quality, Delivery, Price) 是衡量企業核心競爭力的三大支柱，ERP 系統為其提供數據支撐與追蹤。</p>
+
+                    <!-- Q: 品質 (Quality) -->
+                    <h2>Q - 品質 (Quality)</h2>
+                    <p class="text-gray-700">通過商品管理模組和生產流程的數據，追蹤產品和流程的品質表現。</p>
+                    
+                    <h3>主要績效指標 (KPIs)</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>指標名稱</th>
+                                <th>定義</th>
+                                <th>目標值 (Target)</th>
+                                <th>當前值 (Actual)</th>
+                                <th>ERP 數據來源</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>不良率 (Defect Rate, DR)</td>
+                                <td>單位時間內發現的不良品數量佔總產量的比例。</td>
+                                <td>≤ 0.5%</td>
+                                <td>0.62% <span class="text-logo-red font-bold">(🔴 警告)</span></td>
+                                <td>生產管理、QC 檢驗記錄</td>
+                            </tr>
+                            <tr>
+                                <td>客戶退貨率 (CRR)</td>
+                                <td>因品質問題被客戶退回的貨物價值比例。</td>
+                                <td>≤ 0.1%</td>
+                                <td>0.08% <span class="text-status-green font-bold">(🟢 達標)</span></td>
+                                <td>銷售訂單、應收/應付模組</td>
+                            </tr>
+                            <tr>
+                                <td>首件合格率 (FTY)</td>
+                                <td>生產線第一次通過檢驗的產品比例。</td>
+                                <td>≥ 95%</td>
+                                <td>93.5% <span class="text-status-yellow font-bold">(🟡 降級)</span></td>
+                                <td>生產管理、BOM 追溯</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- D: 交付 (Delivery) -->
+                    <h2>D - 交付 (Delivery)</h2>
+                    <p class="text-gray-700">利用進銷存模組的流程數據，確保按時、按量將產品交付給客戶。</p>
+                    
+                    <h3>交付追蹤與優化</h3>
+                    <ul class="list-disc text-gray-700">
+                        <li>**訂單準時交付率 (OTD - On-Time Delivery)**：衡量所有銷售訂單是否在承諾日期前完成交付的百分比。</li>
+                        <li>**生產前置時間 (Lead Time)**：從訂單確認到產品入庫的總耗時。ERP 系統利用工作流程引擎自動記錄每個環節的時間戳。</li>
+                        <li>**庫存週轉率 (Inventory Turnover)**：衡量庫存效率，過低可能導致缺貨，過高則可能造成資金積壓。</li>
+                    </ul>
+                    
+                    <!-- P: 成本 (Price/Cost) -->
+                    <h2>P - 成本 (Price/Cost)</h2>
+                    <p class="text-gray-700">透過財務會計和進銷存的整合數據，實現精準的成本核算和控制。</p>
+                    
+                    <h3>成本控制與分析</h3>
+                    <ol class="list-decimal text-gray-700">
+                        <li>**產品標準成本核算**：利用商品管理中的 BOM (物料清單) 和財務模組的標準工時/材料價格，自動計算每個產品的標準成本。</li>
+                        <li>**採購價格差異分析**：追蹤實際採購價格與標準價格的差異，及時發現採購成本的波動。</li>
+                        <li>**間接費用分攤追溯**：系統確保所有製造費用和間接成本可以準確地分攤到最終產品上，提供真實的利潤率視角。</li>
+                    </ol>
+
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 設定初始顯示區塊
+        document.addEventListener('DOMContentLoaded', () => {
+            showSection('system-overview');
+        });
+
+        /**
+         * 處理頁面區塊切換的邏輯
+         * @param {string} sectionId - 要顯示的區塊 ID ('system-overview', 'command-center', 'qdp-overview')
+         */
+        function showSection(sectionId) {
+            // 隱藏所有區塊
+            document.getElementById('system-overview').classList.add('hidden');
+            document.getElementById('command-center').classList.add('hidden');
+            document.getElementById('qdp-overview').classList.add('hidden');
+
+            // 移除所有導航按鈕的活動樣式
+            document.querySelectorAll('.nav-link').forEach(btn => {
+                btn.classList.remove('bg-logo-blue-dark');
+                btn.classList.remove('bg-white');
+                btn.classList.remove('text-logo-blue');
+                btn.classList.add('hover:bg-logo-blue-dark');
+            });
+
+            // 顯示目標區塊
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+
+                // 設定活動按鈕的樣式
+                const activeBtn = document.querySelector(`[data-section="${sectionId}"]`);
+                if (activeBtn) {
+                    activeBtn.classList.add('bg-logo-blue-dark');
+                    activeBtn.classList.remove('hover:bg-logo-blue-dark');
+                }
+                
+                // 特別處理第一個按鈕的樣式，使其在活動狀態時顏色不同
+                if (sectionId === 'system-overview') {
+                    activeBtn.classList.add('bg-white', 'text-logo-blue');
+                    activeBtn.classList.remove('bg-logo-blue-dark');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

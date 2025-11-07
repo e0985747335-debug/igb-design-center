@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可收合的大項細目列表</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 使用 Inter 字體 */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f4f7f9;
+        }
+        /* 定義摺疊動畫 */
+        .collapse-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out, padding 0.4s ease-out;
+        }
+        .collapse-panel.open {
+            /* 設置一個足夠大的值來確保內容完全展開 */
+            max-height: 500px;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+    </style>
+    <script>
+        // 確保Firebase相關的全局變量被定義，這是Canvas環境的要求
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const __initial_auth_token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    </script>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="app" class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-extrabold text-gray-800 mb-6 border-b-4 border-blue-500 pb-2">
+            大項與細目收合清單
+        </h1>
+        
+        <div id="accordion-container">
+            <!-- 列表內容將由 JavaScript 渲染 -->
+        </div>
+
+    </div>
+
+    <script>
+        // 定義列表內容
+        const data = [
+            {
+                id: 1,
+                title: "大項 1：專案管理階段",
+                icon: "M10 18a8 8 0 100-16 8 8 0 000 16zm-1-9a1 1 0 000 2h2a1 1 0 100-2H9z", // 圓圈帶橫線圖標 (Lucide: Clock)
+                subItems: [
+                    "啟動：定義專案目標與範圍。",
+                    "規劃：制定詳細的工作計畫、時間表與預算。",
+                    "執行：實際進行工作，產出交付物。",
+                    "監控：追蹤進度與品質，管理風險。",
+                    "結案：驗收成果，釋放資源，撰寫結案報告。"
+                ]
+            },
+            {
+                id: 2,
+                title: "大項 2：新技術趨勢分析",
+                icon: "M13 10V3L4 14h7v7l9-11h-7z", // 閃電圖標 (Lucide: Bolt)
+                subItems: [
+                    "人工智慧 (AI)：深度學習與自然語言處理的應用。",
+                    "區塊鏈 (Blockchain)：去中心化金融與供應鏈追蹤。",
+                    "邊緣運算 (Edge Computing)：將運算能力移至資料來源處，減少延遲。",
+                    "WebAssembly (Wasm)：提升網頁應用程式的執行效能。"
+                ]
+            },
+            {
+                id: 3,
+                title: "大項 3：市場行銷策略",
+                icon: "M15 12a3 3 0 11-6 0 3 3 0 016 0z", // 眼睛圖標 (Lucide: Eye)
+                subItems: [
+                    "內容行銷：創造有價值內容吸引目標受眾。",
+                    "社群媒體行銷 (SMM)：在各大平台建立品牌聲量。",
+                    "搜尋引擎優化 (SEO)：提升網站在搜尋結果中的排名。",
+                    "電子郵件行銷：維護客戶關係與推廣活動。"
+                ]
+            }
+        ];
+
+        // 追蹤每個大項的展開狀態
+        let openSection = null;
+
+        /**
+         * 切換下拉選單的展開/收合狀態
+         * @param {number} sectionId - 要切換的大項 ID
+         */
+        function toggleDropdown(sectionId) {
+            const panel = document.getElementById(`panel-${sectionId}`);
+            const button = document.getElementById(`button-${sectionId}`);
+
+            // 如果點擊的是已經展開的大項，則收合它
+            if (openSection === sectionId) {
+                panel.classList.remove('open');
+                button.setAttribute('aria-expanded', 'false');
+                button.querySelector('svg').style.transform = 'rotate(0deg)';
+                openSection = null;
+            } else {
+                // 否則，先收合所有已展開的大項
+                if (openSection !== null) {
+                    const previousPanel = document.getElementById(`panel-${openSection}`);
+                    const previousButton = document.getElementById(`button-${openSection}`);
+                    if (previousPanel) {
+                        previousPanel.classList.remove('open');
+                    }
+                    if (previousButton) {
+                        previousButton.setAttribute('aria-expanded', 'false');
+                        previousButton.querySelector('svg').style.transform = 'rotate(0deg)';
+                    }
+                }
+                
+                // 展開當前點擊的大項
+                panel.classList.add('open');
+                button.setAttribute('aria-expanded', 'true');
+                button.querySelector('svg').style.transform = 'rotate(180deg)';
+                openSection = sectionId;
+            }
+        }
+
+        /**
+         * 渲染可收合列表的 HTML 內容
+         */
+        function renderAccordion() {
+            const container = document.getElementById('accordion-container');
+            container.innerHTML = data.map(item => `
+                <div class="bg-white rounded-xl shadow-lg mb-4 overflow-hidden transition duration-300 hover:shadow-xl">
+                    <!-- 大項標題按鈕 -->
+                    <button 
+                        id="button-${item.id}"
+                        class="flex items-center justify-between w-full p-5 font-semibold text-left text-lg text-gray-700 bg-gray-50 border-b border-gray-100 focus:outline-none hover:bg-gray-100 transition duration-150"
+                        onclick="toggleDropdown(${item.id})"
+                        aria-expanded="false"
+                        aria-controls="panel-${item.id}"
+                    >
+                        <div class="flex items-center space-x-3">
+                            <!-- 圖標 (使用 SVG 路徑) -->
+                            <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${item.icon}"/>
+                            </svg>
+                            <span>${item.title}</span>
+                        </div>
+                        
+                        <!-- 展開/收合箭頭 -->
+                        <svg class="w-6 h-6 text-gray-500 transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+
+                    <!-- 細目內容面板 -->
+                    <div 
+                        id="panel-${item.id}" 
+                        role="region"
+                        aria-labelledby="button-${item.id}"
+                        class="collapse-panel px-5 text-gray-600 transition duration-400 ease-in-out"
+                    >
+                        <ul class="list-disc list-inside space-y-2 border-l-4 border-blue-200 pl-4">
+                            ${item.subItems.map((subItem, index) => `
+                                <li class="text-base leading-relaxed p-1 hover:text-blue-600 transition duration-150">
+                                    <span class="font-medium text-gray-800">${index + 1}.</span> ${subItem}
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 頁面加載完成後執行渲染
+        window.onload = function() {
+            renderAccordion();
+        };
+
+    </script>
+</body>
+</html>

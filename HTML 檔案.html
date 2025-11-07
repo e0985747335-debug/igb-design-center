@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互動式資料儀表板</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 D3.js 函式庫 -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* 設定字體為 Inter */
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        /* 為圖表設定寬度/高度 */
+        #chart-container {
+            width: 100%;
+            height: 400px;
+        }
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .kpi-label {
+            color: #6b7280;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        /* D3.js 軸線樣式 */
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: #d1d5db;
+            shape-rendering: crispEdges;
+        }
+        .axis text {
+            font-size: 10px;
+            fill: #6b7280;
+        }
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 8px 12px;
+            background: #1f2937;
+            color: white;
+            border-radius: 6px;
+            pointer-events: none;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            transition: opacity 0.1s;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container mx-auto p-4 md:p-8">
+    <!-- 標題 -->
+    <header class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">銷售績效儀表板</h1>
+        <p class="text-gray-500">透過篩選器和時間範圍查看即時資料。</p>
+    </header>
+
+    <!-- 篩選器和控制項 -->
+    <div class="bg-white p-6 rounded-xl shadow-lg mb-8 flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div class="w-full sm:w-auto">
+            <label for="time-filter" class="block text-sm font-medium text-gray-700 mb-1">時間範圍</label>
+            <select id="time-filter" class="w-full sm:w-48 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out">
+                <option value="last_7_days">過去 7 天</option>
+                <option value="last_30_days" selected>過去 30 天</option>
+                <option value="last_90_days">過去 90 天</option>
+            </select>
+        </div>
+        <div class="w-full sm:w-auto">
+            <label for="category-filter" class="block text-sm font-medium text-gray-700 mb-1">產品類別</label>
+            <select id="category-filter" class="w-full sm:w-48 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out">
+                <option value="all">所有類別</option>
+                <option value="electronics">電子產品</option>
+                <option value="apparel">服裝</option>
+                <option value="home">家居用品</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- KPI 卡片 -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+
+        <!-- 總收入 KPI -->
+        <div class="bg-white p-6 rounded-xl shadow-lg transition duration-300 hover:shadow-xl border-t-4 border-blue-500">
+            <div class="kpi-label">總收入</div>
+            <div id="total-revenue-kpi" class="kpi-value text-blue-600">--</div>
+        </div>
+
+        <!-- 平均價格 KPI -->
+        <div class="bg-white p-6 rounded-xl shadow-lg transition duration-300 hover:shadow-xl border-t-4 border-green-500">
+            <div class="kpi-label">平均交易價值</div>
+            <div id="avg-price-kpi" class="kpi-value text-green-600">--</div>
+        </div>
+
+        <!-- 交易次數 KPI -->
+        <div class="bg-white p-6 rounded-xl shadow-lg transition duration-300 hover:shadow-xl border-t-4 border-purple-500">
+            <div class="kpi-label">總交易次數</div>
+            <div id="txn-count-kpi" class="kpi-value text-purple-600">--</div>
+        </div>
+    </div>
+
+    <!-- 主要圖表區塊 -->
+    <div class="bg-white p-6 rounded-xl shadow-lg">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">每日收入趨勢</h2>
+        <div id="chart-container">
+            <!-- D3.js 圖表將繪製在此處 -->
+        </div>
+    </div>
+</div>
+
+<script>
+    // 設置 D3 的邊界，確保圖表與容器邊緣有足夠的空間
+    const margin = { top: 20, right: 30, bottom: 40, left: 60 };
+    let width = 0;
+    let height = 0;
+
+    // 模擬資料結構
+    const mockData = [
+        { date: '2025-10-01', revenue: 12000, transactions: 150, avgPrice: 80, category: 'electronics' },
+        { date: '2025-10-02', revenue: 15500, transactions: 180, avgPrice: 86.1, category: 'apparel' },
+        { date: '2025-10-03', revenue: 14200, transactions: 160, avgPrice: 88.75, category: 'electronics' },
+        { date: '2025-10-04', revenue: 18000, transactions: 200, avgPrice: 90, category: 'home' },
+        { date: '2025-10-05', revenue: 11000, transactions: 130, avgPrice: 84.6, category: 'electronics' },
+        { date: '2025-10-06', revenue: 13500, transactions: 170, avgPrice: 79.4, category: 'apparel' },
+        { date: '2025-10-07', revenue: 19800, transactions: 220, avgPrice: 90, category: 'home' },
+        { date: '2025-10-08', revenue: 16000, transactions: 190, avgPrice: 84.2, category: 'electronics' },
+        { date: '2025-10-09', revenue: 21000, transactions: 240, avgPrice: 87.5, category: 'apparel' },
+        { date: '2025-10-10', revenue: 17000, transactions: 180, avgPrice: 94.4, category: 'home' },
+        { date: '2025-10-11', revenue: 15000, transactions: 175, avgPrice: 85.7, category: 'electronics' },
+        { date: '2025-10-12', revenue: 16500, transactions: 205, avgPrice: 80.4, category: 'apparel' },
+        { date: '2025-10-13', revenue: 20500, transactions: 230, avgPrice: 89.1, category: 'home' },
+        { date: '2025-10-14', revenue: 14500, transactions: 165, avgPrice: 87.8, category: 'electronics' },
+        { date: '2025-10-15', revenue: 18200, transactions: 210, avgPrice: 86.6, category: 'apparel' },
+        { date: '2025-10-16', revenue: 22000, transactions: 250, avgPrice: 88, category: 'home' },
+        { date: '2025-10-17', revenue: 17500, transactions: 195, avgPrice: 89.7, category: 'electronics' },
+        { date: '2025-10-18', revenue: 19000, transactions: 225, avgPrice: 84.4, category: 'apparel' },
+        { date: '2025-10-19', revenue: 23000, transactions: 260, avgPrice: 88.5, category: 'home' },
+        { date: '2025-10-20', revenue: 16800, transactions: 185, avgPrice: 90.8, category: 'electronics' },
+        { date: '2025-10-21', revenue: 18900, transactions: 215, avgPrice: 87.9, category: 'apparel' },
+        { date: '2025-10-22', revenue: 24500, transactions: 270, avgPrice: 90.7, category: 'home' },
+        { date: '2025-10-23', revenue: 15300, transactions: 170, avgPrice: 90, category: 'electronics' },
+        { date: '2025-10-24', revenue: 17800, transactions: 200, avgPrice: 89, category: 'apparel' },
+        { date: '2025-10-25', revenue: 22500, transactions: 255, avgPrice: 88.2, category: 'home' },
+        { date: '2025-10-26', revenue: 19500, transactions: 220, avgPrice: 88.6, category: 'electronics' },
+        { date: '2025-10-27', revenue: 21200, transactions: 245, avgPrice: 86.5, category: 'apparel' },
+        { date: '2025-10-28', revenue: 25800, transactions: 280, avgPrice: 92.1, category: 'home' },
+        { date: '2025-10-29', revenue: 18500, transactions: 205, avgPrice: 90.2, category: 'electronics' },
+        { date: '2025-10-30', revenue: 20000, transactions: 230, avgPrice: 86.9, category: 'apparel' },
+    ];
+
+    // D3 相關變數
+    let svg;
+    let tooltip;
+    const parseDate = d3.timeParse('%Y-%m-%d');
+
+    // 格式化函數
+    const formatCurrency = (d) => d3.format('$,.0f')(d);
+    const formatDate = d3.timeFormat('%b %d');
+
+    // --- 核心修正區域 ---
+
+    /**
+     * @function updateKPIs
+     * @description 計算並更新儀表板上的關鍵績效指標 (KPI)。
+     * * 修正說明:
+     * 舊代碼在嘗試存取 DOM 元素並設定其 textContent 時，若元素尚未載入或 ID 錯誤 (例如 document.getElementById('...kpi') 返回 null)，
+     * 就會拋出 'Cannot set properties of undefined (setting 'textContent')' 的 TypeError 錯誤。
+     * 此修正通過在設定 textContent 之前檢查元素是否存在 (if (el))，確保代碼不會因找不到元素而崩潰。
+     * @param {Array<Object>} data - 經過篩選的資料。
+     */
+    function updateKPIs(data) {
+        if (!data || data.length === 0) {
+            // 清除 KPI 顯示
+            const kpiIds = ['total-revenue-kpi', 'avg-price-kpi', 'txn-count-kpi'];
+            kpiIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.textContent = 'N/A';
+                } else {
+                    // 如果元素不存在，在這裡記錄錯誤，這有助於偵錯 (例如: console.error('Missing KPI element:', id))
+                }
+            });
+            return;
+        }
+
+        // 1. 總收入
+        const totalRevenue = data.reduce((sum, d) => sum + d.revenue, 0);
+
+        // 2. 總交易次數
+        const txnCount = data.reduce((sum, d) => sum + d.transactions, 0);
+
+        // 3. 平均價格 (加權平均，更準確)
+        const avgPrice = totalRevenue / txnCount;
+
+        // 更新 DOM
+        const kpisToUpdate = [
+            { id: 'total-revenue-kpi', value: totalRevenue, format: (v) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` },
+            { id: 'avg-price-kpi', value: avgPrice, format: (v) => `$${v.toFixed(2)}` },
+            { id: 'txn-count-kpi', value: txnCount, format: (v) => v.toLocaleString() }
+        ];
+
+        kpisToUpdate.forEach(kpi => {
+            const el = document.getElementById(kpi.id);
+
+            // FIX: 這是修復 TypeError 的關鍵步驟。
+            // 確保元素存在後再嘗試設定其 textContent 屬性。
+            if (el) {
+                el.textContent = kpi.format(kpi.value);
+            } else {
+                console.error(`KPI element with ID '${kpi.id}' not found. Please check HTML IDs.`);
+            }
+        });
+    }
+
+    // --- 輔助函數和圖表邏輯 ---
+
+    /**
+     * @function calculateFilteredData
+     * @description 根據選擇器值篩選資料。
+     * @returns {Array<Object>} 篩選後的資料。
+     */
+    function calculateFilteredData() {
+        const timeFilter = document.getElementById('time-filter').value;
+        const categoryFilter = document.getElementById('category-filter').value;
+
+        // 將日期字串轉換為 Date 物件
+        const parsedData = mockData.map(d => ({
+            ...d,
+            date: parseDate(d.date)
+        }));
+
+        let filteredData = parsedData;
+
+        // 1. 時間篩選
+        const endDate = new Date(parsedData[parsedData.length - 1].date);
+        let startDate = new Date(endDate);
+
+        if (timeFilter === 'last_7_days') {
+            startDate.setDate(endDate.getDate() - 7);
+        } else if (timeFilter === 'last_30_days') {
+            startDate.setDate(endDate.getDate() - 30);
+        } else if (timeFilter === 'last_90_days') {
+            startDate.setDate(endDate.getDate() - 90);
+        }
+
+        // 篩選日期範圍
+        filteredData = filteredData.filter(d => d.date >= startDate);
+
+        // 2. 類別篩選
+        if (categoryFilter !== 'all') {
+            filteredData = filteredData.filter(d => d.category === categoryFilter);
+        }
+
+        return filteredData;
+    }
+
+    /**
+     * @function renderChart
+     * @description 繪製 D3.js 趨勢圖。
+     */
+    function renderChart() {
+        const container = document.getElementById('chart-container');
+        // 在重新繪製之前移除舊的 SVG 內容
+        d3.select(container).select('svg').remove();
+
+        width = container.clientWidth - margin.left - margin.right;
+        height = container.clientHeight - margin.top - margin.bottom;
+
+        // 1. 取得篩選後的資料並更新 KPIs
+        const data = calculateFilteredData();
+        updateKPIs(data); // 呼叫更新 KPIs
+
+        if (data.length === 0) {
+             d3.select(container).append('div')
+                .attr('class', 'text-center text-gray-500 py-16')
+                .text('沒有符合篩選條件的資料。');
+            return;
+        }
+
+        // 2. 建立 SVG 容器
+        svg = d3.select(container)
+            .append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom)
+            .append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        // 3. 建立比例尺
+        const x = d3.scaleTime()
+            .domain(d3.extent(data, d => d.date))
+            .range([0, width]);
+
+        const y = d3.scaleLinear()
+            .domain([0, d3.max(data, d => d.revenue) * 1.1]) // Y 軸從 0 開始，並留出 10% 的邊距
+            .range([height, 0]);
+
+        // 4. 繪製軸線
+        const xAxis = d3.axisBottom(x).ticks(d3.timeDay.every(Math.max(1, Math.floor(data.length / 10)))).tickFormat(d3.timeFormat('%m/%d'));
+        const yAxis = d3.axisLeft(y).tickFormat(formatCurrency).ticks(5);
+
+        svg.append('g')
+            .attr('class', 'axis x-axis')
+            .attr('transform', `translate(0,${height})`)
+            .call(xAxis);
+
+        svg.append('g')
+            .attr('class', 'axis y-axis')
+            .call(yAxis);
+
+        // 5. 繪製線條生成器
+        const line = d3.line()
+            .x(d => x(d.date))
+            .y(d => y(d.revenue))
+            .curve(d3.curveMonotoneX); // 平滑曲線
+
+        // 6. 繪製線條
+        svg.append('path')
+            .datum(data)
+            .attr('fill', 'none')
+            .attr('stroke', '#3b82f6')
+            .attr('stroke-width', 3)
+            .attr('d', line);
+
+        // 7. 繪製圓點和交互
+        const dots = svg.selectAll('.dot')
+            .data(data)
+            .enter()
+            .append('circle')
+            .attr('class', 'dot')
+            .attr('cx', d => x(d.date))
+            .attr('cy', d => y(d.revenue))
+            .attr('r', 6)
+            .attr('fill', '#3b82f6')
+            .attr('stroke', 'white')
+            .attr('stroke-width', 2)
+            .on('mouseover', function(event, d) {
+                // 顯示 Tooltip
+                const revenueText = formatCurrency(d.revenue);
+                const dateText = formatDate(d.date);
+
+                tooltip.style('opacity', 1)
+                       .html(`<strong>${dateText}</strong><br>收入: ${revenueText}<br>交易: ${d.transactions}`)
+                       .style('left', (event.pageX + 10) + 'px')
+                       .style('top', (event.pageY - 28) + 'px');
+
+                d3.select(this).attr('r', 8).attr('fill', '#2563eb');
+            })
+            .on('mouseout', function() {
+                // 隱藏 Tooltip
+                tooltip.style('opacity', 0);
+                d3.select(this).attr('r', 6).attr('fill', '#3b82f6');
+            });
+
+        // 8. 建立 Tooltip 元素
+        tooltip = d3.select('body').append('div')
+            .attr('class', 'tooltip');
+    }
+
+    // --- 事件監聽器和初始化 ---
+
+    /**
+     * @function resizeChart
+     * @description 處理視窗大小調整事件，重新繪製圖表以保持響應性。
+     */
+    function resizeChart() {
+        if (svg) {
+            // 重新計算寬度
+            const container = document.getElementById('chart-container');
+            width = container.clientWidth - margin.left - margin.right;
+            height = container.clientHeight - margin.top - margin.bottom;
+
+            // 重新設定 SVG 和圖形群組的屬性
+            d3.select(container).select('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom);
+
+            d3.select(container).select('svg g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            // 重新繪製圖表 (最簡單的方法是重新呼叫 renderChart)
+            renderChart();
+        }
+    }
+
+
+    window.onload = function () {
+        // 確保在 DOM 完全載入後再繪製圖表和綁定事件
+
+        // 初始繪製
+        renderChart();
+
+        // 綁定篩選器事件
+        const timeFilter = document.getElementById('time-filter');
+        const categoryFilter = document.getElementById('category-filter');
+
+        // 綁定事件監聽器以重新繪製圖表
+        timeFilter.addEventListener('change', renderChart);
+        categoryFilter.addEventListener('change', renderChart);
+
+        // 視窗大小調整事件
+        window.addEventListener('resize', resizeChart);
+    }
+</script>
+</body>
+</html>

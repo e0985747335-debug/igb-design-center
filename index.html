@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IGB 設計中心在線</title>
+  <style>
+    body {
+      font-family: "Noto Sans TC", sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #fff;
+      text-align: center;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      letter-spacing: 1px;
+    }
+    .buttons {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+    a {
+      background-color: #3b82f6;
+      color: white;
+      text-decoration: none;
+      padding: 0.8rem 1.5rem;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      font-size: 1.1rem;
+    }
+    a:hover {
+      background-color: #2563eb;
+      transform: scale(1.05);
+    }
+    .status {
+      font-size: 1rem;
+      margin-top: 0.5rem;
+      opacity: 0.9;
+    }
+    footer {
+      position: absolute;
+      bottom: 1rem;
+      font-size: 0.9rem;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 IGB 設計中心在線</h1>
+
+  <div class="buttons">
+    <div>
+      <a href="/pgadmin" target="_blank">🧭 pgAdmin</a>
+      <div id="pgadmin-status" class="status">檢查中...</div>
+    </div>
+    <div>
+      <a href="/api/docs" target="_blank">⚙️ API Docs</a>
+      <div id="api-status" class="status">檢查中...</div>
+    </div>
+  </div>
+
+  <footer>© 2025 IGB Design Center</footer>
+
+  <script>
+    async function checkStatus(id, url) {
+      const el = document.getElementById(id);
+      try {
+        const res = await fetch(url, { method: "HEAD" });
+        if (res.ok) el.textContent = "✅ 運行中";
+        else el.textContent = "⚠️ 無回應";
+      } catch {
+        el.textContent = "❌ 無法連線";
+      }
+    }
+
+    setInterval(() => {
+      checkStatus("pgadmin-status", "/pgadmin");
+      checkStatus("api-status", "/api/docs");
+    }, 5000);
+  </script>
+</body>
+</html>

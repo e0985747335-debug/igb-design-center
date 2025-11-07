@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的報銷單儀表板</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#10497E',
+                        'secondary-gray': '#F7F9FB',
+                        'accent-orange': '#FF7A00',
+                        'status-draft': '#9CA3AF', /* Gray-400 */
+                        'status-pending': '#F97316', /* Orange-500 */
+                        'status-approved': '#10B981', /* Green-500 */
+                        'status-rejected': '#EF4444', /* Red-500 */
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        .claim-row:hover {
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans p-4 sm:p-8">
+
+    <div id="app" class="max-w-4xl mx-auto bg-white shadow-2xl rounded-xl p-6 sm:p-8">
+
+        <!-- 訊息顯示框 (取代 alert) -->
+        <div id="messageBox" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+            <div class="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full transform transition-all scale-100 opacity-100">
+                <h3 id="msgTitle" class="text-xl font-bold mb-3 text-primary-blue">提示</h3>
+                <p id="msgText" class="text-gray-700 mb-4">操作訊息。</p>
+                <div class="flex justify-end">
+                    <button onclick="closeMessageBox()" class="bg-primary-blue text-white py-2 px-4 rounded-md hover:bg-primary-blue/90">確定</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 報銷單儀表板視圖 -->
+        <div id="dashboardView" class="view-container">
+            <h1 class="text-3xl font-bold text-primary-blue border-b pb-4 mb-6">我的報銷單追蹤</h1>
+
+            <div class="mb-4">
+                <button onclick="changeFilter('All')" class="filter-btn py-1 px-3 text-sm font-medium rounded-full bg-primary-blue text-white shadow-md transition duration-150" data-filter="All">全部</button>
+                <button onclick="changeFilter('Draft')" class="filter-btn py-1 px-3 text-sm font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition duration-150" data-filter="Draft">草稿</button>
+                <button onclick="changeFilter('Pending')" class="filter-btn py-1 px-3 text-sm font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition duration-150" data-filter="Pending">待審批</button>
+                <button onclick="changeFilter('Rejected')" class="filter-btn py-1 px-3 text-sm font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition duration-150" data-filter="Rejected">已駁回</button>
+            </div>
+
+            <div class="bg-secondary-gray p-4 rounded-lg shadow-inner">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-primary-blue/10">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">標題</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">總金額</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase">狀態</th>
+                            <th class="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase w-20">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="claimListBody" class="bg-white divide-y divide-gray-100">
+                        <!-- Claims data will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 報銷單編輯視圖 -->
+        <div id="editFormView" class="view-container hidden">
+            <h1 class="text-3xl font-bold text-primary-blue border-b pb-4 mb-6">編輯報銷單 <span id="editClaimIdDisplay" class="text-accent-orange">#N/A</span></h1>
+
+            <form id="editForm" class="space-y-6">
+                <!-- 報銷標題 -->
+                <div>
+                    <label for="editTitle" class="block text-sm font-medium text-gray-700 mb-1">報銷單標題</label>
+                    <input type="text" id="editTitle" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue transition duration-150">
+                </div>
+
+                <!-- 報銷總金額 (模擬) -->
+                <div>
+                    <label for="editTotal" class="block text-sm font-medium text-gray-700 mb-1">總金額 (TWD)</label>
+                    <input type="number" id="editTotal" required min="1" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue transition duration-150">
+                </div>
+
+                <!-- 報銷事由 -->
+                <div>
+                    <label for="editPurpose" class="block text-sm font-medium text-gray-700 mb-1">報銷事由</label>
+                    <textarea id="editPurpose" rows="3" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue transition duration-150"></textarea>
+                </div>
+
+                <!-- 模擬明細編輯區 (簡化為文字輸入) -->
+                <div>
+                    <p class="text-sm font-medium text-gray-700 mb-1">模擬明細編輯 (每行一項)</p>
+                    <textarea id="editDetails" rows="5" placeholder="例如：
+交通費: TWD 3000
+餐飲費: TWD 850" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue transition duration-150"></textarea>
+                </div>
+                
+                <!-- 駁回理由 (只在Rejected時顯示) -->
+                <div id="rejectedReasonBox" class="p-4 bg-status-rejected/10 border border-status-rejected rounded-lg hidden">
+                    <p class="font-bold text-status-rejected mb-1">原駁回理由 (請務必閱讀):</p>
+                    <p id="rejectedReasonText" class="text-sm text-gray-700 italic"></p>
+                </div>
+
+                <!-- 按鈕區 -->
+                <div class="flex justify-end space-x-4 pt-4">
+                    <button type="button" onclick="cancelEdit()" class="py-3 px-6 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition duration-150 font-semibold">
+                        取消並返回
+                    </button>
+                    <button type="button" onclick="saveClaim('Draft')" class="py-3 px-6 bg-accent-orange text-white rounded-lg hover:bg-accent-orange/90 transition duration-150 font-semibold">
+                        <span id="saveDraftText">儲存草稿</span>
+                    </button>
+                    <button type="button" onclick="saveClaim('Pending')" class="py-3 px-6 bg-status-approved text-white rounded-lg hover:bg-status-approved/90 transition duration-150 font-semibold">
+                        <span id="resubmitText">重新提交審批</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 模擬報銷單數據
+        let mockClaims = [
+            { id: 101, title: "2025年11月客戶拜訪費用", total: 7350, date: "2025-10-25", status: "Pending", 
+              purpose: "拜訪台北重要客戶，討論年度合作方案。", 
+              details: ["交通費: TWD 3,000", "餐飲費: TWD 850", "住宿費: TWD 3,500"],
+              approverNotes: "" },
+            
+            { id: 102, title: "辦公室用品採購", total: 1200, date: "2025-10-24", status: "Draft", 
+              purpose: "購買影印紙和墨水。", 
+              details: ["影印紙: TWD 700", "墨水匣: TWD 500"],
+              approverNotes: "" }, // 這是可以編輯的草稿
+
+            { id: 103, title: "伺服器採購尾款", total: 85000, date: "2025-10-20", status: "Approved", 
+              purpose: "更新老舊的資料庫伺服器。",
+              details: ["硬體採購尾款: TWD 85,000"],
+              approverNotes: "金額符合預算，已確認規格。"},
+              
+            { id: 104, title: "培訓課程報名", total: 9800, date: "2025-10-18", status: "Rejected", 
+              purpose: "參加 Google Analytics 高級課程。", 
+              details: ["課程費用: TWD 9,800"],
+              approverNotes: "此課程與本年度部門培訓計畫不符，請改報內部指定課程。"}, // 這是可以編輯並重新提交的
+
+            { id: 105, title: "高雄出差高鐵票", total: 2980, date: "2025-10-15", status: "Draft", 
+              purpose: "參加高雄行業研討會。", 
+              details: ["高鐵票(來回): TWD 2,980"],
+              approverNotes: "" },
+        ];
+
+        let currentFilter = 'All';
+        let currentEditingClaimId = null;
+
+        const dashboardView = document.getElementById('dashboardView');
+        const editFormView = document.getElementById('editFormView');
+        const claimListBody = document.getElementById('claimListBody');
+        const filterButtons = document.querySelectorAll('.filter-btn');
+
+        // 編輯表單元素
+        const editClaimIdDisplay = document.getElementById('editClaimIdDisplay');
+        const editTitleInput = document.getElementById('editTitle');
+        const editTotalInput = document.getElementById('editTotal');
+        const editPurposeInput = document.getElementById('editPurpose');
+        const editDetailsInput = document.getElementById('editDetails');
+        const rejectedReasonBox = document.getElementById('rejectedReasonBox');
+        const rejectedReasonText = document.getElementById('rejectedReasonText');
+        const saveDraftText = document.getElementById('saveDraftText');
+        const resubmitText = document.getElementById('resubmitText');
+
+
+        // === 輔助函數：訊息框 ===
+        const messageBox = document.getElementById('messageBox');
+        const msgTitle = document.getElementById('msgTitle');
+        const msgText = document.getElementById('msgText');
+
+        function showMessageBox(title, message, isError = false) {
+            msgTitle.textContent = title;
+            msgText.innerHTML = message;
+            msgTitle.classList.toggle('text-status-rejected', isError);
+            msgTitle.classList.toggle('text-primary-blue', !isError);
+            messageBox.classList.remove('hidden');
+            messageBox.classList.add('flex');
+        }
+
+        function closeMessageBox() {
+            messageBox.classList.add('hidden');
+            messageBox.classList.remove('flex');
+        }
+        
+        // === 狀態處理 ===
+        function getStatusText(status) {
+            switch (status) {
+                case 'Draft': return '草稿';
+                case 'Pending': return '待審批';
+                case 'Approved': return '已批准';
+                case 'Rejected': return '已駁回';
+                default: return '未知';
+            }
+        }
+
+        function getStatusColor(status) {
+            switch (status) {
+                case 'Draft': return { bg: 'bg-status-draft/10', text: 'text-status-draft' };
+                case 'Pending': return { bg: 'bg-status-pending/10', text: 'text-status-pending' };
+                case 'Approved': return { bg: 'bg-status-approved/10', text: 'text-status-approved' };
+                case 'Rejected': return { bg: 'bg-status-rejected/10', text: 'text-status-rejected' };
+                default: return { bg: 'bg-gray-100', text: 'text-gray-500' };
+            }
+        }
+        
+        // === 儀表板渲染與過濾 ===
+        function renderClaimList() {
+            claimListBody.innerHTML = '';
+            
+            const filteredClaims = mockClaims.filter(claim => 
+                currentFilter === 'All' || claim.status === currentFilter
+            ).sort((a, b) => b.id - a.id); // 倒序顯示，新的在上面
+
+            if (filteredClaims.length === 0) {
+                claimListBody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-gray-500 italic">目前沒有符合條件的報銷單。</td></tr>`;
+                return;
+            }
+
+            filteredClaims.forEach(claim => {
+                const row = claimListBody.insertRow();
+                row.className = `claim-row hover:shadow-md transition duration-150`;
+
+                // 標題 (Title)
+                let cell = row.insertCell();
+                cell.className = 'px-4 py-3 text-sm font-medium text-gray-900 truncate max-w-xs';
+                cell.textContent = claim.title;
+
+                // 金額 (Total)
+                cell = row.insertCell();
+                cell.className = 'px-4 py-3 text-sm text-left text-gray-700 font-semibold';
+                cell.textContent = `TWD ${claim.total.toLocaleString()}`;
+
+                // 狀態 (Status)
+                cell = row.insertCell();
+                cell.className = 'px-4 py-3 text-left';
+                const statusColor = getStatusColor(claim.status);
+                cell.innerHTML = `<span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColor.bg} ${statusColor.text}">${getStatusText(claim.status)}</span>`;
+                
+                // 操作 (Actions)
+                cell = row.insertCell();
+                cell.className = 'px-4 py-3 text-right';
+                
+                // 只有草稿和已駁回可以編輯
+                if (claim.status === 'Draft' || claim.status === 'Rejected') {
+                    const editBtn = document.createElement('button');
+                    editBtn.textContent = '編輯';
+                    editBtn.className = 'text-sm font-medium text-primary-blue hover:text-accent-orange transition duration-150';
+                    editBtn.onclick = () => loadEditForm(claim.id);
+                    cell.appendChild(editBtn);
+                } else {
+                    cell.textContent = '-';
+                }
+            });
+            
+            updateFilterStyles();
+        }
+        
+        function changeFilter(filter) {
+            currentFilter = filter;
+            renderClaimList();
+        }
+        
+        function updateFilterStyles() {
+            filterButtons.forEach(btn => {
+                if (btn.dataset.filter === currentFilter) {
+                    btn.classList.replace('bg-gray-200', 'bg-primary-blue');
+                    btn.classList.replace('text-gray-700', 'text-white');
+                    btn.classList.remove('hover:bg-gray-300');
+                } else {
+                    btn.classList.replace('bg-primary-blue', 'bg-gray-200');
+                    btn.classList.replace('text-white', 'text-gray-700');
+                    btn.classList.add('hover:bg-gray-300');
+                }
+            });
+        }
+        
+        // === 編輯功能 ===
+        function loadEditForm(id) {
+            const claim = mockClaims.find(c => c.id === id);
+            if (!claim) {
+                showMessageBox("錯誤", "找不到該報銷單，請刷新頁面。", true);
+                return;
+            }
+
+            currentEditingClaimId = id;
+            
+            // 切換視圖
+            dashboardView.classList.add('hidden');
+            editFormView.classList.remove('hidden');
+
+            // 填充表單數據
+            editClaimIdDisplay.textContent = `#${claim.id}`;
+            editTitleInput.value = claim.title;
+            editTotalInput.value = claim.total;
+            editPurposeInput.value = claim.purpose;
+            // 將明細陣列轉換為每行一項的字串
+            editDetailsInput.value = claim.details.join('\n');
+            
+            // 處理駁回理由顯示
+            if (claim.status === 'Rejected') {
+                rejectedReasonBox.classList.remove('hidden');
+                rejectedReasonText.textContent = claim.approverNotes || '審批人未提供具體駁回理由。';
+                saveDraftText.textContent = '儲存修改';
+                resubmitText.textContent = '重新提交審批';
+            } else {
+                // Draft 狀態
+                rejectedReasonBox.classList.add('hidden');
+                saveDraftText.textContent = '儲存草稿';
+                resubmitText.textContent = '直接提交審批';
+            }
+        }
+        
+        function cancelEdit() {
+            // 清除當前編輯 ID 並返回儀表板
+            currentEditingClaimId = null;
+            editFormView.classList.add('hidden');
+            dashboardView.classList.remove('hidden');
+            renderClaimList();
+        }
+
+        function saveClaim(newStatus) {
+            const index = mockClaims.findIndex(c => c.id === currentEditingClaimId);
+            if (index === -1) {
+                showMessageBox("錯誤", "儲存失敗：報銷單 ID 無效。", true);
+                return;
+            }
+
+            // 獲取表單值
+            const newTitle = editTitleInput.value.trim();
+            const newTotal = parseInt(editTotalInput.value, 10);
+            const newPurpose = editPurposeInput.value.trim();
+            const newDetailsString = editDetailsInput.value.trim();
+
+            if (!newTitle || isNaN(newTotal) || newTotal <= 0 || !newPurpose || !newDetailsString) {
+                showMessageBox("錯誤", "請確保所有欄位都已填寫並金額有效。", true);
+                return;
+            }
+
+            // 更新數據
+            mockClaims[index].title = newTitle;
+            mockClaims[index].total = newTotal;
+            mockClaims[index].purpose = newPurpose;
+            // 將明細字串拆分成陣列
+            mockClaims[index].details = newDetailsString.split('\n').map(d => d.trim()).filter(d => d.length > 0);
+            mockClaims[index].status = newStatus;
+
+            // 只有在重新提交時才清空審批備註 (因為審批人備註是針對舊版本的)
+            if (newStatus === 'Pending') {
+                 mockClaims[index].approverNotes = "重新提交，等待審批。";
+            } else {
+                 mockClaims[index].approverNotes = ""; // 草稿狀態不需要審批備註
+            }
+
+            // 提示成功
+            const statusText = getStatusText(newStatus);
+            showMessageBox(
+                `${statusText} 成功`, 
+                `報銷單 #${currentEditingClaimId} 已成功${statusText}。`
+            );
+
+            // 返回儀表板
+            cancelEdit();
+        }
+
+        // === 初始化 ===
+        window.onload = () => {
+            renderClaimList();
+        };
+
+    </script>
+</body>
+</html>

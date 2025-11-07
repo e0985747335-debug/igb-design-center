@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 工作/任務管理介面</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Scrollbar for a cleaner look */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #d1d5db;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: #9ca3af;
+        }
+        /* Custom colors based on previous ERP context (cool blues/greens) */
+        .status-badge.待辦 { @apply bg-gray-100 text-gray-600; }
+        .status-badge.進行中 { @apply bg-[#118AB2]/10 text-[#118AB2]; }
+        .status-badge.已完成 { @apply bg-[#06D6A0]/10 text-[#06D6A0]; }
+
+        .priority-badge.高 { @apply bg-[#FF6B6B]/10 text-[#FF6B6B]; }
+        .priority-badge.中 { @apply bg-[#FFD166]/10 text-[#FFD166]; }
+        .priority-badge.低 { @apply bg-[#06D6A0]/10 text-[#06D6A0]; }
+
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    // Reusing colors from the ERP Report for consistency
+                    colors: {
+                        'primary': '#06D6A0',
+                        'secondary': '#FF6B6B',
+                        'neutral': '#118AB2',
+                        'accent': '#FFD166',
+                        'bg-light': '#f0f9ff',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 font-sans antialiased text-gray-800">
+
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <!-- Header -->
+        <header class="bg-white shadow-sm p-4 border-b border-gray-100 sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <h1 class="text-2xl font-semibold text-neutral flex items-center">
+                    <svg class="w-6 h-6 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    工作/任務管理
+                </h1>
+                <div class="flex items-center space-x-4">
+                    <button class="bg-primary text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-opacity-90 transition duration-150 flex items-center">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        新增任務
+                    </button>
+                    <button class="text-gray-600 hover:text-neutral transition duration-150 p-2 rounded-full hover:bg-gray-100">
+                        <!-- Export Icon -->
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-grow max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8 flex flex-col md:flex-row gap-6">
+
+            <!-- Sidebar Filters -->
+            <aside class="w-full md:w-64 bg-white rounded-xl shadow-lg p-5 flex-shrink-0 h-full md:sticky top-20">
+                <h2 class="text-xl font-semibold mb-4 text-neutral border-b pb-2">任務篩選</h2>
+
+                <!-- Search Bar -->
+                <div class="mb-5">
+                    <input type="text" id="searchInput" onkeyup="filterTasks()" placeholder="快速搜尋任務標題..." class="w-full p-2 border border-gray-300 rounded-lg focus:ring-accent focus:border-accent transition duration-150">
+                </div>
+
+                <!-- Status Filter -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">狀態</h3>
+                    <div id="statusFilters" class="space-y-2">
+                        <!-- Filters rendered by JS -->
+                    </div>
+                </div>
+
+                <!-- Priority Filter -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">優先級</h3>
+                    <div id="priorityFilters" class="space-y-2">
+                        <!-- Filters rendered by JS -->
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Task List Table -->
+            <section class="flex-grow bg-white rounded-xl shadow-lg p-5 overflow-x-auto">
+                <h2 class="text-xl font-semibold mb-4 text-neutral border-b pb-2">所有任務列表</h2>
+                
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">ID</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-4/12">任務標題</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">指派給</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">狀態</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">優先級</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">截止日期</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="taskListBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Tasks will be rendered here by JavaScript -->
+                    </tbody>
+                </table>
+                
+                <p id="noTasksMessage" class="text-center text-gray-500 mt-8 hidden">無符合篩選條件的任務。</p>
+            </section>
+        </main>
+
+    </div>
+
+    <!-- Task Detail Modal -->
+    <div id="taskModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 transform transition-all scale-100 ease-out">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h3 id="modalTitle" class="text-2xl font-bold text-neutral">任務詳情</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">任務 ID</p>
+                    <p id="modalId" class="text-base font-semibold"></p>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-500">描述</p>
+                    <p id="modalDescription" class="text-gray-700 bg-gray-50 p-3 rounded-lg"></p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">指派給</p>
+                        <p id="modalAssignee" class="text-base"></p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">截止日期</p>
+                        <p id="modalDueDate" class="text-base"></p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">狀態</p>
+                        <span id="modalStatus" class="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium"></span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">優先級</p>
+                        <span id="modalPriority" class="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-4 border-t flex justify-end space-x-3">
+                <button class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">編輯任務</button>
+                <button class="px-4 py-2 text-sm font-medium text-white bg-secondary rounded-lg hover:bg-red-500 transition">標記為完成</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // Mock Data for IGB ERP Tasks
+        let tasks = [
+            { id: 'T001', title: '審核 Q3 財務報表草稿', assignee: '王小明', status: '進行中', priority: '高', dueDate: '2025-10-30', description: '與會計部門確認所有帳戶餘額是否平衡，並提交給經理審批。' },
+            { id: 'T002', title: '更新產品價格：義大利麵醬系列', assignee: '林曉華', status: '待辦', priority: '中', dueDate: '2025-10-28', description: '根據新的採購成本調整零售價格，並同步更新到電商平台。' },
+            { id: 'T003', title: '新廠商評估：冷凍食品供應商', assignee: '陳志遠', status: '已完成', priority: '高', dueDate: '2025-10-20', description: '完成三家潛在新供應商的品質和報價比較，推薦最優者。' },
+            { id: 'T004', title: '系統例行維護與備份', assignee: '系統管理員', status: '待辦', priority: '低', dueDate: '2025-11-05', description: '執行每週一次的資料庫檢查和系統備份作業。' },
+            { id: 'T005', title: '11月促銷活動方案擬定', assignee: '林曉華', status: '進行中', priority: '高', dueDate: '2025-11-01', description: '擬定雙十一和感恩節的促銷品項和折扣力度。' },
+            { id: 'T006', title: '人事資料庫清理：離職人員歸檔', assignee: '張雅雯', status: '已完成', priority: '低', dueDate: '2025-09-30', description: '清理並歸檔上個月離職人員的電子與紙本文件。' },
+            { id: 'T007', title: '優化網站結帳流程 UX', assignee: '王小明', status: '進行中', priority: '中', dueDate: '2025-11-15', description: '根據使用者行為分析結果，減少結帳步驟並提升手機端體驗。' },
+            { id: 'T008', title: '建立新的年度預算模組', assignee: '陳志遠', status: '待辦', priority: '高', dueDate: '2025-12-31', description: '在 ERP 中建立 2026 年度的預算編列與追蹤模組。' }
+        ];
+
+        const taskListBody = document.getElementById('taskListBody');
+        const statusFiltersContainer = document.getElementById('statusFilters');
+        const priorityFiltersContainer = document.getElementById('priorityFilters');
+        const noTasksMessage = document.getElementById('noTasksMessage');
+
+        const availableStatuses = ['所有狀態', '待辦', '進行中', '已完成'];
+        const availablePriorities = ['所有優先級', '高', '中', '低'];
+        
+        // State for active filters
+        let activeStatus = '所有狀態';
+        let activePriority = '所有優先級';
+
+        // --- Core Rendering Functions ---
+
+        /**
+         * Renders a badge element with appropriate class colors.
+         * @param {string} type - 'status' or 'priority'
+         * @param {string} value - The text value of the status/priority
+         * @returns {string} HTML string for the badge
+         */
+        function renderBadge(type, value) {
+            return `<span class="status-badge ${type === 'status' ? 'status-badge ' : 'priority-badge '}${value} inline-flex items-center px-3 py-1 rounded-full text-xs font-medium">${value}</span>`;
+        }
+
+        /**
+         * Renders the filter buttons in the sidebar.
+         */
+        function renderFilters() {
+            // Status Filters
+            statusFiltersContainer.innerHTML = availableStatuses.map(status => `
+                <button onclick="setStatusFilter('${status}')" 
+                        class="w-full text-left p-2 rounded-lg transition duration-150 ${activeStatus === status ? 'bg-neutral text-white font-medium' : 'hover:bg-gray-100 text-gray-700'}">
+                    ${status}
+                </button>
+            `).join('');
+
+            // Priority Filters
+            priorityFiltersContainer.innerHTML = availablePriorities.map(priority => `
+                <button onclick="setPriorityFilter('${priority}')" 
+                        class="w-full text-left p-2 rounded-lg transition duration-150 ${activePriority === priority ? 'bg-neutral text-white font-medium' : 'hover:bg-gray-100 text-gray-700'}">
+                    ${priority}
+                </button>
+            `).join('');
+        }
+
+        /**
+         * Filters and renders the main task list.
+         */
+        function filterTasks() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+            const filteredTasks = tasks.filter(task => {
+                const statusMatch = activeStatus === '所有狀態' || task.status === activeStatus;
+                const priorityMatch = activePriority === '所有優先級' || task.priority === activePriority;
+                const searchMatch = task.title.toLowerCase().includes(searchTerm) || 
+                                    task.id.toLowerCase().includes(searchTerm) || 
+                                    task.assignee.toLowerCase().includes(searchTerm);
+                
+                return statusMatch && priorityMatch && searchMatch;
+            }).sort((a, b) => {
+                // Simple sort by Due Date ascending
+                return new Date(a.dueDate) - new Date(b.dueDate);
+            });
+
+            taskListBody.innerHTML = filteredTasks.map(task => `
+                <tr class="hover:bg-gray-50 cursor-pointer transition duration-150" onclick="showModal('${task.id}')">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-neutral">${task.id}</td>
+                    <td class="px-6 py-4 whitespace-normal text-sm font-medium text-gray-900">${task.title}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${task.assignee}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        ${renderBadge('status', task.status)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        ${renderBadge('priority', task.priority)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${task.dueDate}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <a href="#" class="text-neutral hover:text-primary">查看</a>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Show 'No Tasks' message if list is empty
+            if (filteredTasks.length === 0) {
+                noTasksMessage.classList.remove('hidden');
+            } else {
+                noTasksMessage.classList.add('hidden');
+            }
+        }
+
+        // --- Filter Handlers ---
+
+        function setStatusFilter(status) {
+            activeStatus = status;
+            renderFilters();
+            filterTasks();
+        }
+
+        function setPriorityFilter(priority) {
+            activePriority = priority;
+            renderFilters();
+            filterTasks();
+        }
+
+        // --- Modal Functions ---
+
+        function showModal(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            // Fill Modal Content
+            document.getElementById('modalTitle').textContent = task.title;
+            document.getElementById('modalId').textContent = task.id;
+            document.getElementById('modalDescription').textContent = task.description;
+            document.getElementById('modalAssignee').textContent = task.assignee;
+            document.getElementById('modalDueDate').textContent = task.dueDate;
+
+            const modalStatusEl = document.getElementById('modalStatus');
+            modalStatusEl.textContent = task.status;
+            modalStatusEl.className = `status-badge ${task.status} inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium`;
+
+            const modalPriorityEl = document.getElementById('modalPriority');
+            modalPriorityEl.textContent = task.priority;
+            modalPriorityEl.className = `priority-badge ${task.priority} inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium`;
+
+            // Display Modal
+            document.getElementById('taskModal').classList.remove('hidden');
+            document.getElementById('taskModal').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('taskModal').classList.add('hidden');
+            document.getElementById('taskModal').classList.remove('flex');
+        }
+
+        // Initial Load
+        window.onload = () => {
+            renderFilters();
+            filterTasks();
+        };
+
+    </script>
+</body>
+</html>

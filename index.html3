@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企業核心模組展示</title>
+    <!-- 載入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 設定 Inter 字體和卡片樣式 -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc; /* Light background */
+        }
+        .card-light {
+            /* 添加微小的陰影和過渡效果 */
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+        .card-light:hover {
+            /* 懸停時略微上浮 */
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+    <!-- 定義 Tailwind 自定義顏色，以符合您的設計 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'logo-red': '#C53030', // Custom strong red for branding
+                        'logo-blue': '#3182CE', // Custom blue for branding
+                        'status-green': '#38A169',
+                        'status-yellow': '#D69E2E',
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="antialiased">
+
+    <!-- 頂部導航/標題區塊 -->
+    <header class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">
+                <span class="text-logo-red">E</span>R<span class="text-logo-blue">P</span> 企業資源規劃系統
+            </h1>
+            <p class="text-gray-500 mt-1">整合、自動化、智慧化您的核心業務流程</p>
+        </div>
+    </header>
+
+    <!-- 主要內容區塊 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <!-- 核心模組 (Core Modules) -->
+        <h2 class="text-4xl font-extrabold text-gray-900 mb-6 border-b-4 border-logo-red pb-2">核心模組：八大功能領域</h2>
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+            
+            <!-- 模組 1: 財務會計 -->
+            <div class="card-light p-6 bg-white rounded-xl border-t-4 border-logo-red flex flex-col items-center text-center">
+                <div class="text-4xl p-3 bg-red-100 text-logo-red rounded-full mb-3">💰</div>
+                <h4 class="text-xl font-bold mb-2 text-gray-900">財務會計</h4>
+                <p class="text-sm text-gray-500">總帳、應收/應付、資產管理。</p>
+            </div>
+            
+            <!-- 模組 2: 進銷存 (ISP) -->
+            <div class="card-light p-6 bg-white rounded-xl border-t-4 border-logo-blue flex flex-col items-center text-center">
+                <div class="text-4xl p-3 bg-blue-100 text-logo-blue rounded-full mb-3">📦</div>
+                <h4 class="text-xl font-bold mb-2 text-gray-900">進銷存 (ISP)</h4>
+                <p class="text-sm text-gray-500">採購單、銷售訂單、庫存追蹤。</p>
+            </div>
+            
+            <!-- 模組 3: 商品管理 -->
+            <div class="card-light p-6 bg-white rounded-xl border-t-4 border-status-green flex flex-col items-center text-center">
+                <div class="text-4xl p-3 bg-green-100 text-status-green rounded-full mb-3">🏷️</div>
+                <h4 class="text-xl font-bold mb-2 text-gray-900">商品管理</h4>
+                <p class="text-sm text-gray-500">物料主檔、BOM、規格與版本控制。</p>
+            </div>
+            
+            <!-- 模組 4: 廠商管理 -->
+            <div class="card-light p-6 bg-white rounded-xl border-t-4 border-status-yellow flex flex-col items-center text-center">
+                <div class="text-4xl p-3 bg-yellow-100 text-status-yellow rounded-full mb-3">🤝</div>
+                <h4 class="text-xl font-bold mb-2 text-gray-900">廠商管理</h4>
+                <p class="text-sm text-gray-500">供應商資料、評級、詢報價流程。</p>
+            </div>
+            
+            <!-- 模組 5: 人事管理 -->
+            <div class="card-light p-6 bg-white rounded-xl border-t-4 border-teal-500 flex flex-col items-center text-center">
+                <div class="text-4xl p-3 bg-teal-100 text-teal-700 rounded-full mb-3">👤</div>
+                <h4 class="text-xl font-bold mb-2 text-gray-900">人事管理</h4>
+                <p class="text-sm text-gray-500">考勤、薪資計算、績效評估。</p>
+            </div>
+            
+            <!-- 模組 6: ERP 管理 -->
+            <div class="card-light p-6 bg-white rounded-xl border-t-4 border-purple-500 flex flex-col items-center text-center">
+                <div class="text-4xl p-3 bg-purple-100 text-purple-700 rounded-full mb-3">⚙️</div>
+                <h4 class="text-xl font-bold mb-2 text-gray-900">ERP 管理</h4>
+                <p class="text-sm text-gray-500">用戶權限、流程配置、參數設定。</p>
+            </div>
+            
+            <!-- 模組 7: ERP 雲端整合 -->
+            <div class="card-light p-6 bg-white rounded-xl border-t-4 border-logo-blue flex flex-col items-center text-center">
+                <div class="text-4xl p-3 bg-blue-100 text-logo-blue rounded-full mb-3">☁️</div>
+                <h4 class="text-xl font-bold mb-2 text-gray-900">ERP 雲端整合</h4>
+                <p class="text-sm text-gray-500">API Gateway、外部系統串接。</p>
+            </div>
+            
+            <!-- 模組 8: 數據中心 / BI -->
+            <div class="card-light p-6 bg-white rounded-xl border-t-4 border-logo-red flex flex-col items-center text-center">
+                <div class="text-4xl p-3 bg-red-100 text-logo-red rounded-full mb-3">📊</div>
+                <h4 class="text-xl font-bold mb-2 text-gray-900">數據中心 / BI</h4>
+                <p class="text-sm text-gray-500">即時儀表板、趨勢分析與報表。</p>
+            </div>
+            
+        </div>
+        <!-- 額外資訊區塊 -->
+        <div class="bg-white p-8 rounded-xl shadow-lg border-l-4 border-gray-400">
+            <h3 class="text-2xl font-semibold text-gray-800 mb-3">系統特色</h3>
+            <ul class="list-disc list-inside text-gray-600 space-y-2">
+                <li><strong class="text-logo-red">移動優先設計:</strong> 支援所有設備上的響應式存取。</li>
+                <li><strong class="text-logo-blue">開放式 API:</strong> 輕鬆與您現有的應用程式和服務整合。</li>
+                <li><strong class="text-status-green">實時數據同步:</strong> 確保所有部門數據一致且最新。</li>
+            </ul>
+        </div>
+    </main>
+</body>
+</html>

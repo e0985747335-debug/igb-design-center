@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB 雲端 ERP 系統架構圖 - 技術分層</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .flow-block {
+            transition: all 0.3s ease;
+        }
+        .flow-block:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+<div class="max-w-4xl w-full p-4 md:p-8 bg-white rounded-xl shadow-2xl">
+    <h1 class="text-3xl font-extrabold text-center text-indigo-700 mb-6 border-b-4 border-indigo-200 pb-2">
+        IGB ERP 雲端整合技術分層架構圖
+    </h1>
+    <p class="text-center text-gray-600 mb-8">
+        展示核心系統如何透過雲端整合平台，將數據匯集至 BI 中心，實現即時決策支援。
+    </p>
+
+    <!-- 架構圖主體容器 (使用 SVG 繪製連接線) -->
+    <div class="relative flex flex-col items-center space-y-8">
+
+        <!-- 1. 頂層：企業洞察與決策層 (數據中心 / BI) -->
+        <div id="layer-bi" class="flow-block bg-green-500 text-white p-5 rounded-lg w-full max-w-sm text-center shadow-lg transform scale-105">
+            <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6m0 0h14m-7 0v-6a2 2 0 00-2-2h-2a2 2 0 00-2 2v6m4-11V7a4 4 0 10-8 0v2"></path></svg>
+            <h2 class="text-2xl font-bold">數據中心 / BI</h2>
+            <p class="text-sm">Data Center / Business Intelligence</p>
+            <p class="mt-1 text-xs opacity-80">即時洞察、管理報告、AI 預測分析</p>
+        </div>
+
+        <!-- 連接線 1: 雲端整合 向上 連接 BI -->
+        <svg height="40" width="10" class="text-gray-400">
+            <line x1="5" y1="0" x2="5" y2="40" stroke="currentColor" stroke-width="2" stroke-dasharray="5,5" />
+            <polygon points="5,35 0,40 10,40" fill="currentColor" />
+        </svg>
+
+        <!-- 2. 中層：雲端整合骨幹 (ERP 雲端整合) -->
+        <div id="layer-integration" class="flow-block bg-indigo-600 text-white p-5 rounded-lg w-full max-w-xl text-center shadow-xl">
+             <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10l2 2 2-2V7m0 0l-2-2-2 2m4 0h6m-6 0l2-2 2 2m-4 0v10l2 2 2-2V7m0 0l-2-2-2 2m4 0h6m-6 0l2-2 2 2m4 0v10l2 2 2-2V7m0 0l-2-2-2 2"></path></svg>
+            <h2 class="text-2xl font-bold">ERP 雲端整合平台</h2>
+            <p class="text-sm">Cloud Integration / API Gateway</p>
+            <p class="mt-1 text-xs opacity-80">數據即時同步、標準 API、流程自動化</p>
+        </div>
+
+        <!-- 連接線 2: 核心系統 向上 連接 雲端整合 (三條箭頭) -->
+        <div class="flex justify-around w-full max-w-2xl">
+            <!-- Left Arrow -->
+            <svg height="40" width="120" class="text-gray-400">
+                <line x1="60" y1="0" x2="60" y2="40" stroke="currentColor" stroke-width="2" stroke-dasharray="5,5" />
+                <polygon points="60,35 55,40 65,40" fill="currentColor" />
+            </svg>
+            <!-- Middle Arrow (Placeholder for alignment) -->
+            <svg height="40" width="120" class="text-gray-400 hidden sm:block">
+                <line x1="60" y1="0" x2="60" y2="40" stroke="currentColor" stroke-width="2" stroke-dasharray="5,5" />
+                <polygon points="60,35 55,40 65,40" fill="currentColor" />
+            </svg>
+            <!-- Right Arrow -->
+            <svg height="40" width="120" class="text-gray-400">
+                <line x1="60" y1="0" x2="60" y2="40" stroke="currentColor" stroke-width="2" stroke-dasharray="5,5" />
+                <polygon points="60,35 55,40 65,40" fill="currentColor" />
+            </svg>
+        </div>
+
+        <!-- 3. 底層：核心業務系統層 (ERP 管理 & 人事管理) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
+            
+            <!-- 核心系統 A: ERP 管理 -->
+            <div id="layer-erp" class="flow-block bg-white border-2 border-yellow-500 p-6 rounded-xl text-center shadow-lg">
+                <svg class="w-8 h-8 mx-auto mb-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                <h3 class="text-xl font-semibold text-gray-800">ERP 管理</h3>
+                <p class="text-sm text-gray-500">ERP Management</p>
+                <ul class="text-left text-xs text-gray-600 mt-2 list-disc list-inside space-y-1">
+                    <li>財務會計 (FI/CO)</li>
+                    <li>供應鏈/採購 (SCM)</li>
+                    <li>生產製造 (PP/QM)</li>
+                </ul>
+            </div>
+
+            <!-- 核心系統 B: 人事管理 -->
+            <div id="layer-hr" class="flow-block bg-white border-2 border-red-500 p-6 rounded-xl text-center shadow-lg">
+                <svg class="w-8 h-8 mx-auto mb-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20v-2A3 3 0 005.356 18.143 3 3 0 0017 20zm-7.778-8.778a5 5 0 019.244 0"></path></svg>
+                <h3 class="text-xl font-semibold text-gray-800">人事管理</h3>
+                <p class="text-sm text-gray-500">HR / HCM (Human Capital Management)</p>
+                <ul class="text-left text-xs text-gray-600 mt-2 list-disc list-inside space-y-1">
+                    <li>員工主檔</li>
+                    <li>薪資與福利</li>
+                    <li>考勤與差旅報銷</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 4. 最底層：雲端基礎設施 -->
+        <div id="layer-infra" class="mt-8 bg-gray-200 text-gray-700 p-3 rounded-xl w-full text-center shadow-inner">
+            <p class="font-semibold text-lg">雲端基礎設施 (Cloud Infrastructure)</p>
+            <p class="text-xs">數據存儲、安全服務、網路資源</p>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

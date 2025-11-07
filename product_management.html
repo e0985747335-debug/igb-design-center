@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP 戰略指揮中心儀表板</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 設定 Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#4f46e5',
+                        'secondary': '#10b981',
+                        'accent': '#f59e0b',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .tab-button.active {
+            border-color: #4f46e5;
+            color: #4f46e5;
+            font-weight: 600;
+        }
+        .card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+            transition: opacity 0.3s ease;
+        }
+        /* 針對模態框，讓它在 display:flex 時能正常運作 */
+        #editModal:not(.hidden) {
+            display: flex;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- 載入螢幕 -->
+    <div id="loadingScreen" class="loading-screen">
+        <svg class="animate-spin -ml-1 mr-3 h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="mt-4 text-lg text-gray-700 font-semibold" id="loadingMessage">正在初始化系統，請稍候...</p>
+        <p class="mt-2 text-sm text-gray-500">（正在建立資料庫連線及使用者認證）</p>
+    </div>
+
+    <!-- 主要儀表板內容 -->
+    <div id="appContainer" class="p-6 md:p-10 max-w-7xl mx-auto hidden">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">ERP 戰略指揮中心儀表板</h1>
+            <p class="text-sm text-gray-500 mt-1">即時庫存、定價與供應商協同管理</p>
+            <div id="userInfo" class="text-sm text-right mt-2 p-2 bg-white rounded-lg shadow-sm">
+                <span class="font-medium text-primary">當前用戶 ID:</span> <span id="currentUserId" class="break-all text-gray-700">未認證</span>
+            </div>
+        </header>
+
+        <!-- 訊息彈窗容器 -->
+        <div id="messageContainer" class="fixed top-5 right-5 z-50 space-y-2"></div>
+
+        <!-- Tab 導航 -->
+        <div class="border-b border-gray-200 mb-8">
+            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                <button type="button" data-tab="product" class="tab-button whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300 active">商品管理 (庫存/定價)</button>
+                <button type="button" data-tab="vendor" class="tab-button whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">廠商管理</button>
+            </nav>
+        </div>
+
+        <!-- Tab 內容: 商品管理 -->
+        <div id="tab-product" class="tab-content grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 左側：新增/編輯商品 -->
+            <div class="lg:col-span-1 space-y-8">
+                <!-- 快速新增商品 -->
+                <div id="addProductCard" class="bg-white p-6 rounded-xl card transition-shadow hover:shadow-lg">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">快速新增商品</h2>
+                    <form id="addProductForm" class="space-y-4">
+                        <div>
+                            <label for="productName" class="block text-sm font-medium text-gray-700">商品名稱</label>
+                            <input type="text" id="productName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary p-2 border">
+                        </div>
+                        <div>
+                            <label for="vendorSelect" class="block text-sm font-medium text-gray-700">選擇廠商</label>
+                            <select id="vendorSelect" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary p-2 border bg-white">
+                                <option value="" disabled selected>請先新增廠商...</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="productPrice" class="block text-sm font-medium text-gray-700">單價 (TWD)</label>
+                                <input type="number" id="productPrice" required min="0" step="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary p-2 border">
+                            </div>
+                            <div>
+                                <label for="productStock" class="block text-sm font-medium text-gray-700">庫存數量</label>
+                                <input type="number" id="productStock" required min="0" step="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary p-2 border">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-secondary hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary transition duration-150 ease-in-out">
+                            提交新增
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 右側：商品列表 -->
+            <div class="lg:col-span-2">
+                <div class="bg-white p-6 rounded-xl card">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">所有商品列表</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名稱</th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">廠商</th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">單價 (TWD)</th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">庫存</th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productList" class="bg-white divide-y divide-gray-200">
+                                <!-- 商品資料將透過 JS 載入 -->
+                                <tr>
+                                    <td colspan="5" class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 text-center">沒有商品資料。請新增一筆。</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 內容: 廠商管理 -->
+        <div id="tab-vendor" class="tab-content hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 左側：新增/編輯廠商 -->
+            <div class="lg:col-span-1 space-y-8">
+                <!-- 快速新增廠商 -->
+                <div id="addVendorCard" class="bg-white p-6 rounded-xl card transition-shadow hover:shadow-lg">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">快速新增廠商</h2>
+                    <form id="addVendorForm" class="space-y-4">
+                        <div>
+                            <label for="vendorName" class="block text-sm font-medium text-gray-700">廠商名稱</label>
+                            <input type="text" id="vendorName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary p-2 border">
+                        </div>
+                        <div>
+                            <label for="contactPerson" class="block text-sm font-medium text-gray-700">聯絡人</label>
+                            <input type="text" id="contactPerson" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary p-2 border">
+                        </div>
+                        <div>
+                            <label for="vendorPhone" class="block text-sm font-medium text-gray-700">電話/分機 (選填)</label>
+                            <input type="text" id="vendorPhone" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary p-2 border">
+                        </div>
+                        <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-secondary hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary transition duration-150 ease-in-out">
+                            提交新增
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 右側：廠商列表 -->
+            <div class="lg:col-span-2">
+                <div class="bg-white p-6 rounded-xl card">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">所有廠商</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名稱</th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">聯絡人</th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">電話</th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vendorList" class="bg-white divide-y divide-gray-200">
+                                <!-- 廠商資料將透過 JS 載入 -->
+                                <tr>
+                                    <td colspan="4" class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 text-center">沒有廠商資料。請新增一筆。</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 編輯模態框 (Edit Modal) -->
+        <div id="editModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-50 transition-opacity duration-300">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">編輯資料</h3>
+                <form id="editForm" class="space-y-4">
+                    <!-- 編輯欄位將透過 JS 動態載入 -->
+                    <div id="modalFields"></div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button type="button" id="closeModalBtn" class="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition duration-150">取消</button>
+                        <button type="submit" class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition duration-150">儲存變更</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Firebase 腳本 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-lite.js";
+
+        // 設定 Firebase Debug Log
+        setLogLevel('Debug');
+
+        // --- 全域變數初始化 (最終修正：確保 projectId 存在) ---
+        let app, db, auth;
+        let userId = 'default-user'; 
+        let isAuthReady = false; 
+        const appContainer = document.getElementById('appContainer');
+        const loadingScreen = document.getElementById('loadingScreen');
+        const loadingMessage = document.getElementById('loadingMessage');
+
+        // 1. 取得 App ID (作為 projectId 的最終保證)
+        const appId = typeof __app_id !== 'undefined' && __app_id ? __app_id : 'default-app-id';
+        let firebaseConfig = {};
+        
+        // 2. 嘗試解析 __firebase_config
+        if (typeof __firebase_config === 'string' && __firebase_config.trim().length > 0) {
+            try {
+                // 嘗試解析提供的 JSON
+                firebaseConfig = JSON.parse(__firebase_config);
+            } catch (e) {
+                console.warn("WARN: Error parsing __firebase_config JSON. Using fallback fields.");
+            }
+        } 
+        
+        // 3. 構造最終配置，**強制**確保所有核心字段都有值
+        // 這是防止 "projectId" 錯誤的關鍵步驟
+        const finalConfig = {
+            // FORCE projectId to be appId if missing or generic placeholder
+            projectId: firebaseConfig.projectId && firebaseConfig.projectId !== 'FAKE_PROJECT_ID' 
+                       ? firebaseConfig.projectId : appId,
+            
+            // Use existing fields or robust fallbacks
+            apiKey: firebaseConfig.apiKey || "FAKE_API_KEY_FALLBACK",
+            authDomain: firebaseConfig.authDomain || `${appId}.firebaseapp.com`,
+            storageBucket: firebaseConfig.storageBucket || `${appId}.appspot.com`,
+            messagingSenderId: firebaseConfig.messagingSenderId || "000000000000",
+            appId: firebaseConfig.appId || "1:000000000000:web:0000000000000000000000",
+        };
+        
+        // 將最終配置賦值給 firebaseConfig
+        firebaseConfig = finalConfig;
+        
+        if(firebaseConfig.projectId === 'default-app-id') {
+            loadingMessage.textContent = "系統初始化（使用預設 ID），請稍候...";
+        }
+
+        // 資料庫路徑定義
+        const getPrivateCollectionPath = (collectionName) => `/artifacts/${appId}/users/${userId}/${collectionName}`;
+        // 為了簡單起見，我們將商品和廠商都放在用戶私有資料夾
+        const PRODUCT_COLLECTION = 'products';
+        const VENDOR_COLLECTION = 'vendors';
+
+        // 應用程式狀態
+        let currentVendors = [];
+        let currentProducts = [];
+
+        // --- 輔助函數：訊息提示 ---
+        function showMessage(message, type = 'success') {
+            const container = document.getElementById('messageContainer');
+            const color = type === 'success' ? 'bg-secondary' : (type === 'error' ? 'bg-red-500' : 'bg-accent');
+            const icon = type === 'success' ? '✔' : (type === 'error' ? '✖' : 'i');
+
+            const alert = document.createElement('div');
+            alert.className = `${color} text-white px-4 py-3 rounded-lg shadow-md transition-opacity duration-300`;
+            alert.innerHTML = `<div class="flex items-center"><span class="mr-2 font-bold">${icon}</span><span>${message}</span></div>`;
+            container.appendChild(alert);
+
+            setTimeout(() => {
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 300);
+            }, 3000);
+        }
+
+        // --- 認證與初始化 ---
+        async function setupAuthAndFirestore() {
+            try {
+                // 1. 初始化 Firebase App (使用經過檢查的 firebaseConfig)
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // 2. 設定認證持久性為本地（可選，增加用戶體驗）
+                await setPersistence(auth, browserLocalPersistence);
+
+                // 3. 監聽認證狀態變化
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('currentUserId').textContent = userId;
+                    } else {
+                        // 如果沒有用戶，進行認證
+                        const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                        if (authToken) {
+                            await signInWithCustomToken(auth, authToken);
+                        } else {
+                            // 如果連 token 都沒有，則進行匿名登入
+                            await signInAnonymously(auth);
+                        }
+                    }
+
+                    // 認證流程完成後，開始載入資料
+                    if (!isAuthReady) {
+                        isAuthReady = true;
+                        startDataListeners();
+                        loadingScreen.style.opacity = '0';
+                        setTimeout(() => {
+                            loadingScreen.classList.add('hidden');
+                            appContainer.classList.remove('hidden');
+                        }, 300);
+                    }
+                });
+
+            } catch (e) {
+                // 再次捕獲初始化錯誤
+                console.error("Firebase Initialization Fatal Error:", e);
+                loadingMessage.textContent = `系統初始化失敗：${e.name}: "${e.message}"。請檢查配置是否正確。`;
+            }
+        }
+
+
+        // --- 資料庫監聽與渲染 ---
+
+        function startDataListeners() {
+            if (!isAuthReady || !db) return;
+
+            // 1. 廠商資料監聽
+            const vendorRef = collection(db, getPrivateCollectionPath(VENDOR_COLLECTION));
+            onSnapshot(vendorRef, (snapshot) => {
+                currentVendors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderVendorList(currentVendors);
+                updateVendorSelect(currentVendors);
+                renderProductList(currentProducts); // 重新渲染商品列表以更新廠商名稱
+            }, (error) => {
+                console.error("Error fetching vendors:", error);
+                showMessage("無法載入廠商資料，請檢查網路連線。", 'error');
+            });
+
+            // 2. 商品資料監聽
+            const productRef = collection(db, getPrivateCollectionPath(PRODUCT_COLLECTION));
+            onSnapshot(productRef, (snapshot) => {
+                currentProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderProductList(currentProducts);
+            }, (error) => {
+                console.error("Error fetching products:", error);
+                showMessage("無法載入商品資料，請檢查網路連線。", 'error');
+            });
+        }
+
+        function renderVendorList(vendors) {
+            const list = document.getElementById('vendorList');
+            list.innerHTML = '';
+
+            if (vendors.length === 0) {
+                list.innerHTML = `<tr><td colspan="4" class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 text-center">沒有廠商資料。請新增一筆。</td></tr>`;
+                return;
+            }
+
+            vendors.forEach(vendor => {
+                const row = list.insertRow();
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${vendor.name}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-700">${vendor.contactPerson}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">${vendor.phone || '-'}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
+                        <button data-id="${vendor.id}" data-type="vendor" class="edit-btn text-primary hover:text-indigo-900 mr-3 transition duration-150">編輯</button>
+                        <button data-id="${vendor.id}" data-type="vendor" class="delete-btn text-red-600 hover:text-red-900 transition duration-150">刪除</button>
+                    </td>
+                `;
+            });
+        }
+
+        function updateVendorSelect(vendors) {
+            const select = document.getElementById('vendorSelect');
+            select.innerHTML = '<option value="" disabled selected>請選擇廠商</option>';
+            if (vendors.length === 0) {
+                select.innerHTML = '<option value="" disabled selected>請先新增廠商...</option>';
+                return;
+            }
+            vendors.forEach(vendor => {
+                const option = document.createElement('option');
+                option.value = vendor.id;
+                option.textContent = `${vendor.name} (${vendor.contactPerson})`;
+                select.appendChild(option);
+            });
+        }
+
+        function renderProductList(products) {
+            const list = document.getElementById('productList');
+            list.innerHTML = '';
+
+            if (products.length === 0) {
+                list.innerHTML = `<tr><td colspan="5" class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 text-center">沒有商品資料。請新增一筆。</td></tr>`;
+                return;
+            }
+
+            products.forEach(product => {
+                const vendor = currentVendors.find(v => v.id === product.vendorId);
+                const vendorName = vendor ? vendor.name : '未知廠商';
+                const stockColor = product.stock < 10 ? 'text-red-600 font-bold' : 'text-gray-700';
+
+                const row = list.insertRow();
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${product.name}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm text-primary">${vendorName}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-700">NT$ ${product.price.toLocaleString()}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm ${stockColor}">${product.stock.toLocaleString()}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
+                        <button data-id="${product.id}" data-type="product" class="edit-btn text-primary hover:text-indigo-900 mr-3 transition duration-150">編輯</button>
+                        <button data-id="${product.id}" data-type="product" class="delete-btn text-red-600 hover:text-red-900 transition duration-150">刪除</button>
+                    </td>
+                `;
+            });
+        }
+
+        // --- 表單處理 (新增) ---
+
+        document.getElementById('addVendorForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const newVendor = {
+                name: form.vendorName.value,
+                contactPerson: form.contactPerson.value,
+                phone: form.vendorPhone.value,
+                createdAt: new Date().toISOString(),
+            };
+
+            try {
+                const vendorRef = collection(db, getPrivateCollectionPath(VENDOR_COLLECTION));
+                await addDoc(vendorRef, newVendor);
+                showMessage("成功新增廠商！");
+                form.reset();
+            } catch (error) {
+                console.error("Error adding vendor: ", error);
+                showMessage("新增廠商失敗。", 'error');
+            }
+        });
+
+        document.getElementById('addProductForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const newProduct = {
+                name: form.productName.value,
+                vendorId: form.vendorSelect.value,
+                price: parseInt(form.productPrice.value),
+                stock: parseInt(form.productStock.value),
+                createdAt: new Date().toISOString(),
+            };
+
+            if (newProduct.vendorId === "") {
+                 showMessage("請選擇一個廠商。", 'warning');
+                 return;
+            }
+
+            try {
+                const productRef = collection(db, getPrivateCollectionPath(PRODUCT_COLLECTION));
+                await addDoc(productRef, newProduct);
+                showMessage("成功新增商品！");
+                form.reset();
+            } catch (error) {
+                console.error("Error adding product: ", error);
+                showMessage("新增商品失敗。", 'error');
+            }
+        });
+
+        // --- 編輯/刪除處理 (事件委派) ---
+
+        const handleEditOrDelete = (e) => {
+            const target = e.target;
+            if (target.classList.contains('edit-btn')) {
+                const id = target.dataset.id;
+                const type = target.dataset.type;
+                openEditModal(id, type);
+            } else if (target.classList.contains('delete-btn')) {
+                const id = target.dataset.id;
+                const type = target.dataset.type;
+                showConfirmDelete(id, type);
+            }
+        };
+
+        document.getElementById('productList').addEventListener('click', handleEditOrDelete);
+        document.getElementById('vendorList').addEventListener('click', handleEditOrDelete);
+
+
+        // --- 編輯模態框功能 ---
+
+        let currentEditItem = null;
+        let currentEditType = null;
+
+        function openEditModal(id, type) {
+            const modal = document.getElementById('editModal');
+            const modalFields = document.getElementById('modalFields');
+            modalFields.innerHTML = '';
+            currentEditType = type;
+
+            const item = type === 'product'
+                ? currentProducts.find(p => p.id === id)
+                : currentVendors.find(v => v.id === id);
+
+            if (!item) {
+                showMessage('找不到編輯項目。', 'error');
+                return; // FIX: 修正了之前的截斷錯誤，確保 return 在函數內
+            }
+
+            currentEditItem = item;
+
+            if (type === 'product') {
+                document.querySelector('#editModal h3').textContent = `編輯商品：${item.name}`;
+                modalFields.innerHTML = `
+                    <div>
+                        <label for="editProductName" class="block text-sm font-medium text-gray-700">商品名稱</label>
+                        <input type="text" id="editProductName" value="${item.name}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary p-2 border">
+                    </div>
+                    <div>
+                        <label for="editVendorSelect" class="block text-sm font-medium text-gray-700">選擇廠商</label>
+                        <select id="editVendorSelect" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary p-2 border bg-white">
+                            ${currentVendors.map(v => `<option value="${v.id}" ${v.id === item.vendorId ? 'selected' : ''}>${v.name} (${v.contactPerson})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="editProductPrice" class="block text-sm font-medium text-gray-700">單價 (TWD)</label>
+                            <input type="number" id="editProductPrice" value="${item.price}" required min="0" step="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary p-2 border">
+                        </div>
+                        <div>
+                            <label for="editProductStock" class="block text-sm font-medium text-gray-700">庫存數量</label>
+                            <input type="number" id="editProductStock" value="${item.stock}" required min="0" step="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary p-2 border">
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'vendor') {
+                document.querySelector('#editModal h3').textContent = `編輯廠商：${item.name}`;
+                modalFields.innerHTML = `
+                    <div>
+                        <label for="editVendorName" class="block text-sm font-medium text-gray-700">廠商名稱</label>
+                        <input type="text" id="editVendorName" value="${item.name}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary p-2 border">
+                    </div>
+                    <div>
+                        <label for="editContactPerson" class="block text-sm font-medium text-gray-700">聯絡人</label>
+                        <input type="text" id="editContactPerson" value="${item.contactPerson}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary p-2 border">
+                    </div>
+                    <div>
+                        <label for="editVendorPhone" class="block text-sm font-medium text-gray-700">電話/分機 (選填)</label>
+                        <input type="text" id="editVendorPhone" value="${item.phone || ''}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary p-2 border">
+                    </div>
+                `;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        // 模態框關閉按鈕
+        document.getElementById('closeModalBtn').addEventListener('click', () => {
+            document.getElementById('editModal').classList.add('hidden');
+            currentEditItem = null;
+            currentEditType = null;
+        });
+
+        // 模態框提交處理
+        document.getElementById('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!currentEditItem || !currentEditType) {
+                showMessage("編輯項目錯誤，請重試。", 'error');
+                return;
+            }
+
+            const id = currentEditItem.id;
+            let collectionName = currentEditType === 'product' ? PRODUCT_COLLECTION : VENDOR_COLLECTION;
+            let updatedData = {};
+            const form = e.target;
+
+            try {
+                if (currentEditType === 'product') {
+                    // 商品編輯數據
+                    updatedData = {
+                        name: form.editProductName.value,
+                        vendorId: form.editVendorSelect.value,
+                        price: parseInt(form.editProductPrice.value),
+                        stock: parseInt(form.editProductStock.value),
+                    };
+                } else if (currentEditType === 'vendor') {
+                    // 廠商編輯數據
+                    updatedData = {
+                        name: form.editVendorName.value,
+                        contactPerson: form.editContactPerson.value,
+                        phone: form.editVendorPhone.value,
+                    };
+                }
+
+                const docRef = doc(db, getPrivateCollectionPath(collectionName), id);
+                await updateDoc(docRef, updatedData);
+                
+                showMessage(`成功更新 ${currentEditType === 'product' ? '商品' : '廠商'} 資料！`);
+                document.getElementById('editModal').classList.add('hidden');
+                currentEditItem = null;
+                currentEditType = null;
+
+            } catch (error) {
+                console.error(`Error updating ${currentEditType}: `, error);
+                showMessage(`更新 ${currentEditType === 'product' ? '商品' : '廠商'} 失敗。`, 'error');
+            }
+        });
+
+        // --- 刪除功能 ---
+
+        function showConfirmDelete(id, type) {
+            const itemName = type === 'product' ? (currentProducts.find(p => p.id === id)?.name || '該商品') : (currentVendors.find(v => v.id === id)?.name || '該廠商');
+            
+            // 使用自定義模態框代替 alert/confirm
+            const modalHTML = `
+                <div id="confirmModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-4 z-[100] transition-opacity duration-300">
+                    <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+                        <h3 class="text-xl font-bold text-red-600 mb-3">確認刪除</h3>
+                        <p class="text-gray-700 mb-6">您確定要刪除 ${type === 'product' ? '商品' : '廠商'} 嗎？此操作無法撤銷：<span class="font-semibold">${itemName}</span></p>
+                        <div class="flex justify-end space-x-3">
+                            <button id="cancelDeleteBtn" class="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition duration-150">取消</button>
+                            <button id="confirmDeleteBtn" class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition duration-150">確認刪除</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 插入模態框
+            const body = document.body;
+            body.insertAdjacentHTML('beforeend', modalHTML);
+            const confirmModal = document.getElementById('confirmModal');
+
+            // 綁定事件
+            document.getElementById('cancelDeleteBtn').addEventListener('click', () => {
+                confirmModal.remove();
+            });
+
+            document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+                confirmModal.remove();
+                await deleteData(id, type);
+            });
+        }
+
+        async function deleteData(id, type) {
+            let collectionName = type === 'product' ? PRODUCT_COLLECTION : VENDOR_COLLECTION;
+
+            try {
+                const docRef = doc(db, getPrivateCollectionPath(collectionName), id);
+                await deleteDoc(docRef);
+                showMessage(`成功刪除 ${type === 'product' ? '商品' : '廠商'}！`);
+
+            } catch (error) {
+                console.error(`Error deleting ${type}: `, error);
+                showMessage(`刪除 ${type === 'product' ? '商品' : '廠商'} 失敗。`, 'error');
+            }
+        }
+
+
+        // --- Tab 切換功能 ---
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.dataset.tab;
+
+                // 移除所有按鈕的 active 狀態
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                
+                // 隱藏所有內容
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+
+                // 啟用點擊的按鈕並顯示內容
+                button.classList.add('active');
+                document.getElementById(`tab-${targetTab}`).classList.remove('hidden');
+            });
+        });
+
+
+        // --- 啟動應用程式 ---
+        window.onload = setupAuthAndFirestore;
+    </script>
+</body>
+</html>

@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>費用報銷審批中心</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 設定字體和顏色主題 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#10497E',
+                        'secondary-gray': '#F7F9FB',
+                        'accent-orange': '#FF7A00',
+                        'status-pending': '#F97316', /* Orange-500 */
+                        'status-approved': '#10B981', /* Green-500 */
+                        'status-rejected': '#EF4444', /* Red-500 */
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        .claim-row {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .claim-row:hover {
+            background-color: #f3f4f6;
+        }
+        .claim-row.active {
+            background-color: #E0F2F1; /* A light teal/cyan to highlight selection */
+            border-left: 4px solid theme('colors.primary-blue');
+        }
+        .detail-card {
+            min-height: 80vh; /* 確保內容區有足夠高度 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans p-4 sm:p-8">
+
+    <div id="app" class="max-w-7xl mx-auto bg-white shadow-2xl rounded-xl">
+        <header class="bg-primary-blue text-white p-6 rounded-t-xl">
+            <h1 class="text-3xl font-bold">費用報銷審批中心</h1>
+            <p class="text-primary-blue-200 mt-1 opacity-80">待您處理：<span id="pendingCount">0</span> 筆報銷單</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
+            
+            <!-- 報銷單清單 (左側 1/3) -->
+            <div class="lg:col-span-1 bg-secondary-gray p-4 rounded-lg shadow-inner border border-gray-200">
+                <h2 class="text-xl font-semibold text-primary-blue mb-4">待辦清單</h2>
+                
+                <!-- 狀態過濾器 (Tabs) -->
+                <div class="flex space-x-2 mb-4">
+                    <button data-status="Pending" class="status-tab py-1 px-3 text-sm font-medium rounded-full bg-primary-blue text-white shadow-md transition duration-150">待審批</button>
+                    <button data-status="Approved" class="status-tab py-1 px-3 text-sm font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition duration-150">已批准</button>
+                    <button data-status="Rejected" class="status-tab py-1 px-3 text-sm font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition duration-150">已駁回</button>
+                </div>
+
+                <!-- 清單 Table -->
+                <div class="overflow-y-auto max-h-[70vh]">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="sticky top-0 bg-primary-blue/10">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-600">標題</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-600 w-24">金額</th>
+                                <th class="px-4 py-2 text-left text-xs font-bold text-gray-600 w-24">狀態</th>
+                            </tr>
+                        </thead>
+                        <tbody id="claimListBody" class="bg-white divide-y divide-gray-100">
+                            <!-- Claims will be rendered here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 報銷單詳情與操作 (右側 2/3) -->
+            <div class="lg:col-span-2 detail-card bg-white p-6 rounded-lg shadow-xl border border-primary-blue/20">
+                <div id="detailPlaceholder" class="text-center p-10 text-gray-500 mt-20">
+                    <!-- Icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-4 text-primary-blue/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p class="text-lg font-medium">請從左側清單選擇一筆報銷單以查看詳情。</p>
+                </div>
+
+                <div id="claimDetailView" class="hidden space-y-6">
+                    <!-- 標題與摘要 -->
+                    <div class="border-b pb-3 mb-4">
+                        <h3 id="detailTitle" class="text-2xl font-bold text-primary-blue"></h3>
+                        <div class="flex items-center space-x-4 mt-2 text-sm text-gray-600">
+                            <p>報銷人: <span id="detailClaimer" class="font-medium"></span></p>
+                            <p>部門: <span id="detailDepartment" class="font-medium"></span></p>
+                            <p>總金額: <span id="detailTotal" class="text-lg font-extrabold text-accent-orange"></span></p>
+                            <span id="detailStatus" class="px-3 py-1 text-xs font-semibold rounded-full"></span>
+                        </div>
+                    </div>
+
+                    <!-- 報銷事由 -->
+                    <div>
+                        <p class="text-lg font-semibold text-gray-800 mb-2">報銷事由：</p>
+                        <div id="detailPurpose" class="p-3 bg-secondary-gray rounded-md border border-gray-300 text-gray-700 italic"></div>
+                    </div>
+
+                    <!-- 模擬明細 (簡化呈現) -->
+                    <div class="border-t pt-4">
+                        <p class="text-lg font-semibold text-gray-800 mb-2">費用明細 (摘要)：</p>
+                        <p class="text-sm text-gray-600 italic">在此介面我們僅顯示摘要。實際系統會展示完整的明細表格和憑證附件。</p>
+                        <ul id="detailMockDetails" class="list-disc list-inside ml-4 mt-2 space-y-1 text-gray-700">
+                            <!-- 模擬明細項目 -->
+                        </ul>
+                    </div>
+
+                    <!-- 審批操作區塊 -->
+                    <div id="approvalActions" class="pt-6 border-t border-dashed mt-6 space-y-4">
+                        <p class="text-lg font-semibold text-primary-blue">審批意見與操作</p>
+                        
+                        <textarea id="approverNotes" rows="3" placeholder="請輸入審批意見（例如：批准原因或駁回理由）" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-blue focus:border-primary-blue transition duration-150"></textarea>
+
+                        <div class="flex justify-end space-x-4">
+                            <!-- 駁回按鈕 -->
+                            <button onclick="handleApproval('Rejected')" class="bg-status-rejected text-white py-3 px-6 rounded-lg hover:bg-status-rejected/90 transition duration-150 font-semibold shadow-md inline-flex items-center space-x-2">
+                                <!-- Reject Icon -->
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                                <span>駁回</span>
+                            </button>
+
+                            <!-- 批准按鈕 -->
+                            <button onclick="handleApproval('Approved')" class="bg-status-approved text-white py-3 px-6 rounded-lg hover:bg-status-approved/90 transition duration-150 font-semibold shadow-md inline-flex items-center space-x-2">
+                                <!-- Approve Icon -->
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
+                                <span>批准</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 審批歷史區塊 (顯示已處理的結果) -->
+                    <div id="approvalHistory" class="pt-6 border-t border-gray-200 hidden space-y-2">
+                         <p class="text-lg font-semibold text-gray-800">審批歷史記錄</p>
+                         <p id="historyStatus" class="font-bold text-lg"></p>
+                         <p class="text-sm text-gray-600">審批人備註:</p>
+                         <div id="historyNotes" class="p-3 bg-gray-100 rounded-md border border-gray-200 italic text-gray-700"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 訊息顯示框 (取代 alert) -->
+    <div id="messageBox" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full transform transition-all scale-100 opacity-100">
+            <h3 id="msgTitle" class="text-xl font-bold mb-3 text-primary-blue">提示</h3>
+            <p id="msgText" class="text-gray-700 mb-4">操作訊息。</p>
+            <div id="msgActions" class="flex justify-end">
+                <button onclick="closeMessageBox()" class="bg-primary-blue text-white py-2 px-4 rounded-md hover:bg-primary-blue/90">
+                    確定
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模擬報銷單數據
+        let mockClaims = [
+            { id: 1, title: "2025年10月出差費用", claimer: "王小明", department: "業務發展部", total: 7350, date: "2025-10-25", status: "Pending", approverNotes: "", 
+              purpose: "拜訪台北重要客戶，討論年度合作方案。", 
+              details: ["交通費: TWD 3,000", "餐飲費: TWD 850", "住宿費: TWD 3,500"], 
+              claimerId: 'A1024', submitDate: '2025-10-25', claimerNotes: '已附上所有電子發票的截圖。'},
+            
+            { id: 2, title: "部門聚餐費用", claimer: "陳美玲", department: "人力資源部", total: 12000, date: "2025-10-24", status: "Pending", approverNotes: "", 
+              purpose: "部門第三季度慶祝活動。", 
+              details: ["餐飲費: TWD 12,000 (20人)", "場地租賃: TWD 0"], 
+              claimerId: 'B2031', submitDate: '2025-10-24', claimerNotes: '已符合每人預算限制。'},
+
+            { id: 3, title: "伺服器採購", claimer: "李大華", department: "資訊技術部", total: 85000, date: "2025-10-20", status: "Approved", approverNotes: "金額符合預算，已確認規格。", 
+              purpose: "更新老舊的資料庫伺服器。",
+              details: ["硬體採購: TWD 85,000"],
+              claimerId: 'C3050', submitDate: '2025-10-20', claimerNotes: '急件，請盡快審批。'},
+              
+            { id: 4, title: "培訓課程報名", claimer: "林佳穎", department: "市場行銷部", total: 9800, date: "2025-10-18", status: "Rejected", approverNotes: "此課程與本年度部門培訓計畫不符，請改報內部指定課程。", 
+              purpose: "參加 Google Analytics 高級課程。", 
+              details: ["課程費用: TWD 9,800"],
+              claimerId: 'D4012', submitDate: '2025-10-18', claimerNotes: '希望提升數位行銷能力。'},
+        ];
+
+        let currentFilter = 'Pending';
+        let selectedClaimId = null;
+
+        const claimListBody = document.getElementById('claimListBody');
+        const detailPlaceholder = document.getElementById('detailPlaceholder');
+        const claimDetailView = document.getElementById('claimDetailView');
+        const pendingCountDisplay = document.getElementById('pendingCount');
+        const statusTabs = document.querySelectorAll('.status-tab');
+        
+        // 詳細資訊元素
+        const detailTitle = document.getElementById('detailTitle');
+        const detailClaimer = document.getElementById('detailClaimer');
+        const detailDepartment = document.getElementById('detailDepartment');
+        const detailTotal = document.getElementById('detailTotal');
+        const detailStatus = document.getElementById('detailStatus');
+        const detailPurpose = document.getElementById('detailPurpose');
+        const detailMockDetails = document.getElementById('detailMockDetails');
+        const approverNotesInput = document.getElementById('approverNotes');
+        const approvalActionsDiv = document.getElementById('approvalActions');
+        const approvalHistoryDiv = document.getElementById('approvalHistory');
+        const historyStatus = document.getElementById('historyStatus');
+        const historyNotes = document.getElementById('historyNotes');
+
+
+        // === 輔助函數：訊息框 ===
+        const messageBox = document.getElementById('messageBox');
+        const msgTitle = document.getElementById('msgTitle');
+        const msgText = document.getElementById('msgText');
+        const msgActions = document.getElementById('msgActions');
+
+        function showMessageBox(title, message, isError = false) {
+            msgTitle.textContent = title;
+            msgText.innerHTML = message;
+            msgTitle.classList.toggle('text-status-rejected', isError);
+            msgTitle.classList.toggle('text-primary-blue', !isError);
+            msgActions.innerHTML = `<button onclick="closeMessageBox()" class="bg-primary-blue text-white py-2 px-4 rounded-md hover:bg-primary-blue/90">確定</button>`;
+            messageBox.classList.remove('hidden');
+            messageBox.classList.add('flex');
+        }
+
+        function closeMessageBox() {
+            messageBox.classList.add('hidden');
+            messageBox.classList.remove('flex');
+        }
+        
+        // === 渲染清單 ===
+        function renderClaimList() {
+            claimListBody.innerHTML = '';
+            
+            const filteredClaims = mockClaims.filter(claim => claim.status === currentFilter);
+            pendingCountDisplay.textContent = mockClaims.filter(c => c.status === 'Pending').length;
+
+            filteredClaims.forEach(claim => {
+                const row = claimListBody.insertRow();
+                row.className = `claim-row hover:bg-gray-50 ${(selectedClaimId === claim.id) ? 'active' : ''}`;
+                row.dataset.id = claim.id;
+                row.onclick = () => selectClaim(claim.id);
+
+                // 標題 (Title)
+                let cell = row.insertCell();
+                cell.className = 'px-4 py-3 text-sm font-medium text-gray-900 truncate max-w-xs';
+                cell.textContent = claim.title;
+
+                // 金額 (Total)
+                cell = row.insertCell();
+                cell.className = 'px-4 py-3 text-sm text-right text-gray-700 font-semibold';
+                cell.textContent = `TWD ${claim.total.toLocaleString()}`;
+
+                // 狀態 (Status)
+                cell = row.insertCell();
+                cell.className = 'px-4 py-3 text-center';
+                const statusColor = getStatusColor(claim.status);
+                cell.innerHTML = `<span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColor.bg} ${statusColor.text}">${getStatusText(claim.status)}</span>`;
+            });
+            
+            updateTabStyles();
+            
+            // 如果當前選中的報銷單不在過濾清單中，則清除詳情
+            if (selectedClaimId && !filteredClaims.some(c => c.id === selectedClaimId)) {
+                hideDetailView();
+            } else if (selectedClaimId) {
+                // 如果選中的還在清單中，重新渲染詳情以更新狀態
+                selectClaim(selectedClaimId); 
+            }
+        }
+
+        function getStatusText(status) {
+            switch (status) {
+                case 'Pending': return '待審批';
+                case 'Approved': return '已批准';
+                case 'Rejected': return '已駁回';
+                default: return '未知';
+            }
+        }
+
+        function getStatusColor(status) {
+            switch (status) {
+                case 'Pending': return { bg: 'bg-status-pending/10', text: 'text-status-pending' };
+                case 'Approved': return { bg: 'bg-status-approved/10', text: 'text-status-approved' };
+                case 'Rejected': return { bg: 'bg-status-rejected/10', text: 'text-status-rejected' };
+                default: return { bg: 'bg-gray-100', text: 'text-gray-500' };
+            }
+        }
+        
+        function updateTabStyles() {
+            statusTabs.forEach(tab => {
+                if (tab.dataset.status === currentFilter) {
+                    tab.classList.replace('bg-gray-200', 'bg-primary-blue');
+                    tab.classList.replace('text-gray-700', 'text-white');
+                    tab.classList.remove('hover:bg-gray-300');
+                } else {
+                    tab.classList.replace('bg-primary-blue', 'bg-gray-200');
+                    tab.classList.replace('text-white', 'text-gray-700');
+                    tab.classList.add('hover:bg-gray-300');
+                }
+            });
+        }
+
+        // === 選擇報銷單並顯示詳情 ===
+        function selectClaim(id) {
+            const claim = mockClaims.find(c => c.id === id);
+            
+            if (!claim) {
+                hideDetailView();
+                return;
+            }
+
+            // 更新選中狀態
+            selectedClaimId = id;
+            document.querySelectorAll('.claim-row').forEach(row => {
+                row.classList.remove('active');
+                if (parseInt(row.dataset.id) === id) {
+                    row.classList.add('active');
+                }
+            });
+
+            // 顯示詳情區塊並隱藏佔位符
+            detailPlaceholder.classList.add('hidden');
+            claimDetailView.classList.remove('hidden');
+
+            // 填充基本資訊
+            detailTitle.textContent = `報銷單 #${claim.id}: ${claim.title}`;
+            detailClaimer.textContent = `${claim.claimer} (${claim.claimerId})`;
+            detailDepartment.textContent = claim.department;
+            detailTotal.textContent = `TWD ${claim.total.toLocaleString()}`;
+            detailPurpose.textContent = claim.purpose;
+            
+            // 填充狀態標籤
+            const statusColor = getStatusColor(claim.status);
+            detailStatus.textContent = getStatusText(claim.status);
+            detailStatus.className = `px-3 py-1 text-xs font-semibold rounded-full ${statusColor.bg} ${statusColor.text}`;
+
+            // 填充模擬明細
+            detailMockDetails.innerHTML = '';
+            claim.details.forEach(detail => {
+                const li = document.createElement('li');
+                li.textContent = detail;
+                detailMockDetails.appendChild(li);
+            });
+
+            // 根據狀態顯示/隱藏操作區塊
+            if (claim.status === 'Pending') {
+                approvalActionsDiv.classList.remove('hidden');
+                approvalHistoryDiv.classList.add('hidden');
+                approverNotesInput.value = claim.approverNotes; // 載入上次編輯的備註
+                approverNotesInput.placeholder = "請輸入審批意見（例如：批准原因或駁回理由）";
+                approverNotesInput.disabled = false;
+
+            } else {
+                approvalActionsDiv.classList.add('hidden');
+                approvalHistoryDiv.classList.remove('hidden');
+                
+                // 顯示歷史記錄
+                historyStatus.textContent = `審批結果: ${getStatusText(claim.status)}`;
+                historyStatus.style.color = statusColor.text; // 用狀態色
+                historyNotes.textContent = claim.approverNotes || '無備註。';
+            }
+        }
+        
+        function hideDetailView() {
+            selectedClaimId = null;
+            detailPlaceholder.classList.remove('hidden');
+            claimDetailView.classList.add('hidden');
+            document.querySelectorAll('.claim-row').forEach(row => row.classList.remove('active'));
+        }
+
+        // === 審批操作函數 ===
+        function handleApproval(newStatus) {
+            const claimIndex = mockClaims.findIndex(c => c.id === selectedClaimId);
+            if (claimIndex === -1) {
+                showMessageBox("錯誤", "未找到選中的報銷單。", true);
+                return;
+            }
+
+            const notes = approverNotesInput.value.trim();
+
+            if (newStatus === 'Rejected' && !notes) {
+                 showMessageBox("駁回失敗", "駁回報銷單時，必須填寫駁回理由。", true);
+                 return;
+            }
+
+            if (newStatus === 'Approved' && !notes) {
+                // 批准時可以沒有備註，但最好給個預設值
+                mockClaims[claimIndex].approverNotes = "審批通過，金額符合規定。";
+            } else {
+                mockClaims[claimIndex].approverNotes = notes;
+            }
+            
+            mockClaims[claimIndex].status = newStatus;
+
+            const statusText = getStatusText(newStatus);
+            
+            // 如果當前過濾器不是新狀態，則切換到新狀態清單
+            if (currentFilter !== newStatus) {
+                currentFilter = newStatus;
+            }
+            
+            showMessageBox(
+                `${statusText} 成功`, 
+                `報銷單 #${mockClaims[claimIndex].id} (${mockClaims[claimIndex].title}) 已被${statusText}。`
+            );
+            
+            // 重新渲染清單和詳情
+            renderClaimList();
+            selectClaim(selectedClaimId); 
+        }
+
+        // === 初始化 ===
+        statusTabs.forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                currentFilter = e.target.dataset.status;
+                renderClaimList();
+            });
+        });
+
+        window.onload = () => {
+            renderClaimList();
+        };
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>費用申報表單</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 設定字體為 Inter (預設) 和 sans-serif */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* 自定義焦點顏色，使其更具企業感 */
+        .focus-ring-indigo:focus {
+            --tw-ring-color: #4f46e5;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-indigo': '#4f46e5',
+                        'light-indigo': '#e0e7ff',
+                    }
+                }
+            }
+        }
+
+        // 模擬表單提交
+        function handleSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            const messageBox = document.getElementById('messageBox');
+            const messageText = document.getElementById('messageText');
+
+            // 格式化資料用於顯示
+            let displayData = `
+                <p><strong>會計科目:</strong> ${data.category}</p>
+                <p><strong>金額:</strong> ${data.amount} ${data.currency}</p>
+                <p><strong>日期:</strong> ${data.date}</p>
+                <p><strong>描述:</strong> ${data.description}</p>
+                <p class="mt-4 text-green-600 font-semibold">表單已成功模擬提交！</p>
+            `;
+            
+            messageText.innerHTML = displayData;
+            messageBox.classList.remove('hidden');
+            form.reset();
+            
+            // 2秒後自動關閉
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 4000);
+        }
+
+        function closeMessage() {
+            document.getElementById('messageBox').classList.add('hidden');
+        }
+
+        // 確保在 DOM 加載完成後綁定事件
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('expenseForm');
+            if (form) {
+                form.addEventListener('submit', handleSubmit);
+            }
+        });
+    </script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <!-- 成功訊息框 (Modal/Message Box) -->
+    <div id="messageBox" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-sm transform transition duration-300 scale-100">
+            <div class="flex justify-between items-start">
+                <h3 class="text-xl font-bold text-primary-indigo">✅ 申報成功</h3>
+                <button onclick="closeMessage()" class="text-gray-400 hover:text-gray-600 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="messageText" class="mt-4 text-gray-700 text-sm space-y-1 bg-gray-50 p-3 rounded-lg border">
+                <!-- 提交結果將顯示在這裡 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 主表單容器 -->
+    <div class="w-full max-w-2xl">
+        <div class="bg-white shadow-2xl rounded-2xl p-6 sm:p-10 border border-gray-200">
+            
+            <!-- 標題區塊 -->
+            <h1 class="text-3xl font-extrabold text-gray-900 mb-2">費用申報</h1>
+            <p class="text-gray-500 mb-8">請填寫詳細的費用資訊以便報銷與審批。</p>
+
+            <form id="expenseForm">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <!-- 1. 會計科目 (您的代碼部分) -->
+                    <div class="md:col-span-2">
+                        <label for="category" class="block text-sm font-semibold text-gray-700 mb-1">會計科目 (必選)</label>
+                        <select id="category" name="category" required 
+                                class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-indigo focus:ring-primary-indigo p-3 border bg-white transition duration-150 ease-in-out">
+                            <option value="" disabled selected>請選擇一個科目</option>
+
+                            <!-- 💼 旅費及交通費 (Travel & Transport) - 增加細項 -->
+                            <optgroup label="💼 旅費及交通費 (Travel & Transport)">
+                                <option value="國內差旅費">國內差旅費 (Domestic)</option>
+                                <option value="國外差旅費">國外差旅費 (International)</option>
+                                <option value="市區交通費">市區交通費 (Local Transit)</option>
+                                <option value="高鐵/火車票">高鐵/火車票 (Rail Fare)</option>
+                                <option value="機票費用">機票費用 (Airfare)</option>
+                                <option value="住宿費用">住宿費用 (Accommodation)</option>
+                            </optgroup>
+
+                            <!-- 🍽️ 餐費及招待費 (Meals & Entertainment) - 增加細項 -->
+                            <optgroup label="🍽️ 餐費及招待費 (Meals & Entertainment)">
+                                <option value="客戶招待費">客戶招待費 (Client Entertainment)</option>
+                                <option value="員工福利餐費">員工福利餐費 (Staff Welfare)</option>
+                                <option value="內部會議餐飲">內部會議餐飲 (Internal Meeting F&B)</option>
+                            </optgroup>
+
+                            <!-- 📦 辦公與行政費 (Office & Admin) - 增加細項 -->
+                            <optgroup label="📦 辦公與行政費 (Office & Admin)">
+                                <option value="辦公用品及耗材">辦公用品及耗材 (Supplies)</option>
+                                <option value="郵電/通訊費">郵電/通訊費 (Post & Telecom)</option>
+                                <option value="租金支出">租金支出 (Rent Expense)</option>
+                                <option value="水電瓦斯費">水電瓦斯費 (Utilities)</option>
+                                <option value="修繕與維護費">修繕與維護費 (Repair & Maint.)</option>
+                                <option value="報章雜誌訂閱費">報章雜誌訂閱費 (Subscriptions)</option>
+                            </optgroup>
+
+                            <!-- 💻 資訊與軟體費 (IT & Software) - 增加細項 -->
+                            <optgroup label="💻 資訊與軟體費 (IT & Software)">
+                                <option value="軟體訂閱費">軟體訂閱費 (Software Subscription)</option>
+                                <option value="硬體採購費">硬體採購費 (Hardware Purchase)</option>
+                                <option value="資訊服務費">資訊服務費 (IT Services)</option>
+                                <option value="雲端服務費">雲端服務費 (Cloud Services)</option>
+                                <option value="網站網域名稱費">網站網域名稱費 (Domain/Web Fees)</option>
+                            </optgroup>
+
+                            <!-- 📈 行銷與業務費 (Marketing & Sales) - 增加細項 -->
+                            <optgroup label="📈 行銷與業務費 (Marketing & Sales)">
+                                <option value="廣告與宣傳費">廣告與宣傳費 (Advertising)</option>
+                                <option value="業務交際費">業務交際費 (Sales Relations)</option>
+                                <option value="展覽費">展覽費 (Exhibition Fees)</option>
+                                <option value="印刷宣傳品">印刷宣傳品 (Printed Materials)</option>
+                                <option value="市場調研費">市場調研費 (Market Research)</option>
+                            </optgroup>
+
+                            <!-- 📚 培訓與人才費 (Training & HR) - 增加細項 -->
+                            <optgroup label="📚 培訓與人才費 (Training & HR)">
+                                <option value="專業培訓費">專業培訓費 (Professional Training)</option>
+                                <option value="招募費用">招募費用 (Recruitment Costs)</option>
+                                <option value="教育訓練課程費">教育訓練課程費 (Course Fees)</option>
+                                <option value="員工健康檢查費">員工健康檢查費 (Health Check-ups)</option>
+                            </optgroup>
+
+                            <!-- 🧑‍💻 專業服務費 (Professional Services) - 增加細項 -->
+                            <optgroup label="🧑‍💻 專業服務費 (Professional Services)">
+                                <option value="顧問費">顧問費 (Consulting)</option>
+                                <option value="法律及會計費用">法律及會計費用 (Legal & Accounting)</option>
+                                <option value="外部審計費">外部審計費 (External Audit)</option>
+                                <option value="翻譯/口譯費">翻譯/口譯費 (Translation/Interpreting)</option>
+                            </optgroup>
+
+                            <!-- 🏦 財務與雜項費 (Financial & Misc.) - 增加細項 -->
+                            <optgroup label="🏦 財務與雜項費 (Financial & Misc.)">
+                                <option value="銀行手續費">銀行手續費 (Bank Charges)</option>
+                                <option value="利息支出">利息支出 (Interest Expense)</option>
+                                <option value="政府規費與罰鍰">政府規費與罰鍰 (Fees & Penalties)</option>
+                                <option value="保險費">保險費 (Insurance Premiums)</option>
+                                <option value="慈善捐贈">慈善捐贈 (Donations)</option>
+                            </optgroup>
+
+                            <!-- ❓ 其他雜項費用 (Miscellaneous) -->
+                            <optgroup label="❓ 其他雜項費用 (Miscellaneous)">
+                                <option value="其他雜項費用">其他雜項費用 (Misc. Other)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <!-- 2. 金額與幣別 -->
+                    <div>
+                        <label for="amount" class="block text-sm font-semibold text-gray-700 mb-1">金額 (必填)</label>
+                        <div class="mt-1 flex rounded-lg shadow-sm">
+                            <input type="number" id="amount" name="amount" required step="0.01" min="0.01" 
+                                class="block w-full rounded-l-lg border-gray-300 focus:border-primary-indigo focus:ring-primary-indigo p-3 border" 
+                                placeholder="例如: 1250.50">
+                            <select id="currency" name="currency" class="rounded-r-lg border-l-0 border-gray-300 focus:border-primary-indigo focus:ring-primary-indigo p-3 border bg-gray-50">
+                                <option>TWD</option>
+                                <option>USD</option>
+                                <option>CNY</option>
+                                <option>JPY</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 3. 費用發生日期 -->
+                    <div>
+                        <label for="date" class="block text-sm font-semibold text-gray-700 mb-1">費用發生日期 (必填)</label>
+                        <input type="date" id="date" name="date" required 
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-indigo focus:ring-primary-indigo p-3 border">
+                    </div>
+
+                    <!-- 4. 描述/用途 -->
+                    <div class="md:col-span-2">
+                        <label for="description" class="block text-sm font-semibold text-gray-700 mb-1">詳細描述與用途 (必填)</label>
+                        <textarea id="description" name="description" rows="3" required 
+                            class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-indigo focus:ring-primary-indigo p-3 border" 
+                            placeholder="請詳細說明費用用途，例如：報銷10月5日出差高雄的高鐵票及住宿費。"></textarea>
+                    </div>
+
+                    <!-- 5. 附件 (模擬) -->
+                    <div class="md:col-span-2">
+                        <label for="receipt" class="block text-sm font-semibold text-gray-700 mb-1">上傳收據/發票 (建議)</label>
+                        <div class="mt-1 flex justify-center rounded-lg border border-dashed border-gray-300 px-6 py-4 transition duration-200 hover:border-primary-indigo hover:bg-light-indigo/30">
+                            <div class="text-center">
+                                <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v8" />
+                                </svg>
+                                <div class="mt-1 flex text-sm text-gray-600">
+                                    <label for="file-upload" class="relative cursor-pointer rounded-md bg-white font-medium text-primary-indigo hover:text-indigo-700 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary-indigo focus-within:ring-offset-2">
+                                        <span>上傳檔案</span>
+                                        <input id="file-upload" name="receipt" type="file" class="sr-only" accept="image/*,application/pdf">
+                                    </label>
+                                    <p class="pl-1">或拖曳至此</p>
+                                </div>
+                                <p class="text-xs text-gray-500">支援 PDF, PNG, JPG，最大 5MB</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 表單底部按鈕 -->
+                <div class="mt-8 pt-6 border-t border-gray-200 flex justify-end">
+                    <button type="button" 
+                        class="mr-3 inline-flex justify-center rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus-ring-indigo transition duration-150 ease-in-out">
+                        取消/清除
+                    </button>
+                    <button type="submit" 
+                        class="inline-flex justify-center rounded-lg border border-transparent bg-primary-indigo px-5 py-2 text-sm font-medium text-white shadow-md hover:bg-indigo-700 focus:outline-none focus-ring-indigo transition duration-150 ease-in-out">
+                        提交申報
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

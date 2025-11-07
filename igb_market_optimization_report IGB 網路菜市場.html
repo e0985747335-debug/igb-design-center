@@ -1,0 +1,1302 @@
+<!-- Energetic & Playful Palette: Primary: #06D6A0, Secondary: #FF6B6B, Neutral: #118AB2, Accent: #FFD166 -->
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB 網路菜市場優化建議報告 - 策略藍圖與績效追蹤</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <!-- Chart.js Datalabels Plugin (用於顯示數據點標籤) -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+
+    <style>
+        /* Chart Sizing and Container */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 450px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+                max-height: 500px;
+            }
+        }
+        /* KPI Table Styling */
+        .kpi-table th, .kpi-table td {
+            padding: 12px 16px;
+            text-align: left;
+        }
+        .kpi-table thead th {
+            background-color: #118AB2;
+            color: white;
+            font-weight: 600;
+        }
+        .kpi-table tbody tr:nth-child(even) {
+            background-color: #f0f9ff;
+        }
+        .kpi-table tbody tr:hover {
+            background-color: #e0f2fe;
+        }
+        /* Report Section Headings */
+        .report-section h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #118AB2;
+            margin-top: 1.5rem;
+            border-left: 4px solid #FFD166;
+            padding-left: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        .report-section h4 {
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: #4b5563;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .report-section ul {
+            list-style: disc;
+            margin-left: 1.5rem;
+            padding-left: 0.5rem;
+        }
+        .report-section li {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#06D6A0', /* 綠色 - 成功/新鮮 */
+                        'secondary': '#FF6B6B', /* 紅色 - 警示/促銷 */
+                        'neutral': '#118AB2', /* 藍色 - 中性/主要色 */
+                        'accent': '#FFD166', /* 黃色 - 強調/聚焦 */
+                        'bg-light': '#f0f9ff', /* 淺藍背景 */
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-bg-light font-sans text-gray-800 antialiased">
+
+    <div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- NEW SECTION: Hero / Landing Page Entrance (UI/UX Optimized) -->
+        <section id="report-hero" class="bg-white rounded-xl shadow-2xl p-6 sm:p-10 lg:p-16 mb-12 border-t-8 border-primary">
+            <div class="text-center">
+                <h1 class="text-5xl sm:text-6xl font-extrabold text-neutral tracking-tight mb-4 leading-tight">
+                    IGB 網路菜市場優化報告
+                </h1>
+                <p class="mt-4 text-2xl text-gray-600 font-light max-w-3xl mx-auto">
+                    📈 提升新鮮度、信任感與客戶終身價值 (CLV) 的策略藍圖與績效回顧
+                </p>
+            </div>
+
+            <hr class="my-10 border-gray-200" />
+
+            <!-- Core Highlights Card -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-center">
+                <!-- Highlight 1: Conversion Success -->
+                <div class="p-6 bg-primary/10 border-b-4 border-primary rounded-lg">
+                    <p class="text-lg text-gray-600 font-medium">關鍵效益 (UI/UX)</p>
+                    <p class="text-5xl font-extrabold text-primary my-2">
+                        +21.6%
+                    </p>
+                    <p class="text-xl font-semibold text-neutral">行動轉換率超額達成</p>
+                    <p class="text-sm text-gray-500 mt-1">從 1.85% 提升至 **2.25%**</p>
+                </div>
+
+                <!-- Highlight 2: Logistics Challenge -->
+                <div class="p-6 bg-secondary/10 border-b-4 border-secondary rounded-lg">
+                    <p class="text-lg text-gray-600 font-medium">核心挑戰 (品質/物流)</p>
+                    <p class="text-5xl font-extrabold text-secondary my-2">
+                        3.5%
+                    </p>
+                    <p class="text-xl font-semibold text-neutral">客戶客訴率 **未達標**</p>
+                    <p class="text-sm text-gray-500 mt-1">目標 3.0%，需立即解決供應鏈瓶頸</p>
+                </div>
+            </div>
+
+            <!-- CTA Button to Read Report -->
+            <div class="text-center mt-10">
+                <a href="#full-report" class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-lg font-medium rounded-full shadow-lg text-white bg-neutral hover:bg-neutral/80 transition-colors duration-300 transform hover:scale-105">
+                    開始閱讀完整策略報告 🚀
+                </a>
+            </div>
+        </section>
+        <!-- END NEW SECTION: Hero / Landing Page Entrance -->
+
+        <!-- FIXED NAVIGATION BAR (Optimized for Mobile) -->
+        <nav class="sticky top-0 z-50 bg-neutral/95 backdrop-blur-sm shadow-md py-3 px-2 rounded-lg mb-8">
+            <div class="max-w-7xl mx-auto flex justify-around space-x-1">
+                <!-- 使用 text-xs 在手機上增加緊湊度 -->
+                <a href="#full-report" class="text-white text-xs sm:text-lg font-medium hover:text-primary transition-colors duration-200 ease-in-out">1. 報告</a>
+                <a href="#kpi-dashboard" class="text-white text-xs sm:text-lg font-medium hover:text-primary transition-colors duration-200 ease-in-out">2. 儀表板</a>
+                <a href="#supporting-visuals" class="text-white text-xs sm:text-lg font-medium hover:text-primary transition-colors duration-200 ease-in-out">3. 分析</a>
+                <a href="#product-list-optimized" class="text-white text-xs sm:text-lg font-medium hover:text-primary transition-colors duration-200 ease-in-out">4. 產品 UI</a>
+                <a href="#product-detail-optimized" class="text-white text-xs sm:text-lg font-medium hover:text-primary transition-colors duration-200 ease-in-out">5. PDP</a>
+                <a href="#checkout-optimized" class="text-white text-xs sm:text-lg font-medium hover:text-primary transition-colors duration-200 ease-in-out">6. 結帳</a>
+            </div>
+        </nav>
+
+        <!-- SECTION 1: Full Detailed Report Text -->
+        <section id="full-report" class="mb-12 report-section p-6 bg-white rounded-xl shadow-lg">
+            <h2 class="text-3xl font-bold text-secondary border-b-4 border-secondary pb-2 mb-6">1. 完整策略報告：提升信任與 CLV 的藍圖</h2>
+
+            <h3 class="text-2xl font-bold text-secondary mb-4">執行摘要 (Executive Summary)</h3>
+
+            <!-- OPTIMIZED EXECUTIVE SUMMARY -->
+            <p class="text-lg text-gray-700 mb-6">
+                本階段優化策略成功將 IGB 網路菜市場的**行動轉換率提升至 2.25%**，並大幅降低了購物車流失率至 **52.5%**，證明了 UI/UX 和視覺信任策略的巨大效益。平均訂單價值 (AOV) 也穩定增長至 NT$ 815，體現了產品組合策略的價值。
+            </p>
+            <p class="text-lg font-semibold text-secondary mb-6 p-4 border-l-4 border-secondary bg-red-50/50 rounded-md">
+                然而，我們必須正視核心挑戰：**物流與品質承諾未能完全兌現**。客戶客訴率（3.5%）和物流準時率（93%）均未達預期目標。未來資源需**立即傾斜**至物流後勤和新鮮度保證機制，以兌現我們的品牌承諾，將信任感轉化為穩定的客戶終身價值（CLV）。
+            </p>
+            <!-- END OPTIMIZED EXECUTIVE SUMMARY -->
+
+
+            <h3 class="text-xl font-bold text-neutral">第一章 介面與使用者體驗 (UI/UX) 優化：建立視覺信任</h3>
+            <p class="text-base text-gray-600">線上菜市場的核心挑戰在於無法觸摸實物。優化策略必須聚焦於消除客戶的品質疑慮。</p>
+
+            <h4>1.1 視覺呈現：新鮮度的數位證明</h4>
+            <p class="text-base text-gray-700">
+                <strong>關鍵行動：</strong> 實施 1080px 高解析度、多角度特寫圖片。在葉菜和水果特寫中，捕捉微小的質感細節和農產品的獨特標記。
+            </p>
+            <ul>
+                <li><strong>數據佐證：</strong> 視覺標準化後，預期圖片載入速度將維持在 1.5 秒以下，顯著降低跳出率。</li>
+                <li><strong>建議：：</strong> 針對「今日採收」、「有機認證」的產品，在主圖上疊加醒目的 <strong class="text-primary">新鮮度徽章 (Badge)</strong>，以加快用戶決策速度。</li>
+            </ul>
+
+            <h4>1.2 導航與行動體驗：縮短購物路徑</h4>
+            <ul>
+                <li><strong>情境式分類：：</strong> 除了傳統分類外，新增「快煮套裝」、「低碳水組合」等情境式標籤，輔助用戶快速決策。</li>
+                <li><strong>手機優先 (Mobile-First) 設計：：</strong> 優化一頁式結帳流程，並在底部固定顯示購物車按鈕。</li>
+                <li><strong>預期效益：：</strong> 行動轉換率預期從基準 1.85% 提升至 2.25%，因為購物車流失率可從 65% 降至 52.5%。</li>
+            </ul>
+
+            <h3 class="text-xl font-bold text-neutral">第二章 物流與品質保證：速度與承諾</h3>
+            <p class="text-base text-gray-600">新鮮度是生鮮電商的生命線。物流優化的重點在於提供承諾、超時補償與保鮮策略。</p>
+
+            <h4>2.1 精準配送與即時追蹤</h4>
+            <ul>
+                <li><strong>時段細分：：</strong> 提供 9:00-12:00、12:00-15:00、15:00-18:00 三個標準時段選擇。</li>
+                <li><strong>逾時承諾：：</strong> 明確承諾，非天災因素若延遲超過 30 分鐘，將發放 $50 元優惠券作為補償。</li>
+                <li><strong>GPS 追蹤：：</strong> 導入 GPS 追蹤連結，提高透明度，降低客戶等待焦慮。</li>
+                <li><strong>預期效益：：</strong> 準時配送率預期從 88% 提高至 93%，大幅提升客戶滿意度。</li>
+            </ul>
+
+            <h4>2.2 新鮮度保證機制 (Quality Guarantee)</h4>
+            <ul>
+                <li><strong>回報簡化：：</strong> 設立專屬頁面，客戶只需上傳照片和簡述問題，承諾 <strong class="text-secondary">2 小時內審核</strong> 並在 24 小時內完成退款或補寄。</li>
+                <li><strong>影響分析：：</strong> 透過此機制建立的信任感，將是吸引新客的關鍵。客戶投訴率的下降目標為 <strong class="text-secondary">3.0%</strong>。</li>
+            </ul>
+
+            <h3 class="text-xl font-bold text-neutral">第三章 信任與社群建立：透明化供應鏈</h3>
+            <p class="text-base text-gray-600">在缺乏實體店面的情況下，透明化供應鏈是建立長期信任的唯一途徑。</p>
+
+            <h4>3.1 農夫與產地故事</h4>
+            <ul>
+                <li><strong>內容行銷：：</strong> 在產品頁面嵌入農夫的短片、照片或個人介紹，標註農場位置和採收日期。</li>
+                <li><strong>目的：：</strong> 建立產品的人情味與背書，將交易關係轉變為支持在地生產者的情感連結。</li>
+            </ul>
+
+            <h4>3.2 有圖佐證的評價系統</h4>
+            <ul>
+                <li><strong>鼓勵上傳：：</strong> 鼓勵實名購買的客戶上傳收到的商品照片，並針對「外觀新鮮度」和「口感」進行雙維度評分。</li>
+                <li><strong>價值：：</strong> 這些真實的圖片評價，將成為最具說服力的第三方證明，顯著降低新客戶的購買門檻。</li>
+            </ul>
+
+            <h3 class="text-xl font-bold text-neutral">第四章 產品與營銷策略：數據驅動的增長</h3>
+
+            <h4>4.1 個性化推薦與訂閱服務</h4>
+            <ul>
+                <li><strong>協同過濾：：</strong> 根據客戶的購物歷史（例如常買義大利麵醬），利用協同過濾推薦相關新產品（例如羅勒葉）。</li>
+                <li><strong>彈性訂閱箱：：</strong> 推出「每週精選蔬菜箱」，允許客戶在配送前 48 小時內調整內容或暫停配送。這將穩定現金流。</li>
+                <li><strong>成果預測：：</strong> 個性化推薦將推動平均訂單價值 (AOV) 上升至 <strong class="text-primary">NT$ 815</strong>，而訂閱服務的引入目標是讓 <strong class="text-primary">5%</strong> 的新客戶轉為訂閱者。</li>
+            </ul>
+
+            <h4>4.2 惜福專區 (Reduced Price Zone)</h4>
+            <ul>
+                <li><strong>設立目的：：</strong> 設立一個專區，銷售外觀不佳但不影響食用的農產品（例如：輕微碰傷的水果、邊緣略黃的葉菜）。</li>
+                <li><strong>優勢：：</strong> 這不僅能吸引價格敏感型客戶，更能將產品評價與庫存數據結合，建立新鮮度-庫存預警系統，指導採購，最終減少約 <strong class="text-primary">5% 的庫存損耗</strong>。</li>
+            </ul>
+
+            <h3 class="text-xl font-bold text-neutral">第五章 數據分析與洞察：持續優化的基礎</h3>
+            <p class="text-base text-gray-600">數據分析是優化流程的指導指南。必須建立清晰的追蹤框架。</p>
+
+            <h4>5.1 漏斗分析與 UX 瓶頸定位</h4>
+            <ul>
+                <li><strong>追蹤指標：：</strong> 監控從商品瀏覽 → 加入購物車 (ATC Rate) 到完成付款 (Conversion Rate) 的三個關鍵轉捩點。</li>
+                <li><strong>用途：：</strong> 透過數據，精確找出結帳流程中流失率最高的步驟，作為 UI/UX 資源配置的優先依據。</li>
+            </ul>
+
+            <h4>5.2 產品關聯分析 (Affinity Analysis)</h4>
+            <ul>
+                <li><strong>發現套裝：：</strong> 分析客戶同時購買 A 和 B 產品的機率，用於識別潛在的「套裝產品」組合。</li>
+                <li><strong>實施：：</strong> 根據關聯性分析結果，優化「您可能喜歡」區塊，提高捆綁銷售的準確度。</li>
+            </ul>
+
+            <h3 class="text-2xl font-bold text-primary mb-4">結論與建議</h3>
+            <p class="text-base text-gray-700 mb-4">
+                IGB 網路菜市場的成功取決於是否能夠將線上購物體驗提升到接近實體菜市場的信任水準。
+            </p>
+            <p class="text-lg font-semibold text-gray-800 mb-2">關鍵行動優先順序：</p>
+            <ul class="list-disc ml-6 space-y-1">
+                <li><strong class="text-secondary">立即實施：</strong>視覺化標準（高解析度圖、徽章）和手機結帳流程優化。</li>
+                <li><strong class="text-secondary">短期執行：</strong>新鮮度保證機制與 GPS 追蹤。</li>
+                <li><strong class="text-secondary">長期策略：</strong>彈性訂閱服務與農夫故事（社群內容）推廣。</li>
+            </ul>
+            <p class="text-base text-gray-700 mt-4">
+                建議管理層每月審核核心指標（行動轉換率、客訴率、AOV），並根據數據洞察持續投入資源，以實現可持續的業務增長。
+            </p>
+        </section>
+
+
+        <!-- SECTION 2: Live KPI Dashboard (Data Visualization) -->
+        <section id="kpi-dashboard" class="mb-12">
+            <h2 class="text-3xl font-bold text-secondary border-b-4 border-secondary pb-2 mb-6">2. 實時績效儀表板：追蹤期數據與成果回報</h2>
+            <p class="text-lg text-gray-700 mb-8">
+                根據上方策略藍圖的實施，以下數據為優化方案實施三個月後的追蹤結果，清晰展示了各項指標與預期目標的達成情況。
+            </p>
+
+            <!-- KPI TABLE (OPTIMIZED WITH COLOR ALERT) -->
+            <div class="p-6 bg-white rounded-xl shadow-lg mb-8">
+                <h3 class="text-2xl font-semibold text-gray-700 mb-4">關鍵指標追蹤總覽</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full kpi-table rounded-lg overflow-hidden">
+                        <thead>
+                            <tr>
+                                <th>指標 (Metric)</th>
+                                <th>基線 (Month 0)</th>
+                                <th>目標 (Month 3)</th>
+                                <th>實際 (Month 3)</th>
+                                <th>單位</th>
+                                <th>優化來源</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>行動轉換率</td>
+                                <td>1.85</td>
+                                <td class="text-primary font-bold">2.13</td>
+                                <td class="text-primary font-bold">2.25 ✅</td>
+                                <td>%</td>
+                                <td>UI/UX</td>
+                            </tr>
+                            <tr>
+                                <td>購物車流失率</td>
+                                <td>65.0</td>
+                                <td class="text-primary font-bold">55.0</td>
+                                <td class="text-primary font-bold">52.5 ✅</td>
+                                <td>%</td>
+                                <td>UI/UX</td>
+                            </tr>
+                            <tr>
+                                <td>客戶客訴率</td>
+                                <td>4.2</td>
+                                <td class="text-primary font-bold">3.0</td>
+                                <td class="text-secondary font-bold">3.5 ⚠️</td>
+                                <td>%</td>
+                                <td>Logistics</td>
+                            </tr>
+                            <tr>
+                                <td>平均訂單價值</td>
+                                <td>750</td>
+                                <td class="text-primary font-bold">820</td>
+                                <td class="text-primary font-bold">815 ✅</td>
+                                <td>NT$</td>
+                                <td>Product</td>
+                            </tr>
+                            <tr>
+                                <td>新用戶訂閱率</td>
+                                <td>N/A</td>
+                                <td class="text-primary font-bold">5.0</td>
+                                <td class="text-secondary font-bold">4.5 ⚠️</td>
+                                <td>%</td>
+                                <td>Product</td>
+                            </tr>
+                            <tr>
+                                <td>手機載入時間</td>
+                                <td>3.5</td>
+                                <td class="text-primary font-bold">1.5</td>
+                                <td class="text-secondary font-bold">1.7 ⚠️</td>
+                                <td>秒</td>
+                                <td>UI/UX</td>
+                            </tr>
+                            <tr>
+                                <td>物流準時率</td>
+                                <td>88</td>
+                                <td class="text-primary font-bold">95</td>
+                                <td class="text-secondary font-bold">93 ⚠️</td>
+                                <td>%</td>
+                                <td>Logistics</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- END KPI TABLE -->
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+                <!-- KPI Achievement Chart (Grouped Bar) -->
+                <div class="p-6 bg-white rounded-xl shadow-lg md:col-span-2">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">月度目標達成率 (Actual vs. Target)</h3>
+                    <p class="text-sm text-gray-500 mb-4">以實際值與目標值的差異百分比呈現。正值表示超額達成，負值表示未達標。</p>
+                    <div class="chart-container h-96 max-h-[450px]">
+                        <canvas id="kpiAchievementChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Optimization Source Allocation (Donut Chart) -->
+                <div class="p-6 bg-white rounded-xl shadow-lg md:col-span-1">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">優化來源分佈</h3>
+                    <p class="text-sm text-gray-500 mb-4">本階段優化主要集中在 UI/UX 改善，佔據最大資源投入和成果貢獻。</p>
+                    <div class="chart-container h-80 max-h-80">
+                        <canvas id="sourceAllocationChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: UI/UX OPTIMIZED PRODUCT CARD EXAMPLE (Product List Page) -->
+        <section id="product-list-optimized" class="mb-12 p-6 bg-white rounded-xl shadow-lg">
+            <h2 class="text-3xl font-bold text-neutral border-b-4 border-primary pb-2 mb-6">4. UI/UX 產品卡片展示範例 (高信任度設計)</h2>
+            <p class="text-lg text-gray-700 mb-8">
+                根據 UI/UX 優化策略，產品卡片應突顯新鮮度並提供快速加入購物車的體驗。
+            </p>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+
+                <!-- 範例產品卡片 1：今日採收，促銷中 -->
+                <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group border border-gray-100">
+
+                    <!-- 商品圖片與徽章 -->
+                    <div class="relative h-48 sm:h-56 bg-gray-100 flex items-center justify-center text-gray-400">
+                        [有機聖女小番茄的圖片]
+
+                        <!-- 新鮮度徽章 (Primary Color) -->
+                        <span class="absolute top-2 left-2 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full shadow-md z-10">
+                            🌱 今日採收
+                        </span>
+                        <!-- 促銷徽章 (Secondary Color) -->
+                        <span class="absolute top-2 right-2 bg-secondary text-white text-xs font-bold px-3 py-1 rounded-full shadow-md z-10">
+                            💰 9折限時
+                        </span>
+                    </div>
+
+                    <!-- 商品內容 -->
+                    <div class="p-4 flex flex-col justify-between h-40">
+                        <h3 class="text-lg font-semibold text-gray-800 leading-tight">有機聖女小番茄 (300g)</h3>
+                        <p class="text-sm text-gray-500 my-1">農場直出，酸甜飽滿</p>
+
+                        <div class="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
+                            <!-- 價格 -->
+                            <div>
+                                <span class="text-xl font-extrabold text-neutral">NT$ 99</span>
+                                <span class="text-xs text-gray-400 line-through ml-2">NT$ 110</span>
+                            </div>
+
+                            <!-- 快速加入購物車按鈕 -->
+                            <button class="flex items-center justify-center w-10 h-10 p-2 rounded-full text-white bg-primary hover:bg-primary/80 transition-colors duration-200 shadow-md">
+                                <!-- Shopping Cart Icon -->
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 範例產品卡片 2：惜福專區 (Reduced Price Zone) -->
+                <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group border border-gray-100">
+                    <!-- 商品圖片與徽章 -->
+                    <div class="relative h-48 sm:h-56 bg-yellow-50/50 flex items-center justify-center text-gray-400">
+                        [微瑕疵蘋果的圖片]
+                        <!-- 惜福徽章 (Accent Color) -->
+                        <span class="absolute top-2 left-2 bg-accent text-neutral text-xs font-bold px-3 py-1 rounded-full shadow-md z-10">
+                            ✨ 惜福專區
+                        </span>
+                        <!-- 促銷徽章 (Secondary Color) -->
+                        <span class="absolute top-2 right-2 bg-secondary text-white text-xs font-bold px-3 py-1 rounded-full shadow-md z-10">
+                            📉 5折出清
+                        </span>
+                    </div>
+
+                    <!-- 商品內容 -->
+                    <div class="p-4 flex flex-col justify-between h-40">
+                        <h3 class="text-lg font-semibold text-gray-800 leading-tight">富士蘋果 (微瑕疵 1kg)</h3>
+                        <p class="text-sm text-gray-500 my-1">外觀不佳，口感不變</p>
+
+                        <div class="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
+                            <!-- 價格 -->
+                            <div>
+                                <span class="text-xl font-extrabold text-neutral">NT$ 60</span>
+                                <span class="text-xs text-gray-400 line-through ml-2">NT$ 120</span>
+                            </div>
+
+                            <!-- 快速加入購物車按鈕 -->
+                            <button class="flex items-center justify-center w-10 h-10 p-2 rounded-full text-white bg-neutral hover:bg-neutral/80 transition-colors duration-200 shadow-md">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 範例產品卡片 3：有機認證 -->
+                <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group border border-gray-100">
+                    <!-- 商品圖片與徽章 -->
+                    <div class="relative h-48 sm:h-56 bg-gray-100 flex items-center justify-center text-gray-400">
+                        [有機綠花椰菜的圖片]
+                        <!-- 有機認證徽章 (Primary Color) -->
+                        <span class="absolute top-2 left-2 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full shadow-md z-10">
+                            ✅ 有機認證
+                        </span>
+                    </div>
+
+                    <!-- 商品內容 -->
+                    <div class="p-4 flex flex-col justify-between h-40">
+                        <h3 class="text-lg font-semibold text-gray-800 leading-tight">有機綠花椰菜 (顆)</h3>
+                        <p class="text-sm text-gray-500 my-1">產地直送，安全無虞</p>
+
+                        <div class="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
+                            <!-- 價格 -->
+                            <div>
+                                <span class="text-xl font-extrabold text-neutral">NT$ 75</span>
+                            </div>
+
+                            <!-- 快速加入購物車按鈕 -->
+                            <button class="flex items-center justify-center w-10 h-10 p-2 rounded-full text-white bg-primary hover:bg-primary/80 transition-colors duration-200 shadow-md">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 範例產品卡片 4：低庫存警示 -->
+                <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group border border-gray-100">
+                    <!-- 商品圖片與徽章 -->
+                    <div class="relative h-48 sm:h-56 bg-gray-100 flex items-center justify-center text-gray-400">
+                        [新鮮土雞蛋的圖片]
+                        <!-- 低庫存警示 (Secondary Color) -->
+                        <span class="absolute top-2 left-2 bg-secondary text-white text-xs font-bold px-3 py-1 rounded-full shadow-md z-10">
+                            🔥 限量搶購
+                        </span>
+                        <!-- 品質保證 -->
+                        <span class="absolute top-2 right-2 bg-neutral text-white text-xs font-bold px-3 py-1 rounded-full shadow-md z-10">
+                            🥚 牧場直送
+                        </span>
+                    </div>
+
+                    <!-- 商品內容 -->
+                    <div class="p-4 flex flex-col justify-between h-40">
+                        <h3 class="text-lg font-semibold text-gray-800 leading-tight">新鮮土雞蛋 (10入裝)</h3>
+                        <p class="text-sm text-secondary my-1 font-semibold">庫存緊張，每人限購兩盒</p>
+
+                        <div class="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
+                            <!-- 價格 -->
+                            <div>
+                                <span class="text-xl font-extrabold text-neutral">NT$ 180</span>
+                            </div>
+
+                            <!-- 快速加入購物車按鈕 -->
+                            <button class="flex items-center justify-center w-10 h-10 p-2 rounded-full text-white bg-primary hover:bg-primary/80 transition-colors duration-200 shadow-md">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- SECTION 5: Product Detail Page (PDP) Optimization Example (Optimized for Mobile/Tablet) -->
+        <section id="product-detail-optimized" class="mb-12 report-section p-6 bg-white rounded-xl shadow-lg">
+            <h2 class="text-3xl font-bold text-neutral border-b-4 border-primary pb-2 mb-6">5. 產品詳情頁 (PDP) 優化範例：信任度設計</h2>
+            <p class="text-lg text-gray-700 mb-8">
+                此佈局將「視覺透明化」和「品質承諾」整合到產品頁面中，以解決客戶在線上購買生鮮產品時的信任痛點。
+            </p>
+
+            <!-- PDP Layout Grid: Mobile-First Single Column, Tablet Two Columns, Desktop Multi-Column -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+
+                <!-- 左側：圖片與客戶實拍 (佔 2/5) -->
+                <div class="md:col-span-1 lg:col-span-2">
+                    <div class="bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                        <!-- 調整高度以適應手機/平板 h-72 sm:h-96 -->
+                        <div class="relative h-72 sm:h-96 flex items-center justify-center text-gray-500 font-bold">
+                            [1080p 多角度產品主圖]
+                        </div>
+                    </div>
+
+                    <h4 class="text-xl font-semibold mt-6 mb-3 text-neutral">客戶實拍評價</h4>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="h-20 bg-primary/20 rounded flex items-center justify-center text-primary text-xs">[實拍圖 1]</div>
+                        <div class="h-20 bg-primary/20 rounded flex items-center justify-center text-primary text-xs">[實拍圖 2]</div>
+                        <div class="h-20 bg-primary/20 rounded flex items-center justify-center text-primary text-xs">[實拍圖 3]</div>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2">（鼓勵真實買家上傳，提供最具說服力的第三方證明）</p>
+                </div>
+
+                <!-- 右側：資訊、價格與行動區塊 (佔 3/5) -->
+                <div class="md:col-span-1 lg:col-span-3 space-y-6">
+                    <h2 class="text-3xl font-bold text-gray-900 leading-snug">有機聖女小番茄 (300g)</h2>
+                    <p class="text-xl font-extrabold text-neutral">NT$ 99</p>
+
+                    <!-- 產品特色與保證 -->
+                    <div class="flex flex-wrap gap-4 text-sm font-medium">
+                        <span class="px-3 py-1 bg-primary/20 text-primary rounded-full">🚚 產地直送</span>
+                        <span class="px-3 py-1 bg-primary/20 text-primary rounded-full">✅ 兩小時審核退款</span>
+                        <span class="px-3 py-1 bg-secondary/20 text-secondary rounded-full">⭐ 顧客評分 4.9/5</span>
+                    </div>
+
+                    <!-- 行動呼籲 (加入購物車) -->
+                    <div class="flex items-center space-x-4 pt-4 border-t border-gray-100">
+                        <input type="number" value="1" min="1" class="w-20 p-2 border border-gray-300 rounded-lg text-center" />
+                        <button class="flex-grow py-3 rounded-xl text-white bg-secondary hover:bg-secondary/80 font-bold text-lg shadow-lg transition-colors">
+                            🛒 立即加入購物車
+                        </button>
+                    </div>
+
+                    <!-- 信任度強化區塊 1: 農夫故事 -->
+                    <div class="p-4 bg-yellow-50/50 border-l-4 border-accent rounded-md">
+                        <h4 class="text-lg font-semibold text-neutral flex items-center">👨‍🌾 農夫與產地故事</h4>
+                        <p class="text-sm text-gray-700 mt-2">
+                            **來自：張家農場 (宜蘭)**。張大哥堅持手工除草，並使用有機肥料。點擊觀看張大哥的短片，了解今日採收過程。
+                        </p>
+                        <button class="text-sm font-medium text-neutral hover:text-primary mt-1">
+                            [觀看採收影片連結]
+                        </button>
+                    </div>
+
+                    <!-- 信任度強化區塊 2: 品質承諾 -->
+                    <div class="p-4 bg-blue-50/50 border-l-4 border-neutral rounded-md">
+                        <h4 class="text-lg font-semibold text-neutral flex items-center">📦 物流與新鮮度保證</h4>
+                        <ul class="list-disc ml-5 text-sm text-gray-700 space-y-1 mt-2">
+                            <li>**溫控運送：** 全程維持 4°C - 8°C 低溫配送，鎖住新鮮。</li>
+                            <li>**品質承諾：：** 收到商品後 2 小時內回報問題，承諾 24 小時內退款或補寄。</li>
+                            <li>**追蹤透明：：** 配送前 1 小時提供 GPS 即時追蹤連結。</li>
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- NEW SECTION 6: One-Page Checkout UI/UX Example (Optimized for Mobile) -->
+        <section id="checkout-optimized" class="mb-12 report-section p-6 bg-white rounded-xl shadow-lg">
+            <h2 class="text-3xl font-bold text-secondary border-b-4 border-secondary pb-2 mb-6">6. 結帳流程優化範例：精簡一頁式</h2>
+            <p class="text-lg text-gray-700 mb-8">
+                針對行動裝置優化，減少點擊步驟並最小化資訊輸入，以將購物車流失率降至最低。
+            </p>
+
+            <div class="max-w-xl mx-auto border-2 border-neutral/20 rounded-xl overflow-hidden">
+
+                <!-- 頂部：進度指示器 (使用 text-xs 確保在小螢幕上不溢出) -->
+                <div class="flex justify-between text-xs font-bold p-4 bg-neutral text-white">
+                    <span class="text-accent">1. 收件資訊 ></span>
+                    <span>2. 配送時段 ></span>
+                    <span>3. 完成付款</span>
+                </div>
+
+                <!-- 側邊欄：訂單摘要 (固定可見) -->
+                <div class="p-4 bg-neutral/10 border-b border-neutral/20">
+                    <h4 class="text-lg font-bold text-neutral">訂單摘要</h4>
+                    <div class="flex justify-between text-sm mt-2">
+                        <span>商品小計 (2件)</span>
+                        <span>NT$ 325</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-secondary font-semibold">
+                        <span>運費</span>
+                        <span>NT$ 0 (滿額免運)</span>
+                    </div>
+                    <div class="flex justify-between text-xl font-extrabold text-secondary mt-3 pt-2 border-t border-neutral/30">
+                        <span>總計</span>
+                        <span>NT$ 325</span>
+                    </div>
+                </div>
+
+                <!-- 主體：收件資訊 (當前步驟) -->
+                <div class="p-6 space-y-4">
+                    <h3 class="text-xl font-bold text-gray-800">1. 收件人及地址</h3>
+
+                    <form class="space-y-4">
+                        <!-- 帳號登入/註冊 (優化: 簡化) -->
+                        <div class="p-3 bg-primary/10 rounded-lg text-sm text-neutral font-medium">
+                            您目前是訪客身份。建議 <button type="button" class="underline text-primary">登入/快速註冊</button> 即可追蹤訂單。
+                        </div>
+
+                        <!-- 欄位 1: 姓名 -->
+                        <div>
+                            <label for="name" class="block text-sm font-medium text-gray-700">收件人姓名 <span class="text-secondary">*</span></label>
+                            <input type="text" id="name" placeholder="王小明" required class="mt-1 block w-full p-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                        </div>
+
+                        <!-- 欄位 2: 手機號碼 -->
+                        <div>
+                            <label for="phone" class="block text-sm font-medium text-gray-700">手機號碼 <span class="text-secondary">*</span></label>
+                            <input type="tel" id="phone" placeholder="09XX-XXXXXX" required class="mt-1 block w-full p-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                        </div>
+
+                        <!-- 欄位 3: 地址 (利用地址選擇器簡化輸入) -->
+                        <div>
+                            <label for="address" class="block text-sm font-medium text-gray-700">配送地址 <span class="text-secondary">*</span></label>
+                            <input type="text" id="address" placeholder="請選擇縣市/區域/路名 (建議使用地址輔助工具)" required class="mt-1 block w-full p-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
+                        </div>
+
+                        <!-- *** 新增：錯誤訊息顯示區塊 *** -->
+                        <div id="checkout-error" class="text-secondary text-sm mt-2 hidden">請填寫所有標示 * 的必填欄位！</div>
+                        <!-- ****************************** -->
+
+                        <!-- 底部按鈕：進入下一步（仍在同一頁滾動） -->
+                        <div class="pt-4">
+                             <!-- 按鈕 ID 已加入 -->
+                            <button type="button" id="continue-delivery-btn" class="w-full py-3 rounded-lg text-white bg-primary hover:bg-primary/80 font-bold text-lg shadow-md transition-colors">
+                                繼續配送時段選擇
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 隱藏區塊：配送時段選擇 (預設隱藏，點擊按鈕後顯示在下方) -->
+                <div id="delivery-step" class="p-6 space-y-4 border-t border-neutral/20 opacity-50 pointer-events-none">
+                    <h3 class="text-xl font-bold text-gray-800">2. 配送時段選擇 (精準配送策略)</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-2">
+                            <input type="radio" name="time_slot" value="0900-1200" class="text-neutral">
+                            <span>9:00 - 12:00 (上午)</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="radio" name="time_slot" value="1200-1500" class="text-neutral">
+                            <span>12:00 - 15:00 (中午)</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="radio" name="time_slot" value="1500-1800" class="text-neutral">
+                            <span>15:00 - 18:00 (下午)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 隱藏區塊：付款方式 (預設隱藏，點擊按鈕後顯示在下方) -->
+                <div id="payment-step" class="p-6 space-y-4 border-t border-neutral/20 opacity-50 pointer-events-none">
+                    <h3 class="text-xl font-bold text-gray-800">3. 付款方式</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-2">
+                            <input type="radio" name="payment_method" value="credit_card" class="text-neutral">
+                            <span>信用卡/金融卡 (支援一次性記住)</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="radio" name="payment_method" value="line_pay" class="text-neutral">
+                            <span>Line Pay / 街口支付</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="radio" name="payment_method" value="cod" class="text-neutral">
+                            <span>貨到付款 (現金)</span>
+                        </label>
+                    </div>
+
+                    <div class="pt-6">
+                        <button type="button" class="w-full py-3 rounded-lg text-white bg-secondary hover:bg-secondary/80 font-bold text-xl shadow-lg transition-colors">
+                            💳 確認訂單並結帳 (NT$ 325)
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 流程說明 -->
+            <div class="mt-8 text-center text-sm text-gray-500">
+                **備註：** 在真實的一頁式結帳中，點擊「繼續」會使用 JavaScript **動態啟用**（移除 `opacity-50` 和 `pointer-events-none` 樣式）並滾動到下一個區塊，全程不需跳轉頁面。
+            </div>
+        </section>
+
+
+        <!-- SECTION 3: Supporting Visuals -->
+        <section id="supporting-visuals" class="mb-12">
+            <h2 class="text-3xl font-bold text-neutral border-b-4 border-primary pb-2 mb-6">3. 輔助圖表與診斷分析 (Mock Data)</h2>
+            <p class="text-lg text-gray-700 mb-8">
+                本章節圖表為優化策略制定前的診斷分析，用於解釋策略執行的優先順序和資源分配邏輯。
+            </p>
+
+            <!-- Core Pillars Diagram (HTML/CSS) -->
+            <div class="p-6 bg-white rounded-xl shadow-lg mb-10">
+                <h3 class="text-2xl font-semibold text-neutral mb-4 text-center">核心營運支柱：驅動增長</h3>
+                <div class="flex flex-col sm:flex-row justify-around items-center space-y-6 sm:space-y-0 sm:space-x-4">
+                    <div class="flex flex-col items-center w-32">
+                        <div class="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white text-3xl font-bold">🌱</div>
+                        <p class="mt-2 text-lg font-medium text-primary">新鮮度</p>
+                        <p class="text-xs text-gray-500 text-center">品質保證與溫控</p>
+                    </div>
+                    <div class="text-neutral text-3xl font-bold hidden sm:block">➔</div>
+                    <div class="flex flex-col items-center w-32">
+                        <div class="w-16 h-16 rounded-full bg-secondary flex items-center justify-center text-white text-3xl font-bold">🤝</div>
+                        <p class="mt-2 text-lg font-medium text-secondary">信任感</p>
+                        <p class="text-xs text-gray-500 text-center">供應鏈透明化</p>
+                    </div>
+                    <div class="text-neutral text-3xl font-bold hidden sm:block">➔</div>
+                    <div class="flex flex-col items-center w-32">
+                        <div class="w-16 h-16 rounded-full bg-neutral flex items-center justify-center text-white text-3xl font-bold">🛵</div>
+                        <p class="mt-2 text-lg font-medium text-neutral">便利性</p>
+                        <p class="text-xs text-gray-500 text-center">精準時段配送</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                <!-- Chart 1: Conversion Funnel (Horizontal Bar Chart) -->
+                <div class="p-6 bg-white rounded-xl shadow-lg">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">轉換漏斗流失分析</h3>
+                    <p class="text-sm text-gray-500 mb-4">現行最大的流失發生在從瀏覽到加入購物車之後的階段，顯示結帳過程中的摩擦力過大。</p>
+                    <div class="chart-container">
+                        <canvas id="funnelChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2: Pain Points (Radar Chart) -->
+                <div class="p-6 bg-white rounded-xl shadow-lg">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">潛在客戶痛點分數 (滿分 5.0)</h3>
+                    <p class="text-sm text-gray-500 mb-4">「新鮮度」和「物流」是客戶滿意度最低的環節，需要優先投入資源進行解決。</p>
+                    <div class="chart-container">
+                        <canvas id="painPointChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 3: Strategy Allocation (Donut Chart) -->
+                <div class="p-6 bg-white rounded-xl shadow-lg">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">資源預計投入比例</h3>
+                    <p class="text-sm text-gray-500 mb-4">UI/UX 和物流/品質共佔主要資源，與痛點分析結果保持一致。</p>
+                    <div class="chart-container h-80 max-h-80">
+                        <canvas id="allocationChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 4: Financial Impact (Bubble Chart) -->
+                <div class="p-6 bg-white rounded-xl shadow-lg">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">預期效益：惜福專區與 CLV 提升的關聯性分析</h3>
+                    <p class="text-sm text-gray-500 mb-4">此氣泡圖展示了不同策略組合下的預期財務影響。高 CLV 搭配低庫損是我們的理想區域。</p>
+                    <div class="chart-container h-[50vh] max-h-[450px]">
+                        <canvas id="impactBubbleChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </div>
+
+    <!-- JAVASCRIPT & CHART CONFIGURATION -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Function to wrap long labels for better chart display (CJK focused)
+            const wrapLabel = (label) => {
+                if (typeof label !== 'string' || label.length <= 8) return label;
+                const words = label.split('');
+                const lines = [];
+                let currentLine = '';
+
+                // Simplified character-based wrapping for CJK
+                for (const char of words) {
+                    if ((currentLine + char).length > 8) {
+                        lines.push(currentLine.trim());
+                        currentLine = char;
+                    } else {
+                        currentLine += char;
+                    }
+                }
+                if (currentLine) lines.push(currentLine.trim());
+                return lines;
+            };
+
+            const tooltipConfig = {
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                const item = tooltipItems[0];
+                                let label = item.chart.data.labels[item.dataIndex];
+                                if (Array.isArray(label)) {
+                                    return label.join(' ');
+                                } else {
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            Chart.defaults.font.family = 'Inter, sans-serif';
+            Chart.defaults.color = '#374151';
+
+            // --- KPI Data Processing ---
+            const kpiDataRaw = [
+                { name: '行動轉換率', base: 1.85, target: 2.13, actual: 2.25, unit: '%', source: 'UI/UX' },
+                { name: '購物車流失率', base: 65.0, target: 55.0, actual: 52.5, unit: '%', source: 'UI/UX' },
+                { name: '客戶客訴率', base: 4.2, target: 3.0, actual: 3.5, unit: '%', source: 'Logistics' },
+                { name: '平均訂單價值', base: 750, target: 820, actual: 815, unit: 'NT$', source: 'Product' },
+                { name: '新用戶訂閱率', base: 0, target: 5.0, actual: 4.5, unit: '%', source: 'Product' },
+                { name: '手機載入時間', base: 3.5, target: 1.5, actual: 1.7, unit: '秒', source: 'UI/UX' },
+                { name: '物流準時率', base: 88, target: 95, actual: 93, unit: '%', source: 'Logistics' }
+            ];
+
+            const kpiLabels = kpiDataRaw.map(d => wrapLabel(d.name));
+            const targetAchievement = kpiDataRaw.map(d => {
+                // Calculate target achievement percentage (Actual/Target * 100)
+                // For 'downward is better' metrics (Abandonment, Complaint, Load Time), reverse the ratio for visualization
+                if (['購物車流失率', '客戶客訴率', '手機載入時間'].includes(d.name)) {
+                    // How much closer to target than baseline? (Target is the 'good' end)
+                    // (Target - Actual) / Target * 100
+                    return ((d.target - d.actual) / d.target) * 100;
+                }
+                // 'Upward is better' metrics: (Actual - Target) / Target * 100
+                const baseValue = d.base || 0.01;
+                if (d.name === '新用戶訂閱率') {
+                    return ((d.actual - d.target) / d.target) * 100;
+                }
+                return ((d.actual - d.target) / d.target) * 100;
+            });
+
+            // Calculate optimization source distribution
+            const sourceCounts = kpiDataRaw.reduce((acc, curr) => {
+                acc[curr.source] = (acc[curr.source] || 0) + 1;
+                return acc;
+            }, {});
+            const sourceLabels = Object.keys(sourceCounts);
+            const sourceData = Object.values(sourceCounts);
+
+
+            // --- Chart 1: KPI Target Achievement (Bar Chart) - **UPDATED** ---
+            const achievementCtx = document.getElementById('kpiAchievementChart').getContext('2d');
+            new Chart(achievementCtx, {
+                type: 'bar',
+                data: {
+                    labels: kpiLabels,
+                    datasets: [{
+                        label: '目標達成率 (% 偏差)',
+                        data: targetAchievement,
+                        backgroundColor: targetAchievement.map(v => v >= 0 ? '#06D6A0' : '#FF6B6B'),
+                        borderColor: targetAchievement.map(v => v >= 0 ? '#047857' : '#DC2626'),
+                        borderWidth: 1,
+                        borderRadius: 8,
+                    }]
+                },
+                options: {
+                    ...tooltipConfig,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                         datalabels: { // 啟用數據標籤
+                            anchor: 'end',
+                            align: 'end',
+                            formatter: (value) => {
+                                return value.toFixed(1) + '%';
+                            },
+                            color: (context) => { // 讓標籤顏色與柱子顏色同步
+                                const value = context.dataset.data[context.dataIndex];
+                                return value >= 0 ? '#047857' : '#DC2626';
+                            },
+                            font: {
+                                weight: 'bold', // 數據標籤加粗
+                                size: 13,
+                            },
+                        },
+                        ...tooltipConfig.plugins
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: '與目標的百分比偏差 (%)',
+                                color: '#118AB2'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(1) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // --- Chart 2: Optimization Source Allocation (Donut Chart) ---
+            const sourceAllocationCtx = document.getElementById('sourceAllocationChart').getContext('2d');
+            new Chart(sourceAllocationCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: sourceLabels.map(wrapLabel),
+                    datasets: [{
+                        label: 'KPI 優化來源數量',
+                        data: sourceData,
+                        backgroundColor: ['#118AB2', '#FF6B6B', '#06D6A0'], // Neutral, Secondary, Primary
+                        hoverOffset: 8,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    ...tooltipConfig,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 10,
+                                padding: 15
+                            }
+                        },
+                        ...tooltipConfig.plugins
+                    }
+                }
+            });
+
+
+            // --- Chart 3: Conversion Funnel (Horizontal Bar) - Mock Data - **VISUALLY ENHANCED** ---
+            const funnelCtx = document.getElementById('funnelChart').getContext('2d');
+            const funnelLabels = ['登陸頁', '瀏覽產品', '加入購物車', '進入結帳', '最終購買'];
+            const funnelData = [100, 85, 45, 30, 20];
+
+            new Chart(funnelCtx, {
+                type: 'bar',
+                data: {
+                    labels: funnelLabels.map(wrapLabel),
+                    datasets: [{
+                        label: '使用者百分比 (%)',
+                        data: funnelData,
+                        backgroundColor: funnelData.map((d, i) => i === funnelData.length - 1 ? '#06D6A0' : '#118AB2'),
+                        borderColor: '#FFFFFF',
+                        borderWidth: 2,
+                        borderRadius: 6,
+                        maxBarThickness: 35
+                    }]
+                },
+                options: {
+                    ...tooltipConfig,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: '使用者百分比 (%)',
+                                color: '#118AB2'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'right',
+                            formatter: (value) => value + '%',
+                            color: '#FFFFFF',
+                            font: {
+                                weight: 'bold',
+                                size: 12
+                            }
+                        },
+                        ...tooltipConfig.plugins
+                    }
+                }
+            });
+
+            // --- Chart 4: Pain Points (Radar Chart) - Mock Data - **VISUALLY ENHANCED** ---
+            const radarCtx = document.getElementById('painPointChart').getContext('2d');
+            const radarLabels = ['新鮮度', '信任感 (透明)', '配送時效', 'App UI/UX', '產品豐富度'];
+            const radarData = [4.8, 3.5, 4.2, 3.0, 4.0]; // Higher score = bigger pain point
+
+            new Chart(radarCtx, {
+                type: 'radar',
+                data: {
+                    labels: radarLabels.map(wrapLabel),
+                    datasets: [{
+                        label: '痛點分數 (滿分 5.0)',
+                        data: radarData,
+                        backgroundColor: 'rgba(255, 107, 107, 0.3)',
+                        borderColor: '#FF6B6B',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#FF6B6B',
+                        pointBorderColor: '#fff',
+                        pointRadius: 5,
+                        pointHoverRadius: 8,
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#FF6B6B',
+                    }]
+                },
+                options: {
+                    ...tooltipConfig,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                color: '#e5e7eb'
+                            },
+                            grid: {
+                                color: '#e5e7eb'
+                            },
+                            pointLabels: {
+                                color: '#374151',
+                                font: {
+                                    size: 12,
+                                    weight: '500'
+                                }
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 5,
+                            ticks: {
+                                backdropColor: 'rgba(255, 255, 255, 0.7)',
+                                color: '#6b7280',
+                                stepSize: 1
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 20
+                            }
+                        },
+                        ...tooltipConfig.plugins
+                    }
+                }
+            });
+
+            // --- Chart 5: Strategy Allocation (Donut Chart) - Mock Data - **VISUALLY ENHANCED** ---
+            const allocationCtx = document.getElementById('allocationChart').getContext('2d');
+            const allocationLabels = ['UI/UX 優化', '物流與品質', '信任與社群', '產品與營銷'];
+            const allocationData = [30, 30, 25, 15];
+
+            new Chart(allocationCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: allocationLabels.map(wrapLabel),
+                    datasets: [{
+                        label: '資源投入比例 (%)',
+                        data: allocationData,
+                        backgroundColor: ['#118AB2', '#06D6A0', '#FFD166', '#FF6B6B'],
+                        hoverOffset: 10,
+                        borderWidth: 3,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    ...tooltipConfig,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '60%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 15
+                            }
+                        },
+                        datalabels: {
+                             formatter: (value, ctx) => {
+                                let sum = 0;
+                                let dataArr = ctx.chart.data.datasets[0].data;
+                                dataArr.map(data => {
+                                    sum += data;
+                                });
+                                let percentage = (value*100 / sum).toFixed(1)+"%";
+                                return value > 5 ? percentage : '';
+                            },
+                            color: '#ffffff',
+                            font: {
+                                weight: 'bold',
+                                size: 12
+                            },
+                        },
+                        ...tooltipConfig.plugins
+                    }
+                }
+            });
+
+            // --- Chart 6: Financial Impact (Bubble Chart) - Mock Data ---
+            const impactCtx = document.getElementById('impactBubbleChart').getContext('2d');
+            const impactLabels = ['現行營運', '惜福專區 (庫損優化)', '彈性訂閱 (CLV 提升)', '兩者同步實施 (目標)'];
+            const impactData = [
+                { x: 2, y: 1.5, r: 8 },
+                { x: 4, y: 1.2, r: 12 },
+                { x: 2.5, y: 4.5, r: 14 },
+                { x: 5, y: 5, r: 20 }
+            ];
+
+            new Chart(impactCtx, {
+                type: 'bubble',
+                data: {
+                    labels: impactLabels.map(wrapLabel),
+                    datasets: [{
+                        label: '財務衝擊組合',
+                        data: impactData,
+                        backgroundColor: ['#6b7280', '#FFD166', '#FF6B6B', '#06D6A0'],
+                        borderColor: ['#4b5563', '#facc15', '#ef4444', '#047857'],
+                        borderWidth: 2,
+                        pointStyle: 'circle'
+                    }]
+                },
+                options: {
+                    ...tooltipConfig,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '庫存損耗優化潛力 (1-5, 高分較佳)'
+                            },
+                            grid: {
+                                color: 'rgba(17, 138, 178, 0.1)'
+                            },
+                            min: 0,
+                            max: 6
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '客戶終身價值 (CLV) 提升潛力 (1-5, 高分較佳)'
+                            },
+                            grid: {
+                                color: 'rgba(17, 138, 178, 0.1)'
+                            },
+                            min: 0,
+                            max: 6
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                boxWidth: 10
+                            }
+                        },
+                        ...tooltipConfig.plugins
+                    }
+                }
+            });
+
+
+            // --- One-Page Checkout Interaction Logic (Refined) ---
+            const checkoutSection = document.getElementById('checkout-optimized');
+            if (checkoutSection) { // Check if checkout section exists
+                const infoForm = checkoutSection.querySelector('form');
+                const continueToDeliveryButton = document.getElementById('continue-delivery-btn');
+
+                const deliveryStepDiv = document.getElementById('delivery-step');
+                const paymentStepDiv = document.getElementById('payment-step');
+
+                const progressIndicatorSpans = checkoutSection.querySelectorAll('.bg-neutral.text-white > span');
+                const checkoutErrorDiv = document.getElementById('checkout-error');
+
+                // Function to update progress indicator
+                const updateProgress = (stepIndex) => {
+                    progressIndicatorSpans.forEach((span, index) => {
+                        span.classList.remove('text-accent');
+                        if (index === stepIndex) {
+                            span.classList.add('text-accent');
+                        }
+                    });
+                };
+
+                if (continueToDeliveryButton && deliveryStepDiv && paymentStepDiv && progressIndicatorSpans.length > 0 && checkoutErrorDiv) {
+                    continueToDeliveryButton.addEventListener('click', () => {
+                        const nameInput = document.getElementById('name');
+                        const phoneInput = document.getElementById('phone');
+                        const addressInput = document.getElementById('address');
+
+                        let isValid = true;
+                        checkoutErrorDiv.classList.add('hidden');
+                        nameInput.classList.remove('border-secondary');
+                        phoneInput.classList.remove('border-secondary');
+                        addressInput.classList.remove('border-secondary');
+
+                        if (!nameInput.value.trim()) {
+                            nameInput.classList.add('border-secondary');
+                            isValid = false;
+                        }
+
+                        if (!phoneInput.value.trim()) {
+                            phoneInput.classList.add('border-secondary');
+                            isValid = false;
+                        }
+
+                         if (!addressInput.value.trim()) {
+                            addressInput.classList.add('border-secondary');
+                            isValid = false;
+                        }
+
+
+                        if (isValid) {
+                            continueToDeliveryButton.textContent = '✓ 已確認收件資訊';
+                            continueToDeliveryButton.disabled = true;
+                            continueToDeliveryButton.classList.add('opacity-70', 'cursor-not-allowed');
+                            continueToDeliveryButton.classList.remove('hover:bg-primary/80');
+
+                            deliveryStepDiv.classList.remove('opacity-50', 'pointer-events-none');
+                            deliveryStepDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                            updateProgress(1); // Step index 1 is Delivery
+
+                            const deliveryRadios = deliveryStepDiv.querySelectorAll('input[name="time_slot"]');
+                            deliveryRadios.forEach(radio => {
+                                radio.addEventListener('change', () => {
+                                    paymentStepDiv.classList.remove('opacity-50', 'pointer-events-none');
+                                    // paymentStepDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    updateProgress(2); // Step index 2 is Payment
+                                });
+                            });
+
+                        } else {
+                            checkoutErrorDiv.classList.remove('hidden');
+                            checkoutErrorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    });
+                } else {
+                    console.error("結帳互動元素未找到，請檢查 HTML ID 是否正確。");
+                }
+            }
+            // --- End One-Page Checkout Logic ---
+
+        });
+    </script>
+</body>
+</html>

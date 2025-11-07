@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 數位企業命令中心</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        /* ... (CSS 樣式保持不變) ... */
+        :root { font-family: 'Inter', sans-serif; }
+        .module-card { transition: all 0.3s ease; transform: scale(1); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); }
+        .module-card:hover { transform: scale(1.02); box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.5), 0 4px 6px -4px rgba(59, 130, 246, 0.5); border-color: #3b82f6; }
+        @keyframes pulse-ring { 0% { transform: scale(0.33); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+        .core-pulse { animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .dashboard-card { transition: all 0.2s ease-in-out; border: 1px solid transparent; }
+        .dashboard-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3), 0 4px 6px -4px rgba(37, 99, 235, 0.3); border-color: #3b82f6; }
+        .nav-button { transition: all 0.2s; }
+        .nav-button:hover { background-color: #374151; }
+        /* 列印樣式優化 (保持不變) */
+        @media print { .print-hide, footer { display: none !important; } body { background-color: #fff !important; color: #000 !important; padding: 0 !important; margin: 0 !important; } .dashboard-card, .bg-gray-800, .bg-gray-900, .bg-gray-700, .bg-gray-600 { box-shadow: none !important; border: 1px solid #ccc !important; background-color: #fff !important; color: #000 !important; } .text-yellow-300, .text-indigo-300, .text-red-300, .text-green-300 { color: #000 !important; } .lg\:col-span-2 { grid-column: span 3 / span 3 !important; width: 100% !important; } canvas { max-width: 100%; } }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-4 md:p-8">
+
+    <div id="app-container">
+
+        <section id="main-menu-view" class="">
+            <header class="mb-8 text-center">
+                <h1 class="text-4xl md:text-5xl font-extrabold text-blue-400 tracking-tight">IGB ERP 數位企業命令中心</h1>
+                <p class="text-lg text-gray-400 mt-2">統合數據流，驅動決策，實現卓越營運</p>
+            </header>
+            <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-1 bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700">
+                    <h2 class="text-2xl font-bold text-gray-50 mb-6 border-b border-blue-500/50 pb-3"><svg class="inline w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>系統全貌：IGB 數位企業核心</h2>
+                    <div class="flex flex-col items-center justify-center p-6 bg-gray-700/50 rounded-lg">
+                        <div class="relative w-32 h-32 flex items-center justify-center mb-10"><span class="absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75 core-pulse"></span><div class="relative inline-flex rounded-full h-28 w-28 bg-blue-600 flex flex-col items-center justify-center border-4 border-blue-400 shadow-xl"><span class="text-xl font-extrabold text-white">IGB</span><span class="text-xs font-medium text-blue-100 mt-1">命令中心</span></div></div>
+                        <div class="w-full flex justify-between text-center mb-6"><div class="text-sm font-medium text-green-400">數據驅動決策</div><div class="text-sm font-medium text-yellow-400">即時洞察</div></div>
+                        <div class="w-full grid grid-cols-3 gap-3 text-center"><div class="p-2 bg-gray-600 rounded-md text-xs font-semibold">前端應用 (Apps)</div><div class="p-2 bg-gray-600 rounded-md text-xs font-semibold">物聯網 (IoT)</div><div class="p-2 bg-gray-600 rounded-md text-xs font-semibold">傳統系統 (Legacy)</div></div>
+                        <div class="mt-8 pt-4 border-t border-gray-600 w-full"><h3 class="text-lg font-semibold text-gray-300 mb-2">核心價值：統合與優化</h3><ul class="space-y-2 text-sm text-gray-400"><li class="flex items-center"><svg class="w-4 h-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.001 12.001 0 0012 21a12.001 12.001 0 008.618-3.016z"></path></svg>業務流程自動化 (BPA)</li><li class="flex items-center"><svg class="w-4 h-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>單一真實數據源 (Single Source of Truth)</li><li class="flex items-center"><svg class="w-4 h-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7v10M17 5v14m-12 0h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>跨部門協作透明化</li></ul></div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2 bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700">
+                    <h2 class="text-2xl font-bold text-gray-50 mb-6 border-b border-blue-500/50 pb-3"><svg class="inline w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 9.1-5"/><path d="M12 22v-8"/><path d="m11.2 15-8.4-4.8"/><path d="m12.8 15 8.4-4.8"/></svg>數位化企業的核心模組！</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-green-500 cursor-pointer" onclick="showView('finance')"><h3 class="text-xl font-semibold text-green-400 mb-1">財務管理 (Finance)</h3><p class="text-sm text-gray-400">總帳、應收/應付、固定資產、預算與財務分析。確保會計準確性與現金流健康。</p></div>
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-yellow-500 cursor-pointer"><h3 class="text-xl font-semibold text-yellow-400 mb-1">供應鏈管理 (SCM)</h3><p class="text-sm text-gray-400">採購、供應商管理、庫存優化及物流追蹤。從源頭到交付的全流程控制。</p></div>
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-red-500 cursor-pointer" onclick="showView('manufacturing')"><h3 class="text-xl font-semibold text-red-400 mb-1">生產製造 (Manufacturing)</h3><p class="text-sm text-gray-400">物料清單 (BOM)、工單管理、產能規劃 (MRP) 及車間執行系統 (MES) 整合。</p></div>
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-pink-500 cursor-pointer"><h3 class="text-xl font-semibold text-pink-400 mb-1">人力資源 (HR)</h3><p class="text-sm text-gray-400">員工資料、考勤管理、薪資計算與發放、績效考核及人才發展。</p></div>
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-indigo-500 cursor-pointer" onclick="showView('crm')"><h3 class="text-xl font-semibold text-indigo-400 mb-1">客戶關係管理 (CRM)</h3><p class="text-sm text-gray-400">銷售機會追蹤、客戶服務支援、行銷活動管理及售後服務。</p></div>
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-blue-500 cursor-pointer"><h3 class="text-xl font-semibold text-blue-400 mb-1">商業智慧 (BI)</h3><p class="text-sm text-gray-400">數據倉庫、報表儀表板、數據挖掘與預測分析。為高層決策提供支持。</p></div>
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-purple-500 cursor-pointer" onclick="showView('project-mgmt')">
+                            <h3 class="text-xl font-semibold text-purple-400 mb-1">專案管理 (Project Mgmt)</h3>
+                            <p class="text-sm text-gray-400">專案規劃、資源分配、進度追蹤、時間表管理及成本控制。</p>
+                        </div>
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-teal-500 cursor-pointer"><h3 class="text-xl font-semibold text-teal-400 mb-1">倉儲管理 (WMS)</h3><p class="text-sm text-gray-400">入庫、出庫、盤點、儲位管理及批次追溯。提升倉庫作業效率與準確性。</p></div>
+                    </div>
+                </div>
+            </main>
+        </section>
+
+        <section id="finance-module-view" class="hidden">...</section>
+        <section id="general-ledger-view" class="hidden">...</section>
+        <section id="ar-module-view" class="hidden">...</section>
+        <section id="ap-module-view" class="hidden">...</section>
+        <section id="fa-module-view" class="hidden">...</section>
+        <section id="budgeting-module-view" class="hidden">...</section>
+        <section id="crm-module-view" class="hidden">...</section>
+        <section id="manufacturing-module-view" class="hidden">...</section>
+
+
+        <section id="project-mgmt-module-view" class="hidden">
+            <header class="mb-8 border-b border-gray-700 pb-4">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-4xl md:text-5xl font-extrabold text-purple-400 tracking-tight flex items-center">
+                        <svg class="w-8 h-8 md:w-10 md:h-10 mr-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.5V14"/><path d="M10 9V5"/><path d="M14 9V5"/><rect x="3" y="14" width="18" height="7" rx="1"/><rect x="3" y="3" width="18" height="7" rx="1"/></svg>
+                        IGB 專案管理中心 (Project Mgmt)
+                    </h1>
+
+                    <div class="flex space-x-4 print-hide">
+                        <span class="text-sm text-gray-500 flex items-center">
+                            <span onclick="showView('main-menu')" class="cursor-pointer hover:text-blue-400">ERP 總覽</span>
+                            <span class="mx-2">/</span>
+                            <span class="text-purple-400 font-semibold">專案管理</span>
+                        </span>
+                        <button onclick="showView('main-menu')" class="flex items-center text-blue-400 hover:text-blue-300 transition duration-150 p-2 rounded-lg bg-gray-800 border border-blue-500/50">
+                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+                            返回
+                        </button>
+                    </div>
+                </div>
+                <p class="text-lg text-gray-400 mt-2">
+                    追蹤專案進度、資源使用率和預算健康狀況
+                </p>
+            </header>
+
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="dashboard-card bg-gray-800 p-5 rounded-xl shadow-lg border-l-4 border-purple-500">
+                    <p class="text-sm font-medium text-gray-400">進行中專案數量</p>
+                    <p class="text-3xl font-bold text-purple-300 mt-1">7</p>
+                    <p class="text-xs text-gray-500 mt-2">高優先級: 3 個</p>
+                </div>
+
+                <div class="dashboard-card bg-gray-800 p-5 rounded-xl shadow-lg border-l-4 border-red-500">
+                    <p class="text-sm font-medium text-gray-400">專案延遲率</p>
+                    <p class="text-3xl font-bold text-red-300 mt-1">15%</p>
+                    <p class="text-xs text-gray-500 mt-2">主要集中在研發部門</p>
+                </div>
+
+                <div class="dashboard-card bg-gray-800 p-5 rounded-xl shadow-lg border-l-4 border-yellow-500">
+                    <p class="text-sm font-medium text-gray-400">資源使用率 (本週)</p>
+                    <p class="text-3xl font-bold text-yellow-300 mt-1">78%</p>
+                    <p class="text-xs text-gray-500 mt-2">目標: 85% (尚有餘裕)</p>
+                </div>
+
+                <div class="dashboard-card bg-gray-800 p-5 rounded-xl shadow-lg border-l-4 border-green-500">
+                    <p class="text-sm font-medium text-gray-400">預算健康度</p>
+                    <p class="text-3xl font-bold text-green-300 mt-1">95%</p>
+                    <p class="text-xs text-gray-500 mt-2">平均成本偏差率: 5% (可控)</p>
+                </div>
+            </section>
+
+            <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-1 dashboard-card bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 h-96">
+                    <h2 class="text-xl font-bold text-gray-50 mb-4">
+                        專案類型分佈
+                    </h2>
+                    <div class="h-64 flex items-center justify-center">
+                        <canvas id="projectTypeChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2 dashboard-card bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                    <h2 class="text-xl font-bold text-gray-50 mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 5H7l-5 5 5 5h10l5-5-5-5z"/></svg>
+                        關鍵專案進度 (Critical Path)
+                    </h2>
+
+                    <ul class="space-y-4">
+                        <li class="p-3 bg-gray-700 rounded-lg">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-semibold text-gray-100">P-R&D-005：下一代晶片研發</span>
+                                <span class="text-xs font-bold text-red-400">延遲 5 天</span>
+                            </div>
+                            <div class="w-full bg-gray-600 rounded-full h-2.5">
+                                <div class="bg-red-500 h-2.5 rounded-full" style="width: 70%"></div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">負責人: Sarah.L | 進度: 70% | 待辦任務: 3 (關鍵)</p>
+                        </li>
+                        <li class="p-3 bg-gray-700 rounded-lg">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-semibold text-gray-100">P-IT-002：ERP 系統 V2 部署</span>
+                                <span class="text-xs font-bold text-green-400">準時</span>
+                            </div>
+                            <div class="w-full bg-gray-600 rounded-full h-2.5">
+                                <div class="bg-green-500 h-2.5 rounded-full" style="width: 90%"></div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">負責人: Michael.C | 進度: 90% | 待辦任務: 1 (收尾)</p>
+                        </li>
+                        <li class="p-3 bg-gray-700 rounded-lg">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-semibold text-gray-100">P-MKT-010：東南亞市場進入</span>
+                                <span class="text-xs font-bold text-yellow-400">黃色警示</span>
+                            </div>
+                            <div class="w-full bg-gray-600 rounded-full h-2.5">
+                                <div class="bg-yellow-500 h-2.5 rounded-full" style="width: 45%"></div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">負責人: David.W | 進度: 45% | 資源瓶頸: 人力不足</p>
+                        </li>
+                    </ul>
+                </div>
+            </main>
+        </section>
+
+
+    </div>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-3 print-hide">
+        </div>
+
+    <footer class="mt-10 pt-4 border-t border-gray-700 text-center text-gray-500 text-sm">
+        <p>IGB ERP 系統 — 數位化轉型的藍圖 | 2025 年</p>
+    </footer>
+
+    <script>
+        // ===============================================
+        // Chart.js 實例與初始化函數
+        // ===============================================
+        let cashFlowChartInstance = null;
+        let budgetVarianceChartInstance = null;
+        let salesFunnelChartInstance = null;
+        let workOrderStatusChartInstance = null;
+        let projectTypeChartInstance = null; // 新增 Project Mgmt 圖表實例
+
+        // 新增 Project Type 圖表初始化 (環形圖)
+        function initializeProjectTypeChart() {
+            const ctx = document.getElementById('projectTypeChart');
+            if (projectTypeChartInstance) { projectTypeChartInstance.destroy(); }
+
+            // 模擬專案類型分佈數據
+            const typeData = [4, 2, 1, 3]; // 研發, IT/系統, 市場, 營運優化
+            const labels = ['研發 (4)', 'IT/系統 (2)', '市場 (1)', '營運優化 (3)'];
+            const colors = ['#a855f7', '#6366f1', '#f97316', '#10b981']; // Purple, Indigo, Orange, Green
+
+            projectTypeChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '專案數量',
+                        data: typeData,
+                        backgroundColor: colors,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#d1d5db'
+                            }
+                        },
+                        title: { display: false }
+                    }
+                }
+            });
+        }
+
+        // --- (通用 Chart.js 函數: 保持不變) ---
+        function initializeCashFlowChart() {
+            const ctx = document.getElementById('cashFlowChart');
+            if (cashFlowChartInstance) { cashFlowChartInstance.destroy(); }
+            const cashIn = [350000, 420000, 480000, 500000, 520000, 550000];
+            const cashOut = [210000, 250000, 280000, 310000, 300000, 340000];
+            const netCash = cashIn.map((c, i) => c - cashOut[i]);
+            const chartData = {
+                labels: ['四月', '五月', '六月', '七月', '八月', '九月'],
+                datasets: [
+                    { label: '現金流入 (Cash In)', data: cashIn, borderColor: 'rgb(75, 192, 192)', backgroundColor: 'rgba(75, 192, 192, 0.2)', tension: 0.3, fill: true, yAxisID: 'y' },
+                    { label: '淨現金流 (Net Flow)', data: netCash, borderColor: 'rgb(59, 130, 246)', backgroundColor: 'rgba(59, 130, 246, 0.4)', tension: 0.3, fill: false, yAxisID: 'y' },
+                    { label: '現金流出 (Cash Out)', data: cashOut, borderColor: 'rgb(239, 68, 68)', backgroundColor: 'rgba(239, 68, 68, 0.2)', tension: 0.3, fill: false, yAxisID: 'y', borderDash: [5, 5] }
+                ]
+            };
+            cashFlowChartInstance = new Chart(ctx, {
+                type: 'line', data: chartData, options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#d1d5db' } }, title: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } },
+                        y: { beginAtZero: false, ticks: { color: '#9ca3af', callback: function(value, index, values) { return '$' + (value / 1000) + 'K'; } }, grid: { color: '#374151' } }
+                    }
+                }
+            });
+        }
+
+        function initializeBudgetVarianceChart() {
+            const ctx = document.getElementById('budgetVarianceChart');
+            if (budgetVarianceChartInstance) { budgetVarianceChartInstance.destroy(); }
+            const varianceData = [15000, -8000, 5000, -12000, 20000];
+            const labels = ['研發部門', '生產車間', '市場行銷', '行政管理', '銷售部門'];
+            budgetVarianceChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '預算差異 (實際 - 預算)',
+                        data: varianceData,
+                        backgroundColor: varianceData.map(v => v >= 0 ? 'rgba(74, 222, 128, 0.7)' : 'rgba(248, 113, 113, 0.7)'),
+                        borderColor: varianceData.map(v => v >= 0 ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, labels: { color: '#d1d5db' } },
+                        title: { display: false }
+                    },
+                    scales: {
+                        x: { stacked: false, ticks: { color: '#9ca3af' }, grid: { color: '#374151' } },
+                        y: {
+                            ticks: {
+                                color: '#9ca3af',
+                                callback: function(value) { return value >= 0 ? '$' + value.toLocaleString() : '-$' + Math.abs(value).toLocaleString(); }
+                            },
+                            grid: { color: '#374151' },
+                            title: { display: true, text: '差異金額 (TWD)', color: '#9ca3af' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeSalesFunnelChart() {
+            const ctx = document.getElementById('salesFunnelChart');
+            if (salesFunnelChartInstance) { salesFunnelChartInstance.destroy(); }
+            const salesData = [850000, 400000, 250000, 100000];
+            const labels = ['潛在客戶 (850K)', '合格線索 (400K)', '報價階段 (250K)', '待結案 (100K)'];
+            const colors = ['#818cf8', '#a78bfa', '#c4b5fd', '#d8b4fe'];
+            salesFunnelChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '銷售機會價值 (TWD)',
+                        data: salesData,
+                        backgroundColor: colors,
+                        indexAxis: 'y',
+                        borderWidth: 1,
+                        borderRadius: 5,
+                        minBarLength: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#9ca3af',
+                                callback: function(value) { return '$' + (value / 1000) + 'K'; }
+                            },
+                            grid: { color: '#374151' },
+                            beginAtZero: true
+                        },
+                        y: {
+                            ticks: { color: '#d1d5db' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeWorkOrderStatusChart() {
+            const ctx = document.getElementById('workOrderStatusChart');
+            if (workOrderStatusChartInstance) { workOrderStatusChartInstance.destroy(); }
+            const statusData = [25, 45, 10, 5];
+            const labels = ['已完成 (25)', '生產中 (45)', '待開工 (10)', '停滯/異常 (5)'];
+            const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
+            workOrderStatusChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '工單數量',
+                        data: statusData,
+                        backgroundColor: colors,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#d1d5db'
+                            }
+                        },
+                        title: { display: false }
+                    }
+                }
+            });
+        }
+        // --- (Toast and Export 函數保持不變) ---
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            let bgColor = 'bg-green-600';
+            let iconSvg = '<svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>';
+
+            if (type === 'error') { bgColor = 'bg-red-600'; iconSvg = '<svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>'; }
+            else if (type === 'warning') { bgColor = 'bg-yellow-600'; iconSvg = '<svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>'; }
+            else if (type === 'success') { bgColor = 'bg-green-600'; iconSvg = '<svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M9 11l3 3L22 4"/></svg>'; }
+            else if (type === 'info') { bgColor = 'bg-blue-600'; iconSvg = '<svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>'; }
+
+
+            toast.className = `${bgColor} text-white p-4 rounded-lg shadow-xl flex items-center max-w-sm opacity-0 transition-opacity duration-300 transform translate-x-1/2`;
+            toast.innerHTML = `${iconSvg}<span class="text-sm font-semibold">${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.remove('opacity-0', 'translate-x-1/2'); toast.classList.add('opacity-100', 'translate-x-0'); }, 50);
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-x-0');
+                toast.classList.add('opacity-0', 'translate-x-1/2');
+                setTimeout(() => { if (container.contains(toast)) { container.removeChild(toast); } }, 300);
+            }, 3000);
+        }
+
+        function exportFinancialReport() { window.print(); }
+
+        // ★★★ 更新 showView 函數以包含 'project-mgmt' 視圖及圖表初始化 ★★★
+        function showView(viewId) {
+            const views = {
+                'main-menu': 'main-menu-view',
+                'finance': 'finance-module-view',
+                'gl': 'general-ledger-view',
+                'ar': 'ar-module-view',
+                'ap': 'ap-module-view',
+                'fa': 'fa-module-view',
+                'budgeting': 'budgeting-module-view',
+                'crm': 'crm-module-view',
+                'manufacturing': 'manufacturing-module-view',
+                'project-mgmt': 'project-mgmt-module-view' // 新增 Project Mgmt 視圖
+            };
+
+            const targetId = views[viewId];
+            if (!targetId) {
+                console.error(`Invalid viewId: ${viewId}`);
+                return;
+            }
+
+            Object.values(views).forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.classList.add('hidden');
+                }
+            });
+
+            const targetElement = document.getElementById(targetId);
+            if (targetElement) {
+                targetElement.classList.remove('hidden');
+            } else {
+                console.error(`Target view element not found for ID: ${targetId}`);
+                return;
+            }
+
+            // 處理圖表初始化
+            if (viewId === 'finance') {
+                setTimeout(initializeCashFlowChart, 100);
+            }
+
+            // 通用圖表初始化邏輯 (使用 requestAnimationFrame + resize 確保響應性)
+            const chartsToInitialize = {
+                'budgeting': [initializeBudgetVarianceChart, budgetVarianceChartInstance],
+                'crm': [initializeSalesFunnelChart, salesFunnelChartInstance],
+                'manufacturing': [initializeWorkOrderStatusChart, workOrderStatusChartInstance],
+                'project-mgmt': [initializeProjectTypeChart, projectTypeChartInstance] // Project Mgmt 圖表
+            };
+
+            if (chartsToInitialize[viewId]) {
+                const [initFunc, instance] = chartsToInitialize[viewId];
+                 window.requestAnimationFrame(() => {
+                    initFunc();
+                    if (instance) {
+                        instance.resize();
+                    }
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            showView('main-menu');
+        });
+    </script>
+
+</body>
+</html>

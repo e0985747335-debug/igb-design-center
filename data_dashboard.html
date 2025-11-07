@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 營運總覽儀表板</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 D3.js 函式庫 -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* 設定字體為 Inter */
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        /* 為圖表設定寬度/高度 */
+        #chart-container {
+            width: 100%;
+            height: 400px;
+        }
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .kpi-label {
+            color: #6b7280;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        /* D3.js 軸線樣式 */
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: #d1d5db;
+            shape-rendering: crispEdges;
+        }
+        .axis text {
+            font-size: 10px;
+            fill: #6b7280;
+        }
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 8px 12px;
+            background: #1f2937;
+            color: white;
+            border-radius: 6px;
+            pointer-events: none;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            transition: opacity 0.1s;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container mx-auto p-4 md:p-8">
+    <!-- 標題：調整為 ERP 相關標題 -->
+    <header class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">IGB ERP 營運總覽儀表板</h1>
+        <p class="text-gray-500">檢視關鍵訂單、庫存和準時率指標。</p>
+    </header>
+
+    <!-- 篩選器和控制項 -->
+    <div class="bg-white p-6 rounded-xl shadow-lg mb-8 flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div class="w-full sm:w-auto">
+            <label for="time-filter" class="block text-sm font-medium text-gray-700 mb-1">時間範圍</label>
+            <select id="time-filter" class="w-full sm:w-48 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out">
+                <option value="last_7_days">過去 7 天</option>
+                <option value="last_30_days" selected>過去 30 天</option>
+                <option value="last_90_days">過去 90 天</option>
+            </select>
+        </div>
+        <div class="w-full sm:w-auto">
+            <!-- 篩選器調整為「營運部門」 -->
+            <label for="category-filter" class="block text-sm font-medium text-gray-700 mb-1">營運部門</label>
+            <select id="category-filter" class="w-full sm:w-48 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out">
+                <option value="all">所有部門</option>
+                <option value="production">生產製造</option>
+                <option value="logistics">物流倉儲</option>
+                <option value="finance">財務管理</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- KPI 卡片：調整為 ERP 關鍵指標 -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+
+        <!-- 待處理訂單總數 KPI -->
+        <div class="bg-white p-6 rounded-xl shadow-lg transition duration-300 hover:shadow-xl border-t-4 border-blue-500">
+            <div class="kpi-label">待處理訂單總數</div>
+            <div id="pending-orders-kpi" class="kpi-value text-blue-600">--</div>
+        </div>
+
+        <!-- 總庫存價值 KPI -->
+        <div class="bg-white p-6 rounded-xl shadow-lg transition duration-300 hover:shadow-xl border-t-4 border-green-500">
+            <div class="kpi-label">總庫存價值</div>
+            <div id="inventory-value-kpi" class="kpi-value text-green-600">--</div>
+        </div>
+
+        <!-- 出貨準時率 KPI -->
+        <div class="bg-white p-6 rounded-xl shadow-lg transition duration-300 hover:shadow-xl border-t-4 border-purple-500">
+            <div class="kpi-label">出貨準時率</div>
+            <div id="shipment-rate-kpi" class="kpi-value text-purple-600">--</div>
+        </div>
+    </div>
+
+    <!-- 主要圖表區塊：調整為訂單趨勢 -->
+    <div class="bg-white p-6 rounded-xl shadow-lg">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">每日訂單量趨勢</h2>
+        <div id="chart-container">
+            <!-- D3.js 圖表將繪製在此處 -->
+        </div>
+    </div>
+</div>
+
+<script>
+    // 設置 D3 的邊界
+    const margin = { top: 20, right: 30, bottom: 40, left: 60 };
+    let width = 0;
+    let height = 0;
+
+    // 模擬 ERP 資料結構 (已調整欄位名稱和數值)
+    const mockData = [
+        // date, orders (待處理訂單量), inventory_value (庫存價值), shipment_rate (出貨準時率), department (部門)
+        { date: '2025-10-01', orders: 450, inventory_value: 820000, shipment_rate: 0.92, department: 'logistics' },
+        { date: '2025-10-02', orders: 520, inventory_value: 855000, shipment_rate: 0.88, department: 'production' },
+        { date: '2025-10-03', orders: 480, inventory_value: 842000, shipment_rate: 0.95, department: 'logistics' },
+        { date: '2025-10-04', orders: 600, inventory_value: 890000, shipment_rate: 0.90, department: 'finance' },
+        { date: '2025-10-05', orders: 420, inventory_value: 810000, shipment_rate: 0.93, department: 'production' },
+        { date: '2025-10-06', orders: 550, inventory_value: 835000, shipment_rate: 0.85, department: 'logistics' },
+        { date: '2025-10-07', orders: 650, inventory_value: 918000, shipment_rate: 0.91, department: 'finance' },
+        { date: '2025-10-08', orders: 500, inventory_value: 860000, shipment_rate: 0.94, department: 'production' },
+        { date: '2025-10-09', orders: 700, inventory_value: 900000, shipment_rate: 0.89, department: 'logistics' },
+        { date: '2025-10-10', orders: 580, inventory_value: 870000, shipment_rate: 0.96, department: 'finance' },
+        { date: '2025-10-11', orders: 510, inventory_value: 850000, shipment_rate: 0.92, department: 'production' },
+        { date: '2025-10-12', orders: 560, inventory_value: 865000, shipment_rate: 0.87, department: 'logistics' },
+        { date: '2025-10-13', orders: 680, inventory_value: 905000, shipment_rate: 0.93, department: 'finance' },
+        { date: '2025-10-14', orders: 490, inventory_value: 845000, shipment_rate: 0.95, department: 'production' },
+        { date: '2025-10-15', orders: 620, inventory_value: 882000, shipment_rate: 0.88, department: 'logistics' },
+        { date: '2025-10-16', orders: 750, inventory_value: 920000, shipment_rate: 0.90, department: 'finance' },
+        { date: '2025-10-17', orders: 540, inventory_value: 875000, shipment_rate: 0.94, department: 'production' },
+        { date: '2025-10-18', orders: 640, inventory_value: 890000, shipment_rate: 0.86, department: 'logistics' },
+        { date: '2025-10-19', orders: 780, inventory_value: 930000, shipment_rate: 0.91, department: 'finance' },
+        { date: '2025-10-20', orders: 570, inventory_value: 868000, shipment_rate: 0.93, department: 'production' },
+        { date: '2025-10-21', orders: 630, inventory_value: 889000, shipment_rate: 0.89, department: 'logistics' },
+        { date: '2025-10-22', orders: 800, inventory_value: 945000, shipment_rate: 0.92, department: 'finance' },
+        { date: '2025-10-23', orders: 520, inventory_value: 853000, shipment_rate: 0.95, department: 'production' },
+        { date: '2025-10-24', orders: 610, inventory_value: 878000, shipment_rate: 0.88, department: 'logistics' },
+        { date: '2025-10-25', orders: 760, inventory_value: 925000, shipment_rate: 0.91, department: 'finance' },
+        { date: '2025-10-26', orders: 660, inventory_value: 895000, shipment_rate: 0.93, department: 'production' },
+        { date: '2025-10-27', orders: 710, inventory_value: 912000, shipment_rate: 0.87, department: 'logistics' },
+        { date: '2025-10-28', orders: 850, inventory_value: 958000, shipment_rate: 0.94, department: 'finance' },
+        { date: '2025-10-29', orders: 620, inventory_value: 885000, shipment_rate: 0.90, department: 'production' },
+        { date: '2025-10-30', orders: 670, inventory_value: 900000, shipment_rate: 0.89, department: 'logistics' },
+    ];
+
+    // D3 相關變數
+    let svg;
+    let tooltip;
+    const parseDate = d3.timeParse('%Y-%m-%d');
+
+    // 格式化函數
+    const formatCurrency = (d) => d3.format('$,.0f')(d);
+    const formatOrders = (d) => d3.format(',')(d);
+    const formatPercent = (d) => d3.format('.1%')(d);
+    const formatDate = d3.timeFormat('%m/%d');
+
+    /**
+     * @function updateKPIs
+     * @description 計算並更新儀表板上的 ERP 關鍵績效指標 (KPI)。
+     * @param {Array<Object>} data - 經過篩選的資料。
+     */
+    function updateKPIs(data) {
+        if (!data || data.length === 0) {
+            // 清除 KPI 顯示
+            const kpiIds = ['pending-orders-kpi', 'inventory-value-kpi', 'shipment-rate-kpi'];
+            kpiIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.textContent = 'N/A'; }
+            });
+            return;
+        }
+
+        // 1. 待處理訂單總數
+        const totalPendingOrders = data.reduce((sum, d) => sum + d.orders, 0);
+
+        // 2. 總庫存價值
+        const totalInventoryValue = data.reduce((sum, d) => sum + d.inventory_value, 0);
+
+        // 3. 出貨準時率 (平均值)
+        const avgShipmentRate = data.reduce((sum, d) => sum + d.shipment_rate, 0) / data.length;
+
+        // 更新 DOM
+        const kpisToUpdate = [
+            // 待處理訂單總數
+            { id: 'pending-orders-kpi', value: totalPendingOrders, format: formatOrders },
+            // 總庫存價值
+            { id: 'inventory-value-kpi', value: totalInventoryValue, format: formatCurrency },
+            // 出貨準時率
+            { id: 'shipment-rate-kpi', value: avgShipmentRate, format: formatPercent }
+        ];
+
+        kpisToUpdate.forEach(kpi => {
+            const el = document.getElementById(kpi.id);
+            if (el) {
+                el.textContent = kpi.format(kpi.value);
+            } else {
+                console.error(`KPI element with ID '${kpi.id}' not found. Please check HTML IDs.`);
+            }
+        });
+    }
+
+    /**
+     * @function calculateFilteredData
+     * @description 根據選擇器值篩選資料。
+     * @returns {Array<Object>} 篩選後的資料。
+     */
+    function calculateFilteredData() {
+        const timeFilter = document.getElementById('time-filter').value;
+        const departmentFilter = document.getElementById('category-filter').value; // 已更名為 department
+
+        // 將日期字串轉換為 Date 物件
+        const parsedData = mockData.map(d => ({
+            ...d,
+            date: parseDate(d.date)
+        }));
+
+        let filteredData = parsedData;
+
+        // 1. 時間篩選
+        const endDate = new Date(parsedData[parsedData.length - 1].date);
+        let startDate = new Date(endDate);
+
+        if (timeFilter === 'last_7_days') {
+            startDate.setDate(endDate.getDate() - 7);
+        } else if (timeFilter === 'last_30_days') {
+            startDate.setDate(endDate.getDate() - 30);
+        } else if (timeFilter === 'last_90_days') {
+            startDate.setDate(endDate.getDate() - 90);
+        }
+
+        // 篩選日期範圍
+        filteredData = filteredData.filter(d => d.date >= startDate);
+
+        // 2. 部門篩選 (原類別篩選器)
+        if (departmentFilter !== 'all') {
+            filteredData = filteredData.filter(d => d.department === departmentFilter);
+        }
+
+        return filteredData;
+    }
+
+    /**
+     * @function renderChart
+     * @description 繪製 D3.js 每日訂單趨勢圖。
+     */
+    function renderChart() {
+        const container = document.getElementById('chart-container');
+        // 在重新繪製之前移除舊的 SVG 內容
+        d3.select(container).select('svg').remove();
+        d3.select(container).select('.text-center').remove(); // 移除無資料訊息
+
+        width = container.clientWidth - margin.left - margin.right;
+        height = container.clientHeight - margin.top - margin.bottom;
+
+        // 1. 取得篩選後的資料並更新 KPIs
+        const data = calculateFilteredData();
+        updateKPIs(data);
+
+        if (data.length === 0) {
+             d3.select(container).append('div')
+                .attr('class', 'text-center text-gray-500 py-16')
+                .text('沒有符合篩選條件的 ERP 資料。');
+            return;
+        }
+
+        // 2. 建立 SVG 容器
+        svg = d3.select(container)
+            .append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom)
+            .append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        // 3. 建立比例尺
+        const x = d3.scaleTime()
+            .domain(d3.extent(data, d => d.date))
+            .range([0, width]);
+
+        // Y 軸使用 orders 欄位
+        const y = d3.scaleLinear()
+            .domain([0, d3.max(data, d => d.orders) * 1.1])
+            .range([height, 0]);
+
+        // 4. 繪製軸線
+        const xAxis = d3.axisBottom(x).ticks(d3.timeDay.every(Math.max(1, Math.floor(data.length / 10)))).tickFormat(formatDate);
+        // Y 軸格式化為整數
+        const yAxis = d3.axisLeft(y).tickFormat(formatOrders).ticks(5);
+
+        svg.append('g')
+            .attr('class', 'axis x-axis')
+            .attr('transform', `translate(0,${height})`)
+            .call(xAxis);
+
+        svg.append('g')
+            .attr('class', 'axis y-axis')
+            .call(yAxis);
+
+        // 添加 Y 軸標籤
+        svg.append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 0 - margin.left)
+            .attr("x", 0 - (height / 2))
+            .attr("dy", "1em")
+            .style("text-anchor", "middle")
+            .style("fill", "#4b5563")
+            .style("font-size", "12px")
+            .text("訂單量 (單位)");
+
+        // 5. 繪製線條生成器 (使用 orders)
+        const line = d3.line()
+            .x(d => x(d.date))
+            .y(d => y(d.orders))
+            .curve(d3.curveMonotoneX);
+
+        // 6. 繪製線條
+        svg.append('path')
+            .datum(data)
+            .attr('fill', 'none')
+            .attr('stroke', '#3b82f6')
+            .attr('stroke-width', 3)
+            .attr('d', line);
+
+        // 7. 繪製圓點和交互
+        const dots = svg.selectAll('.dot')
+            .data(data)
+            .enter()
+            .append('circle')
+            .attr('class', 'dot')
+            .attr('cx', d => x(d.date))
+            .attr('cy', d => y(d.orders))
+            .attr('r', 6)
+            .attr('fill', '#3b82f6')
+            .attr('stroke', 'white')
+            .attr('stroke-width', 2)
+            .on('mouseover', function(event, d) {
+                // 顯示 Tooltip (更新內容)
+                const ordersText = formatOrders(d.orders);
+                const inventoryText = formatCurrency(d.inventory_value);
+                const rateText = formatPercent(d.shipment_rate);
+                const dateText = formatDate(d.date);
+
+                tooltip.style('opacity', 1)
+                       .html(`<strong>${dateText}</strong><br>訂單量: ${ordersText}<br>庫存價值: ${inventoryText}<br>準時率: ${rateText}`)
+                       .style('left', (event.pageX + 10) + 'px')
+                       .style('top', (event.pageY - 28) + 'px');
+
+                d3.select(this).attr('r', 8).attr('fill', '#2563eb');
+            })
+            .on('mouseout', function() {
+                // 隱藏 Tooltip
+                tooltip.style('opacity', 0);
+                d3.select(this).attr('r', 6).attr('fill', '#3b82f6');
+            });
+
+        // 8. 建立 Tooltip 元素
+        tooltip = d3.select('body').append('div')
+            .attr('class', 'tooltip');
+    }
+
+    // --- 事件監聽器和初始化 ---
+
+    /**
+     * @function resizeChart
+     * @description 處理視窗大小調整事件，重新繪製圖表以保持響應性。
+     */
+    function resizeChart() {
+        // 為了確保 resize 邏輯也能正確運行，我們仍然採用重新呼叫 renderChart 的方法
+        if (document.getElementById('chart-container')) {
+            renderChart();
+        }
+    }
+
+
+    window.onload = function () {
+        // 確保在 DOM 完全載入後再繪製圖表和綁定事件
+
+        // 初始繪製
+        renderChart();
+
+        // 綁定篩選器事件
+        const timeFilter = document.getElementById('time-filter');
+        const categoryFilter = document.getElementById('category-filter');
+
+        // 綁定事件監聽器以重新繪製圖表
+        timeFilter.addEventListener('change', renderChart);
+        categoryFilter.addEventListener('change', renderChart);
+
+        // 視窗大小調整事件
+        window.addEventListener('resize', resizeChart);
+    }
+</script>
+</body>
+</html>

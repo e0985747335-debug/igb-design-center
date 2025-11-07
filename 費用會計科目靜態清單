@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>費用會計科目靜態清單</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 使用 Inter 字體 */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f8f9fa;
+            padding: 1rem;
+        }
+        #main-container {
+            max-width: 900px;
+            margin: auto;
+        }
+    </style>
+    <script>
+        // 費用會計科目資料結構 (保持不變)
+        const expenseCategories = [
+            {
+                id: 1,
+                title: "💼 旅費及交通費 (Travel & Transport)",
+                icon: "M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2m4-2v2m0 4h.01M16 2v2m0 4h.01M8 2v2m0 4h.01",
+                subItems: [
+                    "國內差旅費 (Domestic)", "國外差旅費 (International)", "市區交通費 (Local Transit)",
+                    "高鐵/火車票 (Rail Fare)", "機票費用 (Airfare)", "住宿費用 (Accommodation)"
+                ]
+            },
+            {
+                id: 2,
+                title: "🍽️ 餐費及招待費 (Meals & Entertainment)",
+                icon: "M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3zM9 13H5m14 0h-4m-1 7h-2",
+                subItems: [
+                    "客戶招待費 (Client Entertainment)", "員工福利餐費 (Staff Welfare)", "內部會議餐飲 (Internal Meeting F&B)"
+                ]
+            },
+            {
+                id: 3,
+                title: "📦 辦公與行政費 (Office & Admin)",
+                icon: "M12 22h6c.883 0 1.325 0 1.636-.087a2 2 0 00.732-.397c.307-.26.54-.593.704-.979C20 20.25 20 19.808 20 19v-4m-8 7V6a2 2 0 012-2h4a2 2 0 012 2v12m-8-12V6M8 8V4m0 4h4m0 0h-4",
+                subItems: [
+                    "辦公用品及耗材 (Supplies)", "郵電/通訊費 (Post & Telecom)", "租金支出 (Rent Expense)",
+                    "水電瓦斯費 (Utilities)", "修繕與維護費 (Repair & Maint.)", "報章雜誌訂閱費 (Subscriptions)"
+                ]
+            },
+            {
+                id: 4,
+                title: "💻 資訊與軟體費 (IT & Software)",
+                icon: "M14 8c-1.105 0-2 .895-2 2s.895 2 2 2 2-.895 2-2-.895-2-2-2zm-2 2h2m0 0h2m-2-2v4m0 0h-2M4 6h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z",
+                subItems: [
+                    "軟體訂閱費 (Software Subscription)", "硬體採購費 (Hardware Purchase)", "資訊服務費 (IT Services)",
+                    "雲端服務費 (Cloud Services)", "網站網域名稱費 (Domain/Web Fees)"
+                ]
+            },
+            {
+                id: 5,
+                title: "📈 行銷與業務費 (Marketing & Sales)",
+                icon: "M3 3v18h18M18 17l-5-5-4 4L3 8",
+                subItems: [
+                    "廣告與宣傳費 (Advertising)", "業務交際費 (Sales Relations)", "展覽費 (Exhibition Fees)",
+                    "印刷宣傳品 (Printed Materials)", "市場調研費 (Market Research)"
+                ]
+            },
+            {
+                id: 6,
+                title: "📚 培訓與人才費 (Training & HR)",
+                icon: "M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2V3zm18 0h-6a4 4 0 00-4 4v14a3 3 0 013-3h7V3z",
+                subItems: [
+                    "專業培訓費 (Professional Training)", "招募費用 (Recruitment Costs)", 
+                    "教育訓練課程費 (Course Fees)", "員工健康檢查費 (Health Check-ups)"
+                ]
+            },
+            {
+                id: 7,
+                title: "🧑‍💻 專業服務費 (Professional Services)",
+                icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3a3 3 0 100 6 3 3 0 000-6zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z",
+                subItems: [
+                    "顧問費 (Consulting)", "法律及會計費用 (Legal & Accounting)", "外部審計費 (External Audit)",
+                    "翻譯/口譯費 (Translation/Interpreting)"
+                ]
+            },
+            {
+                id: 8,
+                title: "🏦 財務與雜項費 (Financial & Misc.)",
+                icon: "M3 7v13a2 2 0 002 2h14a2 2 0 002-2V7H3zm12 5h2m-2 0a2 2 0 00-2-2H9a2 2 0 00-2 2v2a2 2 0 002 2h4a2 2 0 002-2v-2z",
+                subItems: [
+                    "銀行手續費 (Bank Charges)", "利息支出 (Interest Expense)", "政府規費與罰鍰 (Fees & Penalties)",
+                    "保險費 (Insurance Premiums)", "慈善捐贈 (Donations)"
+                ]
+            },
+            {
+                id: 9,
+                title: "❓ 其他雜項費用 (Miscellaneous)",
+                icon: "M12 2a10 10 0 100 20 10 10 0 000-20zm0 4a4 4 0 014 4c0 1.5-1 2.8-2 3.6V15h-4v-.4c-1-0.8-2-2.1-2-3.6a4 4 0 014-4zm0 12a1 1 0 110-2 1 1 0 010 2z",
+                subItems: [
+                    "其他雜項費用 (Misc. Other)"
+                ]
+            }
+        ];
+
+        /**
+         * 渲染靜態列表
+         */
+        function renderStaticList() {
+            const container = document.getElementById('list-container');
+            if (!container) return; 
+            
+            // 使用陣列映射來生成所有靜態列表區塊的 HTML
+            container.innerHTML = expenseCategories.map(item => `
+                <div class="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-gray-200">
+                    <!-- 大項標題 (靜態顯示) -->
+                    <div class="flex items-center w-full p-4 md:p-5 font-bold text-left text-base md:text-lg text-gray-800 bg-indigo-50 transition duration-150 border-b-2 border-indigo-200">
+                        <div class="flex items-center space-x-3">
+                            <!-- 圖標 (使用 SVG 路徑) -->
+                            <svg class="w-6 h-6 text-indigo-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${item.icon}"/>
+                            </svg>
+                            <span class="truncate">${item.title}</span>
+                        </div>
+                    </div>
+
+                    <!-- 細目內容面板 (永遠展開) -->
+                    <div class="p-4 md:p-5 text-gray-600 bg-white">
+                        <ul class="list-none space-y-2 pl-0">
+                            ${item.subItems.map(subItem => `
+                                <li class="text-sm md:text-base leading-relaxed p-2 rounded-lg bg-gray-50/50 border border-gray-100 flex items-center shadow-sm">
+                                    <svg class="w-4 h-4 text-indigo-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M10 17h.01" /></svg>
+                                    ${subItem}
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 頁面加載完成後執行渲染
+        window.onload = function() {
+            renderStaticList();
+        };
+
+    </script>
+</head>
+<body>
+    <div id="main-container">
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-6 text-center">費用會計科目細目清單 (靜態版本)</h1>
+        <p class="text-center text-gray-600 mb-8">此為靜態顯示，排除了互動功能，以確保清單結構能夠順利顯示。</p>
+        <div id="list-container" class="space-y-4">
+            <!-- 靜態列表內容將由 JavaScript 渲染到這裡 -->
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BI數據比較與目標追蹤儀表板</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        // Tailwind configuration for custom styling and font
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // --- New Color Theme (Professional BI) ---
+                        'ui-primary': '#4f46e5', // Tailwind Indigo 600
+                        'bar-normal': '#10b981', // Tailwind Emerald 500 (Actual Value)
+                        'bar-accent': '#3b82f6', // Tailwind Blue 500 (Selected)
+                        'goal-line': '#ef4444',  // Tailwind Red 500 (Target Goal)
+                        'background': '#f1f5f9',
+                        'card-bg': '#ffffff',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Ensures the chart container has a defined height */
+        .chart-container-wrapper {
+            /* Common parent for Y-axis and Bar Chart */
+            height: 350px;
+            display: flex;
+        }
+        .chart-area {
+            /* Bar Chart container */
+            flex-grow: 1;
+            position: relative;
+        }
+        .y-axis-label {
+            /* Y-axis tick line and value */
+            position: absolute;
+            width: 100%;
+            border-bottom: 1px dashed #e5e7eb;
+            top: var(--y-position);
+            transform: translateY(50%);
+        }
+        .goal-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px; /* Thickness of the line */
+            background-color: transparent;
+            border-bottom: 2px dashed var(--goal-color); /* Use a dashed border for the goal */
+            pointer-events: none; /* Ignore mouse events */
+            z-index: 5; /* Above grid lines, below bars */
+        }
+
+        /* Transition for a professional look */
+        .bar-item {
+            transition: all 0.3s ease-in-out;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .bar-item:hover {
+            transform: scaleY(1.02);
+            box-shadow: 0 10px 15px rgba(59, 130, 246, 0.4);
+        }
+        /* Custom property for height calculation */
+        .h-percentage {
+            height: var(--bar-height);
+        }
+
+        /* Metric Toggle Styling */
+        .metric-toggle input[type="radio"] {
+            display: none;
+        }
+        .metric-toggle label {
+            transition: all 0.2s;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #4b5563; /* Gray 600 */
+        }
+        .metric-toggle input[type="radio"]:checked + label {
+            background-color: #ffffff; /* White background for selected tab */
+            color: #4f46e5; /* ui-primary color for text */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background font-sans p-4 sm:p-8 min-h-screen">
+
+    <div id="app" class="w-full max-w-6xl mx-auto space-y-8">
+
+        <!-- Header and Title -->
+        <header class="mb-6">
+            <h1 class="text-4xl font-extrabold text-gray-900 flex items-center">
+                <i data-lucide="layout-dashboard" class="w-7 h-7 mr-3 text-ui-primary"></i> BI數據比較與目標追蹤
+            </h1>
+            <p class="mt-2 text-gray-500">切換指標 (銷售額/淨利潤) 並追蹤月度目標達成狀況。</p>
+        </header>
+
+        <!-- Metric Selector -->
+        <div class="flex justify-start">
+             <div class="metric-toggle bg-gray-200 p-1 rounded-xl flex shadow-inner">
+                <input type="radio" id="select-sales" name="metric-selector" value="sales" checked>
+                <label for="select-sales" class="flex items-center">
+                    <i data-lucide="wallet" class="w-4 h-4 mr-2"></i> 銷售額
+                </label>
+
+                <input type="radio" id="select-profit" name="metric-selector" value="profit">
+                <label for="select-profit" class="flex items-center">
+                    <i data-lucide="dollar-sign" class="w-4 h-4 mr-2"></i> 淨利潤
+                </label>
+             </div>
+        </div>
+
+
+        <!-- Key Performance Indicators (KPIs) Cards -->
+        <div id="kpi-cards" class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <!-- KPI Card 1: Total/Overall Metric -->
+            <div class="bg-card-bg p-5 rounded-xl shadow-lg border-t-4 border-ui-primary">
+                <div class="flex items-center justify-between">
+                    <p class="text-sm font-medium text-gray-500" id="kpi-total-title">總銷售額 (萬)</p>
+                    <i data-lucide="trending-up" class="w-5 h-5 text-ui-primary"></i>
+                </div>
+                <p id="kpi-total" class="text-3xl font-bold text-gray-900 mt-1">--</p>
+                <p class="text-xs text-gray-400 mt-2">過去六個月累計</p>
+            </div>
+
+            <!-- KPI Card 2: Average Monthly Metric -->
+            <div class="bg-card-bg p-5 rounded-xl shadow-lg border-t-4 border-bar-normal">
+                <div class="flex items-center justify-between">
+                    <p class="text-sm font-medium text-gray-500" id="kpi-average-title">月平均銷售 (萬)</p>
+                    <i data-lucide="bar-chart-2" class="w-5 h-5 text-bar-normal"></i>
+                </div>
+                <p id="kpi-average" class="text-3xl font-bold text-gray-900 mt-1">--</p>
+                <p class="text-xs text-gray-400 mt-2">平均表現</p>
+            </div>
+
+            <!-- KPI Card 3: Goal Success Rate (Dynamic) -->
+            <div class="bg-card-bg p-5 rounded-xl shadow-lg border-t-4 border-goal-line">
+                <div class="flex items-center justify-between">
+                    <p class="text-sm font-medium text-gray-500">目標達成率</p>
+                    <i data-lucide="target" class="w-5 h-5 text-goal-line"></i>
+                </div>
+                <p id="kpi-goal-rate" class="text-3xl font-bold text-gray-900 mt-1">--%</p>
+                <p id="kpi-highest-value" class="text-xs text-gray-400 font-semibold mt-2">達標月份數量: <span id="kpi-success-count">--</span></p>
+            </div>
+        </div>
+
+        <!-- Chart and Details Panel -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Chart Area (2/3 width) -->
+            <div class="lg:col-span-2 bg-card-bg p-6 rounded-xl shadow-lg border border-gray-200">
+                <h2 class="text-xl font-semibold mb-6 text-gray-700" id="chart-title">月度銷售額分佈與趨勢 (萬)</h2>
+
+                <!-- Y-Axis and Bar Chart Container -->
+                <div class="flex items-start">
+
+                    <!-- Y-Axis Labels (Fixed width) -->
+                    <div id="y-axis" class="w-10 text-right pr-2 text-sm text-gray-500 chart-container-wrapper relative flex-shrink-0">
+                        <!-- Y-axis ticks generated by JS -->
+                    </div>
+
+                    <!-- Chart Bars Container (Flexible width) -->
+                    <div class="chart-container-wrapper relative flex-grow flex flex-col justify-end pb-2 pl-1 border-b border-gray-300">
+                        <!-- Y-Axis Grid Lines (Behind the bars) -->
+                        <div id="y-axis-lines" class="absolute inset-0 z-0"></div>
+
+                        <!-- Actual Bars Area -->
+                        <div id="chart-area" class="chart-area flex items-end justify-around z-10">
+                            <!-- Chart bars generated by JS -->
+                            <!-- Goal lines will be inserted here dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- X-Axis Labels Container -->
+                <div id="x-axis-labels" class="flex justify-around text-sm font-medium text-gray-600 mt-2 ml-10">
+                    <!-- X-axis labels generated by JS -->
+                </div>
+            </div>
+
+            <!-- Data Details Panel (1/3 width) -->
+            <div class="lg:col-span-1 bg-card-bg p-6 rounded-xl border-l-4 border-ui-primary shadow-lg sticky top-6 self-start">
+                <h2 class="text-xl font-bold text-ui-primary mb-4 flex items-center">
+                    <i data-lucide="info" class="w-5 h-5 mr-2"></i>
+                    <span id="details-title">點擊長條查看詳情</span>
+                </h2>
+                <div id="details-content" class="text-gray-600 space-y-4">
+                    <p class="text-sm text-gray-500">請選擇一個月份的數據點，此處將顯示該週期的關鍵商業指標與見解。</p>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. Firebase/Auth Boilerplate ---
+        const initFirebase = async () => {
+            try {
+                // Simplified Firebase setup path
+                const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+                const { getAuth, signInAnonymously, signInWithCustomToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                const { getFirestore, setLogLevel } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+                if (Object.keys(firebaseConfig).length > 0) {
+                    const app = initializeApp(firebaseConfig);
+                    const auth = getAuth(app);
+                    setLogLevel('Debug');
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken).catch(error => console.error("Firebase sign-in failed:", error));
+                    } else {
+                        await signInAnonymously(auth).catch(error => console.error("Firebase anonymous sign-in failed:", error));
+                    }
+                }
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+            }
+        };
+
+        // --- 2. Chart Data and Logic ---
+
+        // Consolidated data structure for Sales and Profit, including Goals
+        const dashboardMetrics = {
+            sales: {
+                title: '月度銷售額',
+                unit: '萬',
+                // Data format: { label, value, goal, details }
+                data: [
+                    { label: '一月 (Jan)', value: 150, goal: 160, details: { summary: '一月銷售額高於預期，特別是數位產品線的成長達 20%。', trend: '上升趨勢', focus: '數位產品線', yoy: '+12.3%', conversion: '2.5%', forecast: '160' } },
+                    { label: '二月 (Feb)', value: 90, goal: 120, details: { summary: '二月受春節假期影響，銷售額下降，但服務業績穩定保持。', trend: '短期波動', focus: '服務業績', yoy: '-5.1%', conversion: '1.8%', forecast: '110' } },
+                    { label: '三月 (Mar)', value: 210, goal: 200, details: { summary: '三月為本季度高峰，得益於大型促銷活動的成功啟動，轉換率創新高。', trend: '強勁增長', focus: '促銷活動成效', yoy: '+25.8%', conversion: '3.2%', forecast: '190' } },
+                    { label: '四月 (Apr)', value: 130, goal: 150, details: { summary: '四月表現平穩，新客戶轉換率略有提升，但舊客戶流失率需關注。', trend: '平穩發展', focus: '客戶留存', yoy: '+4.0%', conversion: '2.1%', forecast: '145' } },
+                    { label: '五月 (May)', value: 180, goal: 170, details: { summary: '五月銷售回升，主要是新產品發佈帶動了一波市場需求。', trend: '緩慢回升', focus: '新產品導入', yoy: '+18.7%', conversion: '2.8%', forecast: '200' } },
+                    { label: '六月 (Jun)', value: 240, goal: 220, details: { summary: '六月創下半年最佳紀錄，為財年上半年劃下完美句點，庫存周轉率健康。', trend: '持續高漲', focus: '營運效率', yoy: '+30.1%', conversion: '3.5%', forecast: '220' } }
+                ]
+            },
+            profit: {
+                title: '月度淨利潤',
+                unit: '萬',
+                data: [
+                    { label: '一月 (Jan)', value: 45, goal: 50, details: { summary: '一月淨利潤達標率90%，運營成本控制良好。', trend: '上升趨勢', focus: '成本控制', yoy: '+8.3%', margin: '30%', forecast: '55' } },
+                    { label: '二月 (Feb)', value: 30, goal: 40, details: { summary: '二月淨利潤因固定成本佔比提高而下降，需優化產品組合。', trend: '短期波動', focus: '產品組合優化', yoy: '-10.0%', margin: '33%', forecast: '40' } },
+                    { label: '三月 (Mar)', value: 75, goal: 60, details: { summary: '三月利潤遠超目標，規模經濟效應顯著。', trend: '強勁增長', focus: '規模經濟', yoy: '+35.0%', margin: '35%', forecast: '70' } },
+                    { label: '四月 (Apr)', value: 50, goal: 55, details: { summary: '四月淨利潤稍低於目標，主要因為研發投入增加。', trend: '平穩發展', focus: '研發投入', yoy: '+2.0%', margin: '38%', forecast: '58' } },
+                    { label: '五月 (May)', value: 65, goal: 60, details: { summary: '五月利潤穩定增長，顯示新產品的利潤率健康。', trend: '緩慢回升', focus: '新產品利潤率', yoy: '+15.5%', margin: '36%', forecast: '75' } },
+                    { label: '六月 (Jun)', value: 80, goal: 70, details: { summary: '六月淨利潤創下新高，證明了高毛利產品策略的成功。', trend: '持續高漲', focus: '高毛利產品', yoy: '+28.0%', margin: '33%', forecast: '85' } }
+                ]
+            }
+        };
+
+        let currentMetricKey = 'sales';
+        let selectedIndex = 0;
+
+        // DOM elements
+        let chartArea, xAxisLabels, detailsTitle, detailsContent, yAxisContainer, yAxisLinesContainer, chartTitle;
+        let kpiTotal, kpiAverage, kpiGoalRate, kpiSuccessCount;
+        let kpiTotalTitle, kpiAverageTitle;
+
+        // --- 3. Core Logic Functions ---
+
+        /**
+         * Calculates and updates the KPI cards based on the selected metric.
+         */
+        function updateKPIs(data, metricConfig) {
+            const total = data.reduce((sum, d) => sum + d.value, 0);
+            const average = (total / data.length).toFixed(1);
+            const successCount = data.filter(d => d.value >= d.goal).length;
+            const goalRate = ((successCount / data.length) * 100).toFixed(0);
+
+            // Update Titles
+            kpiTotalTitle.textContent = `總${metricConfig.title} (${metricConfig.unit})`;
+            kpiAverageTitle.textContent = `月平均${metricConfig.title.substring(0, 2)} (${metricConfig.unit})`;
+            chartTitle.textContent = `${metricConfig.title}分佈與目標追蹤 (${metricConfig.unit})`;
+
+
+            // Update Values
+            kpiTotal.textContent = total.toLocaleString();
+            kpiAverage.textContent = average.toLocaleString();
+            kpiGoalRate.textContent = `${goalRate}%`;
+            kpiSuccessCount.textContent = successCount;
+
+            // Apply color to goal rate based on performance
+            const goalRateElement = document.getElementById('kpi-goal-rate');
+            goalRateElement.classList.remove('text-red-500', 'text-bar-normal');
+            goalRateElement.classList.add(goalRate >= 80 ? 'text-bar-normal' : 'text-red-500');
+        }
+
+
+        /**
+         * Updates the details panel and highlights the selected bar.
+         */
+        function handleBarClick(index) {
+            selectedIndex = index;
+            const metricConfig = dashboardMetrics[currentMetricKey];
+            const dataPoint = metricConfig.data[index];
+            const details = dataPoint.details;
+
+            // 1. Update Details Panel Content
+            detailsTitle.textContent = `${dataPoint.label.split(' ')[0]} 關鍵指標`;
+
+            // Check if current metric is Sales or Profit to change the detail field
+            const isSales = currentMetricKey === 'sales';
+
+            const isPositiveYoY = details.yoy.startsWith('+');
+            const yoyClass = isPositiveYoY ? 'text-bar-normal' : 'text-red-500';
+
+            const isGoalMet = dataPoint.value >= dataPoint.goal;
+            const goalMetClass = isGoalMet ? 'bg-bar-normal/10 text-bar-normal' : 'bg-goal-line/10 text-goal-line';
+            const goalMetIcon = isGoalMet ? 'check-circle' : 'x-octagon';
+            const goalMetText = isGoalMet ? '目標已達成' : '低於目標值';
+
+
+            detailsContent.innerHTML = `
+                <div class="space-y-4">
+                    <!-- Monthly Value and Goal Status -->
+                    <div class="p-3 rounded-lg border-l-4 border-ui-primary ${goalMetClass}">
+                        <div class="flex justify-between items-center">
+                            <p class="text-sm font-semibold">${metricConfig.title} (${metricConfig.unit})</p>
+                            <i data-lucide="${goalMetIcon}" class="w-5 h-5"></i>
+                        </div>
+                        <p class="text-3xl font-extrabold text-gray-900 mt-1">${dataPoint.value.toLocaleString()}</p>
+                        <p class="text-xs font-semibold mt-1">${goalMetText} (${dataPoint.goal.toLocaleString()} ${metricConfig.unit})</p>
+                    </div>
+
+                    <!-- Key Metrics Grid -->
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div class="bg-white p-3 rounded border border-gray-200">
+                            <p class="font-semibold text-gray-700">年同比增長 (YoY)</p>
+                            <p class="${yoyClass} font-bold text-lg">${details.yoy}</p>
+                        </div>
+                        <div class="bg-white p-3 rounded border border-gray-200">
+                            <p class="font-semibold text-gray-700">${isSales ? '轉換率' : '利潤率'}</p>
+                            <p class="text-ui-primary font-bold text-lg">${isSales ? details.conversion : details.margin}</p>
+                        </div>
+                        <div class="bg-white p-3 rounded border border-gray-200">
+                            <p class="font-semibold text-gray-700">下月預測 (${metricConfig.unit})</p>
+                            <p class="text-bar-accent font-bold text-lg">${details.forecast}</p>
+                        </div>
+                        <div class="bg-white p-3 rounded border border-gray-200">
+                            <p class="font-semibold text-gray-700">趨勢</p>
+                            <p class="text-gray-900 font-bold text-lg">${details.trend}</p>
+                        </div>
+                    </div>
+
+                    <!-- Summary Insight -->
+                    <div class="pt-2 border-t border-gray-100">
+                        <p class="font-semibold text-gray-700 mb-1">關鍵見解:</p>
+                        <p class="text-sm italic">${details.summary}</p>
+                    </div>
+                </div>
+            `;
+            // Re-create lucide icons for dynamic content
+            lucide.createIcons();
+
+
+            // 2. Update Chart Visuals (Highlight selected bar)
+            const bars = chartArea.querySelectorAll('.bar-item');
+            bars.forEach((bar, i) => {
+                // Remove accent state and set to normal (Emerald)
+                bar.classList.remove('bg-bar-accent', 'ring-4', 'ring-bar-accent/50');
+                bar.classList.add('bg-bar-normal');
+                if (i === index) {
+                    // Set to accent state (Blue)
+                    bar.classList.remove('bg-bar-normal');
+                    bar.classList.add('bg-bar-accent', 'ring-4', 'ring-bar-accent/50');
+                }
+            });
+        }
+
+        /**
+         * Renders Y-axis ticks and horizontal lines.
+         */
+        function renderYAxis(maxValue) {
+            yAxisContainer.innerHTML = '';
+            yAxisLinesContainer.innerHTML = '';
+
+            // Round up max value to the nearest 50 (or 25 for smaller numbers)
+            const rounder = maxValue > 100 ? 50 : 25;
+            const maxRounded = Math.ceil(maxValue / rounder) * rounder;
+            const step = maxRounded / 5;
+
+            // Draw 6 ticks (0 to 100%)
+            for (let i = 0; i <= 5; i++) {
+                const value = Math.round(step * i);
+                const percentage = (value / maxRounded) * 100;
+
+                // --- Y-axis Value Label ---
+                const label = document.createElement('div');
+                label.style.bottom = `${percentage}%`;
+                label.className = 'absolute translate-y-1/2 w-full';
+                label.textContent = value;
+                yAxisContainer.appendChild(label);
+
+                // --- Horizontal Grid Line (Don't draw at 0%) ---
+                if (i > 0) {
+                    const line = document.createElement('div');
+                    line.style.bottom = `${percentage}%`;
+                    line.style.setProperty('--y-position', `${percentage}%`);
+                    line.className = 'y-axis-label';
+                    yAxisLinesContainer.appendChild(line);
+                }
+            }
+            return maxRounded;
+        }
+
+
+        /**
+         * Renders the bar chart, X-axis labels, and the Goal line.
+         */
+        function renderChart() {
+            const metricConfig = dashboardMetrics[currentMetricKey];
+            const data = metricConfig.data;
+
+            chartArea.innerHTML = '';
+            xAxisLabels.innerHTML = '';
+
+            // 1. Determine Chart Maximum Value (must consider max value and max goal)
+            const rawMaxValue = Math.max(...data.map(d => d.value), ...data.map(d => d.goal || 0));
+            const chartMax = renderYAxis(rawMaxValue);
+
+            // 2. Update KPIs based on the selected metric
+            updateKPIs(data, metricConfig);
+
+            // 3. Draw Bars, X-Axis Labels, and Goal Lines
+            data.forEach((dataPoint, index) => {
+                const valuePercentage = (dataPoint.value / chartMax) * 100;
+
+                // --- Draw Bar ---
+                const bar = document.createElement('div');
+                bar.className = 'bar-item w-8 sm:w-10 md:w-12 mx-2 bg-bar-normal hover:bg-bar-normal/90 rounded-t-lg flex items-end justify-center text-xs font-bold text-white relative z-20';
+
+                bar.style.setProperty('--bar-height', `${valuePercentage}%`);
+                bar.classList.add('h-percentage');
+
+                // Value label above the bar
+                bar.innerHTML = `<span class="absolute -top-6 text-sm text-gray-700 font-medium">${dataPoint.value}</span>`;
+
+                bar.addEventListener('click', () => handleBarClick(index));
+                chartArea.appendChild(bar);
+
+                // --- Draw Goal Line for this bar's X position ---
+                if (dataPoint.goal > 0) {
+                    const goalPercentage = (dataPoint.goal / chartMax) * 100;
+                    const goalLine = document.createElement('div');
+                    // Calculate the position relative to the chart container height (350px)
+                    const goalPositionPx = (350 * goalPercentage) / 100;
+
+                    // Goal lines are positioned absolutely within the chart area (flex-grow container)
+                    // We need to calculate the exact left/right bounds for this specific bar's x-position.
+                    // This is complex in a flex layout, so we'll simplify by placing the goal line over the bar itself.
+
+                    const barGoalLine = document.createElement('div');
+                    barGoalLine.className = 'goal-line absolute';
+                    barGoalLine.style.bottom = `${goalPercentage}%`;
+                    barGoalLine.style.width = '100%'; // Full width of the bar container
+                    barGoalLine.style.left = '0';
+                    barGoalLine.style.setProperty('--goal-color', dataPoint.value >= dataPoint.goal ? '#22c55e' : '#ef4444'); // Green if met, Red if not met
+
+                    // Add a tiny marker to the center of the bar to denote the goal
+                    const marker = document.createElement('div');
+                    marker.className = 'absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full w-2 h-2';
+                    marker.style.backgroundColor = dataPoint.value >= dataPoint.goal ? '#22c55e' : '#ef4444';
+                    barGoalLine.appendChild(marker);
+
+
+                    // For a cleaner look, let's just draw the line at the top of the bar container
+                    // The CSS goal-line class is already set to span the whole chart area
+
+                    // A simpler way: Draw only the horizontal line for the Goal in the bar area
+                    const lineForThisBar = document.createElement('div');
+                    lineForThisBar.className = 'absolute goal-line w-full';
+                    lineForThisBar.style.bottom = `${goalPercentage}%`;
+                    lineForThisBar.style.setProperty('--goal-color', '#ef4444');
+                    bar.appendChild(lineForThisBar);
+
+                    // Add Goal Value label for this bar
+                    const goalLabel = document.createElement('span');
+                    const isMet = dataPoint.value >= dataPoint.goal;
+                    goalLabel.className = `absolute -top-10 text-xs font-semibold ${isMet ? 'text-bar-normal' : 'text-goal-line'}`;
+                    goalLabel.textContent = `目標: ${dataPoint.goal}`;
+                    bar.appendChild(goalLabel);
+                }
+
+
+                // --- Draw X-Axis Label ---
+                const label = document.createElement('div');
+                label.className = 'flex-1 text-center text-xs sm:text-sm truncate';
+                label.textContent = dataPoint.label.split(' ')[0];
+                xAxisLabels.appendChild(label);
+            });
+
+            // 4. Default selection or maintain state
+            if (data.length > 0) {
+                handleBarClick(selectedIndex);
+            }
+        }
+
+        /**
+         * Debounce function to limit function execution rate (especially for resize events)
+         */
+        function debounce(func, delay) {
+            let timeout;
+            return function() {
+                const context = this;
+                const args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), delay);
+            };
+        }
+
+        /**
+         * Initializes DOM references and attaches event listeners.
+         */
+        function initializeComponents() {
+            // Get DOM elements for chart
+            chartArea = document.getElementById('chart-area');
+            xAxisLabels = document.getElementById('x-axis-labels');
+            yAxisContainer = document.getElementById('y-axis');
+            yAxisLinesContainer = document.getElementById('y-axis-lines');
+            detailsTitle = document.getElementById('details-title');
+            detailsContent = document.getElementById('details-content');
+            chartTitle = document.getElementById('chart-title');
+
+            // Get DOM elements for KPIs
+            kpiTotal = document.getElementById('kpi-total');
+            kpiAverage = document.getElementById('kpi-average');
+            kpiGoalRate = document.getElementById('kpi-goal-rate');
+            kpiSuccessCount = document.getElementById('kpi-success-count');
+            kpiTotalTitle = document.getElementById('kpi-total-title');
+            kpiAverageTitle = document.getElementById('kpi-average-title');
+
+            // Attach listener to metric selector radio buttons
+            document.querySelectorAll('input[name="metric-selector"]').forEach(radio => {
+                radio.addEventListener('change', (event) => {
+                    currentMetricKey = event.target.value;
+                    selectedIndex = 0; // Reset selection on metric change
+                    renderChart();
+                });
+            });
+        }
+
+
+        // --- 4. Initialization ---
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeComponents();
+            // Initial render (defaults to 'sales')
+            renderChart();
+            // Initialize Lucide icons
+            lucide.createIcons();
+
+            // Listen for window resize with debounce for performance
+            window.addEventListener('resize', debounce(renderChart, 150));
+
+            // Initialize Firebase (for context)
+            initFirebase();
+        });
+
+    </script>
+</body>
+</html>

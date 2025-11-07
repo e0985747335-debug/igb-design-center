@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 2.0 戰略指揮中心 (Strategic Command Center)</title>
+    <style>
+        /* 1. 核心樣式與深色主題 */
+        body {
+            background-color: #0d1117; /* 科技感深藍黑 */
+            color: #ffffff; /* 基本白色文字 */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* 2. 標題與字體特效 */
+        h1 {
+            color: #4CAF50;
+            text-align: center;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 300;
+            /* 霓虹特效 */
+            text-shadow: 0 0 5px rgba(76, 175, 80, 0.5), 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+
+        /* 3. 容器與佈局 */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .section-title {
+            font-size: 1.5em;
+            border-bottom: 1px solid #4CAF50;
+            padding-bottom: 5px;
+            margin-top: 30px;
+            margin-bottom: 20px;
+            color: #4CAF50;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        /* 4. KPI 區塊樣式 */
+        .kpi-card {
+            background-color: #161b22; /* 卡片背景 */
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 5px solid #4CAF50; /* 成功狀態默認邊框 */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s;
+        }
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 15px rgba(76, 175, 80, 0.2);
+        }
+        .kpi-label {
+            font-size: 0.9em;
+            color: #8b949e;
+            margin-bottom: 10px;
+        }
+        .kpi-value {
+            font-size: 2.2em;
+            font-weight: bold;
+        }
+        .kpi-target {
+            font-size: 0.8em;
+            color: #8b949e;
+            margin-top: 5px;
+        }
+
+        /* 5. 技術規格表格樣式 */
+        .spec-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .spec-table th, .spec-table td {
+            border: 1px solid #30363d; /* 邊框顏色 */
+            padding: 12px;
+            text-align: left;
+            font-size: 0.95em;
+        }
+        .spec-table th {
+            background-color: #1f6feb; /* 表頭藍色 */
+            color: #ffffff;
+        }
+        .spec-table tr:nth-child(even) {
+            background-color: #161b22; /* 條紋背景 */
+        }
+        .spec-table tr:hover {
+            background-color: #1a232e;
+        }
+
+        /* 6. 狀態顏色標記 (與 JS 中的 color 屬性匹配) */
+        .status-lime { border-left-color: #00ff00; color: #00ff00; }
+        .status-orange { border-left-color: #ffa500; color: #ffa500; }
+        .status-yellow { border-left-color: #ffff00; color: #ffff00; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>IGB ERP 2.0 戰略指揮中心</h1>
+
+        <section id="dashboard">
+            <h2 class="section-title">專案儀表板 (KPI 總覽)</h2>
+            <div id="kpi-grid" class="grid">
+                </div>
+        </section>
+
+        <section id="tech-specs">
+            <h2 class="section-title">核心技術規格與架構</h2>
+            <table id="tech-spec-table" class="spec-table">
+                <thead>
+                    <tr>
+                        <th>項目</th>
+                        <th>規格描述</th>
+                        <th>負責人</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+        </section>
+
+    </div>
+
+    <script>
+        // ==========================================================
+        // JavaScript 數據模型 (已修正為 PostgreSQL/FastAPI 架構)
+        // ==========================================================
+
+        // 1. 修正後的專案儀表板 KPI 數據 (dashboardData)
+        const dashboardData = {
+            summary: [
+                // 核心關注：從「範圍達成率」轉向「架構穩定度」
+                { label: '核心服務可用性 (PostgreSQL HA)', value: '99.98%', target: '99.99%', unit: 'SLA%', status: 'success', color: 'lime' },
+                // 數據治理成果指標
+                { label: '主數據 (MDM) 維度完整率', value: '95.5%', target: '98%', unit: '%', status: 'warning', color: 'orange' },
+                // 微服務與風險隔離成果
+                { label: '核心交易風險曝險時間', value: '0.01s', target: '0s', unit: '秒/次', status: 'success', color: 'lime' },
+                // 專案進度
+                { label: '微服務介面驗證覆蓋率', value: '88%', target: '90%', unit: '%', status: 'warning', color: 'yellow' },
+            ],
+            // 簡化骨架，暫不渲染 trends
+            trends: []
+        };
+
+        // 2. 修正後的技術規格數據 (techSpecs)
+        const techSpecs = [
+            // 核心資料庫由 SAP HANA 替換為 PostgreSQL
+            { item: '核心資料庫系統', spec: 'PostgreSQL 15+ (Master-Slave-Witness HA)', owner: '張架構師 (Architect)' },
+            // 應用層由 ABAP/Fiori 替換為 FastAPI 微服務
+            { item: '應用服務框架', spec: 'FastAPI (Python) / 微服務架構', owner: '王工程師 (Dev Lead)' },
+            // 數據整合層由 CPI 替換為 ZTNA/K8s 內部 API
+            { item: '安全與閘道器', spec: 'ZTNA (Zero Trust) / API Gateway (Kong/Nginx) Header 注入', owner: '李介面專家 (Integration)' },
+            { item: '數據庫 HA 策略', spec: 'Patroni 或 Repmgr (確保 99.99% 可用性)', owner: '張架構師 (Architect)' },
+            // 數據治理工具替換為 Admin Hub
+            { item: '主數據/配置管理', spec: 'Admin Hub (自建 MDM Service) 確保 D1/D2/D4 維度完整性', owner: '趙數據主管 (Data Mgmt)' },
+            { item: '實時分析與 BI', spec: 'Grafana/Looker (讀取 EHSN 實時 KPI)', owner: '陳分析師 (BI)' },
+            // 關鍵交易保障
+            { item: '交易事務保證', spec: 'PostgreSQL ACID 事務 (強制用於 Wallet Ledger)', owner: '王工程師 (Dev Lead)' },
+        ];
+
+
+        // ==========================================================
+        // JavaScript 渲染邏輯
+        // ==========================================================
+
+        // 渲染 KPI 數據
+        function renderDashboard() {
+            const kpiGrid = document.getElementById('kpi-grid');
+            kpiGrid.innerHTML = ''; // 清空現有內容
+
+            dashboardData.summary.forEach(kpi => {
+                const kpiCard = document.createElement('div');
+                // 使用 kpi.color 決定邊框顏色
+                kpiCard.className = `kpi-card status-${kpi.color}`;
+
+                kpiCard.innerHTML = `
+                    <div class="kpi-label">${kpi.label}</div>
+                    <div class="kpi-value">${kpi.value}</div>
+                    <div class="kpi-target">目標: ${kpi.target} (${kpi.unit})</div>
+                `;
+                kpiGrid.appendChild(kpiCard);
+            });
+        }
+
+        // 渲染技術規格數據
+        function renderTechSpecs() {
+            const techSpecTableBody = document.querySelector('#tech-spec-table tbody');
+            techSpecTableBody.innerHTML = ''; // 清空現有內容
+
+            techSpecs.forEach(spec => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${spec.item}</td>
+                    <td>${spec.spec}</td>
+                    <td>${spec.owner}</td>
+                `;
+                techSpecTableBody.appendChild(row);
+            });
+        }
+
+        // 頁面載入時執行渲染
+        document.addEventListener('DOMContentLoaded', () => {
+            renderDashboard();
+            renderTechSpecs();
+        });
+
+    </script>
+</body>
+</html>

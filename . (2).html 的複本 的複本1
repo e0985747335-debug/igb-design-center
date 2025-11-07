@@ -1,0 +1,142 @@
+<header class="text-center py-10 mb-10 bg-white rounded-xl shadow-lg">
+    <h1 class="text-4xl font-extrabold text-neutral tracking-tight sm:text-5xl">
+        IGB 網路菜市場優化建議報告
+    </h1>
+    <p class="mt-4 text-xl text-gray-500">
+        提升新鮮度、信任感與客戶終身價值 (CLV) 的策略藍圖
+    </p>
+</header>
+
+<nav class="sticky top-0 z-50 bg-neutral/95 backdrop-blur-sm shadow-md py-3 px-6 rounded-lg mb-8">
+    <div class="max-w-7xl mx-auto flex justify-center space-x-8">
+        <a href="#full-report" class="text-white text-lg font-medium hover:text-primary transition-colors duration-200 ease-in-out">完整報告</a>
+        <a href="#kpi-dashboard" class="text-white text-lg font-medium hover:text-primary transition-colors duration-200 ease-in-out">績效儀表板</a>
+        <a href="#supporting-visuals" class="text-white text-lg font-medium hover:text-primary transition-colors duration-200 ease-in-out">診斷分析</a>
+    </div>
+</nav>
+<div class="p-6 bg-white rounded-xl shadow-lg mb-8">
+    <h3 class="text-2xl font-semibold text-gray-700 mb-4">關鍵指標追蹤總覽</h3>
+    <div class="overflow-x-auto">
+        <table class="min-w-full kpi-table rounded-lg overflow-hidden">
+            <thead>
+                <tr>
+                    <th>指標 (Metric)</th>
+                    <th>基線 (Month 0)</th>
+                    <th>目標 (Month 3)</th>
+                    <th>實際 (Month 3)</th>
+                    <th>單位</th>
+                    <th>優化來源</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>行動轉換率</td>
+                    <td>1.85</td>
+                    <td class="text-primary font-bold">2.13</td>
+                    <td class="text-primary font-bold">2.25 ✅</td>
+                    <td>%</td>
+                    <td>UI/UX</td>
+                </tr>
+                <tr>
+                    <td>購物車流失率</td>
+                    <td>65.0</td>
+                    <td class="text-primary font-bold">55.0</td>
+                    <td class="text-primary font-bold">52.5 ✅</td>
+                    <td>%</td>
+                    <td>UI/UX</td>
+                </tr>
+                <tr>
+                    <td>客戶客訴率</td>
+                    <td>4.2</td>
+                    <td class="text-primary font-bold">3.0</td>
+                    <td class="text-secondary font-bold">3.5 ⚠️</td>
+                    <td>%</td>
+                    <td>Logistics</td>
+                </tr>
+                <tr>
+                    <td>平均訂單價值</td>
+                    <td>750</td>
+                    <td class="text-primary font-bold">820</td>
+                    <td class="text-primary font-bold">815 ✅</td>
+                    <td>NT$</td>
+                    <td>Product</td>
+                </tr>
+                <tr>
+                    <td>新用戶訂閱率</td>
+                    <td>N/A</td>
+                    <td class="text-primary font-bold">5.0</td>
+                    <td class="text-secondary font-bold">4.5 ⚠️</td>
+                    <td>%</td>
+                    <td>Product</td>
+                </tr>
+                <tr>
+                    <td>手機載入時間</td>
+                    <td>3.5</td>
+                    <td class="text-primary font-bold">1.5</td>
+                    <td class="text-secondary font-bold">1.7 ⚠️</td>
+                    <td>秒</td>
+                    <td>UI/UX</td>
+                </tr>
+                <tr>
+                    <td>物流準時率</td>
+                    <td>88</td>
+                    <td class="text-primary font-bold">95</td>
+                    <td class="text-secondary font-bold">93 ⚠️</td>
+                    <td>%</td>
+                    <td>Logistics</td>
+                </tr>
+            </tbody>
+        </table>// --- Chart 3: Conversion Funnel (Horizontal Bar) - Mock Data ---
+const funnelCtx = document.getElementById('funnelChart').getContext('2d');
+const funnelLabels = ['登陸頁', '瀏覽產品', '加入購物車', '進入結帳', '最終購買'];
+const funnelData = [100, 85, 45, 30, 20];
+
+new Chart(funnelCtx, {
+    type: 'bar',
+    data: {
+        labels: funnelLabels.map(wrapLabel), // 使用 wrapLabel 函數處理長標籤
+        datasets: [{
+            label: '轉換率 (%)',
+            data: funnelData,
+            // 調整顏色：初使和結束綠色 (Primary), 中間環節藍色 (Neutral)
+            backgroundColor: funnelData.map((d, i) => i === 0 || i === funnelData.length - 1 ? '#06D6A0' : '#118AB2'),
+            borderColor: funnelData.map(() => '#FFFFFF'),
+            borderWidth: 1,
+            borderRadius: 4,
+            maxBarThickness: 30
+        }]
+    },
+    options: {
+        ...tooltipConfig,
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        scales: {
+            x: {
+                beginAtZero: true,
+                max: 100,
+                title: {
+                    display: true,
+                    text: '使用者百分比 (%)'
+                },
+                grid: {
+                    display: false
+                }
+            },
+            y: {
+                grid: {
+                    display: false
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            },
+            ...tooltipConfig.plugins
+        }
+    }
+});
+    </div>
+</div>
+

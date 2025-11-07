@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 數據儀表板 (含模擬 API)</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 Chart.js 用於圖表繪製 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+        /* 使用 Inter 作為主要字體 */
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .data-card {
+            transition: all 0.3s ease;
+            transform: translateY(0);
+        }
+        .data-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transform: translateY(-2px);
+        }
+        .spinner {
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- 主儀表板容器 -->
+    <div id="app-container" class="max-w-7xl mx-auto p-4 md:p-8">
+        <header class="mb-8 border-b pb-4">
+            <h1 class="text-3xl font-extrabold text-gray-900">IGB 營運效率儀表板</h1>
+            <p class="text-gray-500 mt-1">即時分析訂單、庫存與出貨表現</p>
+        </header>
+
+        <!-- 數據 API 配置區塊 -->
+        <div class="bg-indigo-50 p-4 rounded-xl shadow-inner mb-8 border-l-4 border-indigo-500">
+            <h3 class="text-lg font-bold text-indigo-800 mb-2 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h3.28a1 1 0 01.76.34L11 6h2a2 2 0 012 2v1H6a2 2 0 00-2 2v7a2 2 0 01-2-2V4zm10.707 5.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L10 12.586l3.293-3.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                API 連線配置 (IT 專用)
+            </h3>
+            <p class="text-sm text-indigo-700">
+                <span class="font-semibold">當前模式:</span> <span id="current-mode">模擬數據</span>
+            </p>
+            <p class="text-xs text-indigo-600 font-mono break-all mt-1">
+                ERP_API_ENDPOINT: <span id="api-endpoint-display">/api/v1/erp-data</span>
+            </p>
+        </div>
+
+        <!-- 數據總覽卡片 -->
+        <div id="kpi-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- 卡片 1: 待處理訂單總量 -->
+            <div class="data-card bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-blue-100 p-2 rounded-full text-blue-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">待處理訂單總量</p>
+                        <p id="kpi-orders" class="text-2xl font-bold text-gray-900">
+                            <span class="spinner w-6 h-6 border-4 border-gray-200"></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 卡片 2: 總庫存價值 -->
+            <div class="data-card bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-green-100 p-2 rounded-full text-green-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">總庫存價值 (NTD)</p>
+                        <p id="kpi-inventory" class="text-2xl font-bold text-gray-900">
+                            <span class="spinner w-6 h-6 border-4 border-gray-200"></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 卡片 3: 出貨準時率 (最新) -->
+            <div class="data-card bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-yellow-100 p-2 rounded-full text-yellow-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">出貨準時率 (最新)</p>
+                        <p id="kpi-shipment" class="text-2xl font-bold text-gray-900">
+                            <span class="spinner w-6 h-6 border-4 border-gray-200"></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 卡片 4: 活躍部門 -->
+            <div class="data-card bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-red-100 p-2 rounded-full text-red-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-3H17v3zM6 19h5v-2H6v2zM12 11h5V8H12v3zM3 13h5V6H3v7zM15 5h5V2h-5v3zM6 9h5V2H6v7z" /></svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">最近活躍部門</p>
+                        <p id="kpi-department" class="text-2xl font-bold text-gray-900">
+                            <span class="spinner w-6 h-6 border-4 border-gray-200"></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 圖表區域: 調整為 3 欄佈局 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+
+            <!-- 圖表 1: 待處理訂單趨勢 -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 h-[450px]">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800">待處理訂單趨勢 (線圖)</h3>
+                <canvas id="ordersChart" class="w-full h-full"></canvas>
+                <div id="orders-loading" class="text-center py-12 text-gray-500 hidden">數據加載中...</div>
+            </div>
+
+            <!-- 圖表 2: 庫存價值與出貨準時率比較 -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 h-[450px]">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800">庫存價值與出貨準時率 (複合圖)</h3>
+                <canvas id="inventoryShipmentChart" class="w-full h-full"></canvas>
+                <div id="inventory-loading" class="text-center py-12 text-gray-500 hidden">數據加載中...</div>
+            </div>
+
+            <!-- 新增圖表 3: 活躍部門分佈 -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 h-[450px] md:col-span-2 xl:col-span-1">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800">活躍部門分佈 (最近 30 天)</h3>
+                <div class="h-full flex items-center justify-center -mt-10">
+                    <canvas id="departmentChart" class="w-full max-h-[350px]"></canvas>
+                </div>
+                <div id="department-loading" class="text-center py-12 text-gray-500 hidden">數據加載中...</div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        // ====================================================================
+        // 配置區塊 (IT 團隊專注於此)
+        // ====================================================================
+
+        // 🚨 這是您的 IT 團隊需要替換的真實 API 端點 URL
+        const ERP_API_ENDPOINT = 'http://your.erp.system/api/v1/erp-data';
+
+        // 🚨 將此設定為 false 即可切換到真實 API 數據
+        const USE_MOCK_DATA = true;
+
+        // 模擬數據加載延遲 (毫秒)
+        const MOCK_DELAY_MS = 1500;
+
+        // 部門名稱對應
+        const deptMap = {
+            'production': '生產製造',
+            'logistics': '物流倉儲',
+            'finance': '財務會計',
+            '': '未知部門'
+        };
+
+
+        // ====================================================================
+        // 輔助函數
+        // ====================================================================
+
+        /**
+         * 模擬後端延遲，並根據規格返回模擬數據。
+         */
+        function fetchMockData() {
+            // 模擬一個月 (30 天) 的數據
+            const mockData = [];
+            const departments = ['production', 'logistics', 'finance'];
+            const today = new Date('2025-10-26'); // 假設這是最後一個數據點
+
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(today.getDate() - i);
+                const dateString = date.toISOString().slice(0, 10);
+
+                const baseOrders = 500;
+                const baseInventory = 800000;
+
+                // 讓 production 和 logistics 更活躍一點
+                let department;
+                const randomVal = Math.random();
+                if (randomVal < 0.45) {
+                    department = 'production';
+                } else if (randomVal < 0.9) {
+                    department = 'logistics';
+                } else {
+                    department = 'finance';
+                }
+
+
+                mockData.push({
+                    date: dateString,
+                    orders: Math.floor(baseOrders + Math.random() * 200 - 100), // 400-600
+                    inventory_value: Math.floor(baseInventory + Math.random() * 100000 - 50000), // 75萬-85萬
+                    shipment_rate: parseFloat((0.85 + Math.random() * 0.15).toFixed(2)), // 0.85-1.00
+                    department: department
+                });
+            }
+
+            return new Promise((resolve) => {
+                setTimeout(() => resolve(mockData), MOCK_DELAY_MS);
+            });
+        }
+
+        /**
+         * 執行 API 請求或模擬請求。
+         * @returns {Promise<Array>} 返回符合規格的數據陣列。
+         */
+        async function fetchERPData() {
+            if (USE_MOCK_DATA) {
+                console.log("[Data Load] 正在使用模擬數據...");
+                document.getElementById('current-mode').textContent = '模擬數據 (延遲 ' + MOCK_DELAY_MS + 'ms)';
+                return fetchMockData();
+            }
+
+            // 實際 API 呼叫邏輯 (假設為 GET 請求)
+            document.getElementById('current-mode').textContent = '真實 API 連線';
+            try {
+                const response = await fetch(ERP_API_ENDPOINT);
+                if (!response.ok) {
+                    throw new Error(`API 請求失敗: ${response.statusText}`);
+                }
+                const data = await response.json();
+                console.log("[Data Load] 成功從 API 載入真實數據。", data);
+                return data;
+            } catch (error) {
+                console.error("[Data Load] 獲取真實數據失敗，請檢查 API 端點和網路:", error);
+                throw new Error("數據加載失敗。請檢查連線。");
+            }
+        }
+
+        /**
+         * 更新儀表板左上方的 KPI 總結數據。
+         * @param {Array} data - 處理後的數據陣列。
+         */
+        function updateKPIs(data) {
+            if (data.length === 0) return;
+
+            // 最新數據點
+            const latestData = data[data.length - 1];
+
+            // 待處理訂單總量 (取最後七天總和)
+            const recentOrders = data.slice(-7).map(d => d.orders);
+            const totalOrders = recentOrders.reduce((sum, val) => sum + val, 0);
+
+            // 總庫存價值 (取最新值)
+            const inventoryValue = latestData.inventory_value;
+
+            // 出貨準時率 (取最新值)
+            const shipmentRate = latestData.shipment_rate;
+
+            // 最近活躍部門
+            const department = latestData.department;
+
+
+            document.getElementById('kpi-orders').textContent = totalOrders.toLocaleString('zh-TW');
+            document.getElementById('kpi-inventory').textContent = Math.floor(inventoryValue).toLocaleString('zh-TW', {
+                style: 'currency',
+                currency: 'TWD',
+                minimumFractionDigits: 0
+            }).replace('NT$', 'NTD '); // 調整貨幣符號顯示
+
+            document.getElementById('kpi-shipment').textContent = (shipmentRate * 100).toFixed(1) + '%';
+
+            document.getElementById('kpi-department').textContent = deptMap[department] || department;
+
+            // 移除加載 Spinner
+            document.querySelectorAll('#kpi-cards .spinner').forEach(s => s.remove());
+        }
+
+        // ====================================================================
+        // 圖表渲染
+        // ====================================================================
+
+        let ordersChartInstance = null;
+        let inventoryShipmentChartInstance = null;
+        let departmentChartInstance = null; // 新增圖表實例
+
+        /**
+         * 渲染訂單趨勢圖表。
+         * @param {Array} data - 處理後的數據陣列。
+         */
+        function renderOrdersChart(data) {
+            const labels = data.map(d => d.date.substring(5)); // 顯示月份和日期 (MM-DD)
+            const orders = data.map(d => d.orders);
+
+            if (ordersChartInstance) ordersChartInstance.destroy();
+
+            const ctx = document.getElementById('ordersChart').getContext('2d');
+            ordersChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '待處理訂單量',
+                        data: orders,
+                        borderColor: '#4f46e5', // Indigo-600
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: '訂單數量 (件)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: false }
+                    }
+                }
+            });
+            document.getElementById('orders-loading').classList.add('hidden');
+        }
+
+        /**
+         * 渲染庫存價值與出貨準時率的混合圖表。
+         * @param {Array} data - 處理後的數據陣列。
+         */
+        function renderInventoryShipmentChart(data) {
+            const labels = data.map(d => d.date.substring(5));
+            const inventoryValues = data.map(d => d.inventory_value);
+            const shipmentRates = data.map(d => d.shipment_rate);
+
+            if (inventoryShipmentChartInstance) inventoryShipmentChartInstance.destroy();
+
+            const ctx = document.getElementById('inventoryShipmentChart').getContext('2d');
+            inventoryShipmentChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '總庫存價值 (NTD)',
+                            data: inventoryValues,
+                            backgroundColor: 'rgba(220, 38, 38, 0.8)', // Red-600
+                            yAxisID: 'y1',
+                        },
+                        {
+                            label: '出貨準時率 (%)',
+                            data: shipmentRates.map(r => r * 100),
+                            type: 'line',
+                            borderColor: '#059669', // Emerald-600
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            yAxisID: 'y2',
+                            pointRadius: 5,
+                            pointBackgroundColor: '#059669',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y1: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: '庫存價值 (NTD)' },
+                            grid: { drawOnChartArea: true },
+                            ticks: {
+                                callback: function(value) { return value.toLocaleString('zh-TW', { notation: 'compact', compactDisplay: 'short' }); }
+                            }
+                        },
+                        y2: {
+                            type: 'linear',
+                            position: 'right',
+                            title: { display: true, text: '準時率 (%)' },
+                            min: 0,
+                            max: 100,
+                            grid: { drawOnChartArea: false },
+                            ticks: {
+                                callback: function(value) { return value + '%'; }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.dataset.yAxisID === 'y2') {
+                                        label += context.parsed.y.toFixed(1) + '%';
+                                    } else {
+                                        label += context.parsed.y.toLocaleString('zh-TW');
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            document.getElementById('inventory-loading').classList.add('hidden');
+        }
+
+        /**
+         * 渲染活躍部門分佈甜甜圈圖。
+         * @param {Array} data - 處理後的數據陣列。
+         */
+        function renderDepartmentDistributionChart(data) {
+            // 1. 計算部門活動次數
+            const departmentCounts = data.reduce((acc, item) => {
+                const dept = item.department;
+                acc[dept] = (acc[dept] || 0) + 1;
+                return acc;
+            }, {});
+
+            const labels = Object.keys(departmentCounts).map(key => deptMap[key] || key);
+            const counts = Object.values(departmentCounts);
+
+            if (departmentChartInstance) departmentChartInstance.destroy();
+
+            const ctx = document.getElementById('departmentChart').getContext('2d');
+            departmentChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: counts,
+                        backgroundColor: [
+                            '#3b82f6', // 藍色 (Blue-500) - Production
+                            '#10b981', // 綠色 (Emerald-500) - Logistics
+                            '#f59e0b', // 黃色 (Amber-500) - Finance
+                            '#ef4444'  // 紅色 (Red-500) - Unknown
+                        ],
+                        hoverOffset: 15,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%', // 甜甜圈的厚度
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = counts.reduce((a, b) => a + b, 0);
+                                    const value = context.parsed;
+                                    const percentage = ((value / total) * 100).toFixed(1) + '%';
+                                    return `${context.label}: ${value} 次 (${percentage})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            document.getElementById('department-loading').classList.add('hidden');
+        }
+
+
+        // ====================================================================
+        // 應用程式初始化
+        // ====================================================================
+
+        /**
+         * 啟動應用程式並加載數據。
+         */
+        async function initApp() {
+            // 顯示配置信息
+            document.getElementById('api-endpoint-display').textContent = ERP_API_ENDPOINT;
+
+            // 顯示圖表加載狀態
+            document.getElementById('orders-loading').classList.remove('hidden');
+            document.getElementById('inventory-loading').classList.remove('hidden');
+            document.getElementById('department-loading').classList.remove('hidden'); // 新增加載狀態
+
+            try {
+                // 1. 獲取數據 (真實 API 或模擬)
+                const rawData = await fetchERPData();
+
+                // 2. 驗證數據結構
+                if (!Array.isArray(rawData) || rawData.length === 0) {
+                    throw new Error("API 返回的數據無效或為空。");
+                }
+
+                // 3. 排序數據 (確保是按日期升序)
+                rawData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                // 4. 更新 KPI 總結
+                updateKPIs(rawData);
+
+                // 5. 渲染圖表
+                renderOrdersChart(rawData);
+                renderInventoryShipmentChart(rawData);
+                renderDepartmentDistributionChart(rawData); // 渲染新的甜甜圈圖
+
+            } catch (error) {
+                console.error("儀表板啟動失敗:", error);
+                // 在 UI 上顯示錯誤信息
+                document.getElementById('kpi-cards').innerHTML = `<div class="col-span-4 bg-red-100 p-4 rounded-xl text-red-800 font-semibold shadow-lg border border-red-200">❌ 數據加載錯誤: ${error.message}</div>`;
+                document.getElementById('orders-loading').innerHTML = '❌ 圖表數據加載失敗';
+                document.getElementById('inventory-loading').innerHTML = '❌ 圖表數據加載失敗';
+                document.getElementById('department-loading').innerHTML = '❌ 圖表數據加載失敗';
+            }
+        }
+
+        // 頁面加載完成後啟動應用程式
+        window.onload = initApp;
+    </script>
+</body>
+</html>

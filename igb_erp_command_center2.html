@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP 命令中心</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 Inter 字體 -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* 極深藍色背景 */
+            color: #e2e8f0; /* 淺灰色字體 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .dark-card {
+            background-color: #1e293b; /* 深灰藍色卡片 */
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="text-center dark-card p-10 rounded-xl max-w-lg mx-auto">
+        <!-- Icon: Centralized Management -->
+        <svg class="w-16 h-16 text-indigo-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l2-2 2 2v13M9 19h5m-5 0l-3 3m8-3h5l3 3m-3-3v-5M3 7l1-3h16l1 3M3 17l1-3h16l1 3"></path></svg>
+        
+        <h1 class="text-3xl font-extrabold text-white mb-2">
+            IGB ERP 命令中心
+        </h1>
+        <p class="text-indigo-300 mb-6">
+            Command Center / 功能總覽
+        </p>
+        <p class="text-gray-400">
+            您已成功導航至數位企業的核心功能總覽頁面。此處將匯總所有模塊的配置和高級控制項。
+        </p>
+        <a href="dark_theme_erp_dashboard.html" class="inline-block mt-6 bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 transition shadow-md">
+            返回儀表板
+        </a>
+    </div>
+</body>
+</html>

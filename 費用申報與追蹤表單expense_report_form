@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>費用申報與追蹤表單</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 使用 Inter 字體 */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f3f4f6;
+            padding: 1rem;
+        }
+        #main-container {
+            max-width: 1200px;
+            margin: auto;
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: 1fr;
+        }
+        @media (min-width: 1024px) {
+            #main-container {
+                grid-template-columns: 1fr 2fr;
+            }
+        }
+        .form-card {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .list-card {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            border-radius: 1rem;
+        }
+        /* 簡單的 Spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #4f46e5;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+
+        // 設定 Firebase 日誌級別
+        setLogLevel('Debug');
+
+        // 全域變數初始化
+        window.firebaseApp = null;
+        window.db = null;
+        window.auth = null;
+        window.userId = null;
+        window.expensesCollection = null;
+
+        // 費用科目資料
+        const expenseCategories = [
+            { title: "💼 旅費及交通費 (Travel & Transport)", subItems: ["國內差旅費 (Domestic)", "國外差旅費 (International)", "市區交通費 (Local Transit)", "高鐵/火車票 (Rail Fare)", "機票費用 (Airfare)", "住宿費用 (Accommodation)"] },
+            { title: "🍽️ 餐費及招待費 (Meals & Entertainment)", subItems: ["客戶招待費 (Client Entertainment)", "員工福利餐費 (Staff Welfare)", "內部會議餐飲 (Internal Meeting F&B)"] },
+            { title: "📦 辦公與行政費 (Office & Admin)", subItems: ["辦公用品及耗材 (Supplies)", "郵電/通訊費 (Post & Telecom)", "租金支出 (Rent Expense)", "水電瓦斯費 (Utilities)", "修繕與維護費 (Repair & Maint.)", "報章雜誌訂閱費 (Subscriptions)"] },
+            { title: "💻 資訊與軟體費 (IT & Software)", subItems: ["軟體訂閱費 (Software Subscription)", "硬體採購費 (Hardware Purchase)", "資訊服務費 (IT Services)", "雲端服務費 (Cloud Services)", "網站網域名稱費 (Domain/Web Fees)"] },
+            { title: "📈 行銷與業務費 (Marketing & Sales)", subItems: ["廣告與宣傳費 (Advertising)", "業務交際費 (Sales Relations)", "展覽費 (Exhibition Fees)", "印刷宣傳品 (Printed Materials)", "市場調研費 (Market Research)"] },
+            { title: "📚 培訓與人才費 (Training & HR)", subItems: ["專業培訓費 (Professional Training)", "招募費用 (Recruitment Costs)", "教育訓練課程費 (Course Fees)", "員工健康檢查費 (Health Check-ups)"] },
+            { title: "🧑‍💻 專業服務費 (Professional Services)", subItems: ["顧問費 (Consulting)", "法律及會計費用 (Legal & Accounting)", "外部審計費 (External Audit)", "翻譯/口譯費 (Translation/Interpreting)"] },
+            { title: "🏦 財務與雜項費 (Financial & Misc.)", subItems: ["銀行手續費 (Bank Charges)", "利息支出 (Interest Expense)", "政府規費與罰鍰 (Fees & Penalties)", "保險費 (Insurance Premiums)", "慈善捐贈 (Donations)"] },
+            { title: "❓ 其他雜項費用 (Miscellaneous)", subItems: ["其他雜項費用 (Misc. Other)"] }
+        ];
+
+        // 輔助函式：顯示客製化訊息
+        function showMessage(message, type = 'info') {
+            const messageBox = document.getElementById('message-box');
+            messageBox.textContent = message;
+            messageBox.className = `p-3 rounded-lg text-sm transition-opacity duration-300 ${
+                type === 'error' ? 'bg-red-100 text-red-700' :
+                type === 'success' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+            }`;
+            messageBox.style.opacity = '1';
+            setTimeout(() => {
+                messageBox.style.opacity = '0';
+            }, 5000);
+        }
+
+        // 輔助函式：渲染會計科目下拉選單
+        function renderCategorySelects() {
+            const majorSelect = document.getElementById('expense-major');
+            const minorSelect = document.getElementById('expense-minor');
+
+            // 渲染大項 (Major Category)
+            majorSelect.innerHTML = '<option value="" disabled selected>請選擇費用大項</option>';
+            expenseCategories.forEach((cat, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = cat.title;
+                majorSelect.appendChild(option);
+            });
+            majorSelect.disabled = false; // 確保大項可選 (修正 1)
+
+            // 處理大項選擇變更，以渲染細項 (Minor Category)
+            majorSelect.addEventListener('change', (e) => {
+                const selectedIndex = parseInt(e.target.value);
+                const minorCats = expenseCategories[selectedIndex].subItems;
+
+                minorSelect.innerHTML = '<option value="" disabled selected>請選擇費用細目</option>';
+                minorCats.forEach(minor => {
+                    const option = document.createElement('option');
+                    option.value = minor;
+                    option.textContent = minor;
+                    minorSelect.appendChild(option);
+                });
+                minorSelect.disabled = false;
+            });
+        }
+
+        // 輔助函式：渲染費用清單
+        function renderExpenses(expenses) {
+            const listContainer = document.getElementById('expense-list');
+            listContainer.innerHTML = ''; // 清空現有清單
+
+            if (expenses.length === 0) {
+                listContainer.innerHTML = '<p class="text-center text-gray-500 py-8 border-2 border-dashed border-gray-200 rounded-lg">您還沒有申報任何費用。</p>';
+                return;
+            }
+
+            // 由於 firestore orderBy 可能需要額外索引，保險起見在客戶端再排序一次
+            expenses.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+            const totalAmount = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+
+            const listHtml = expenses.map(exp => {
+                const date = exp.timestamp ? new Date(exp.timestamp.seconds * 1000).toLocaleDateString('zh-TW') : 'N/A';
+
+                // 移除大項後面的英文括號，讓清單更簡潔
+                const cleanedMajorCategory = exp.majorCategory.replace(/ \(.+\)/g, '');
+
+                return `
+                    <div class="p-4 border-b last:border-b-0 border-gray-100 hover:bg-indigo-50/20 transition duration-150 rounded-lg">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-grow">
+                                <!-- 修正 2: 增加顯眼的藍色標籤顯示大項 -->
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 mb-1">
+                                    ${cleanedMajorCategory}
+                                </span>
+                                <p class="text-lg font-bold text-gray-800">${exp.minorCategory}</p>
+                                <p class="text-sm text-gray-500 mt-1">${date}</p>
+                                <p class="text-xs text-gray-400 mt-1 truncate max-w-xs">${exp.description}</p>
+                            </div>
+                            <div class="text-right flex-shrink-0 ml-4">
+                                <p class="text-2xl font-bold text-indigo-600">$${exp.amount.toLocaleString()}</p>
+                                <p class="text-xs text-gray-500">${exp.currency || 'TWD'}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            listContainer.innerHTML = `
+                <div class="sticky top-0 z-10 mb-4 p-4 bg-indigo-100 rounded-lg flex justify-between items-center shadow-lg border border-indigo-200">
+                    <p class="text-lg font-medium text-indigo-800">總申報金額：</p>
+                    <p class="text-3xl font-extrabold text-indigo-700">$${totalAmount.toLocaleString()}</p>
+                </div>
+                ${listHtml}
+            `;
+        }
+
+        // 監聽 Firestore 資料變化
+        function setupFirestoreListener() {
+            if (!window.expensesCollection) return;
+
+            // 查詢：僅獲取當前用戶的費用申報，並按時間倒序排列
+            // 保持 orderBy，但依賴客戶端排序作為備用
+            const q = query(window.expensesCollection, orderBy("timestamp", "desc"));
+
+            // 設置 onSnapshot 監聽器
+            onSnapshot(q, (querySnapshot) => {
+                const expenses = [];
+                querySnapshot.forEach((doc) => {
+                    expenses.push({ id: doc.id, ...doc.data() });
+                });
+
+                renderExpenses(expenses);
+                document.getElementById('loading-list-overlay').classList.add('hidden');
+            }, (error) => {
+                console.error("Error listening to Firestore:", error);
+                showMessage("無法載入費用清單。請嘗試儲存一筆新資料來觸發更新。", 'error');
+                document.getElementById('loading-list-overlay').classList.add('hidden');
+            });
+        }
+
+        // 費用申報儲存函式
+        async function saveExpense() {
+            const saveBtn = document.getElementById('save-button');
+            const form = document.getElementById('expense-form');
+
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            if (!window.db || !window.userId) {
+                showMessage("資料庫未準備好，請稍候。", 'error');
+                return;
+            }
+
+            // 取得表單值
+            const formData = new FormData(form);
+            const majorIndex = formData.get('major-category');
+
+            // 檢查是否選擇了科目
+            if (majorIndex === null || majorIndex === "" || formData.get('minor-category') === null || formData.get('minor-category') === "") {
+                showMessage("請確保已選擇費用大項和細目。", 'error');
+                return;
+            }
+
+            const majorCategory = expenseCategories[majorIndex].title;
+
+            const expenseData = {
+                majorCategory: majorCategory,
+                minorCategory: formData.get('minor-category'),
+                amount: parseFloat(formData.get('amount')),
+                currency: formData.get('currency'),
+                date: formData.get('date'),
+                description: formData.get('description') || '',
+                userId: window.userId,
+                timestamp: serverTimestamp() // 記錄伺服器時間
+            };
+
+            // 禁用按鈕並顯示載入狀態
+            saveBtn.disabled = true;
+            saveBtn.textContent = '儲存中...';
+            saveBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+            saveBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+
+            try {
+                // 生成一個新的 Document ID
+                const docRef = doc(window.expensesCollection);
+
+                await setDoc(docRef, expenseData);
+
+                showMessage("費用申報成功儲存！", 'success');
+                form.reset(); // 清空表單
+                document.getElementById('expense-minor').disabled = true; // 重置細目為禁用
+
+            } catch (e) {
+                console.error("儲存文件時出錯: ", e);
+                showMessage("儲存失敗: " + e.message, 'error');
+            } finally {
+                // 恢復按鈕狀態
+                saveBtn.disabled = false;
+                saveBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+                saveBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                saveBtn.innerHTML = `
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v8a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4L14 7m0 0l-2-2m2 2l2 2"/></svg>
+                    儲存申報
+                `;
+            }
+        }
+
+        // 啟動應用程式
+        function initializeAppAndAuth() {
+            // 獲取 Canvas 環境變數
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+            try {
+                // 1. 初始化 Firebase App
+                window.firebaseApp = initializeApp(firebaseConfig);
+                window.db = getFirestore(window.firebaseApp);
+                window.auth = getAuth(window.firebaseApp);
+
+                // 2. 設置認證持久化為會話級別
+                setPersistence(window.auth, browserSessionPersistence)
+                    .catch((error) => {
+                        console.error("Error setting persistence:", error);
+                    });
+
+                // 3. 處理認證狀態
+                onAuthStateChanged(window.auth, async (user) => {
+                    if (user) {
+                        window.userId = user.uid;
+                        document.getElementById('auth-status').textContent = `已登入 (ID: ${window.userId})`;
+                        document.getElementById('auth-status').classList.remove('bg-gray-200', 'text-gray-700');
+                        document.getElementById('auth-status').classList.add('bg-green-100', 'text-green-700', 'font-medium');
+
+                        // 設置 Firestore Collection 路徑
+                        const collectionPath = `/artifacts/${appId}/users/${window.userId}/expenses`;
+                        window.expensesCollection = collection(window.db, collectionPath);
+
+                        setupFirestoreListener(); // 開始監聽資料
+                    } else {
+                        // 嘗試使用自訂 token 登入
+                        if (initialAuthToken) {
+                            try {
+                                await signInWithCustomToken(window.auth, initialAuthToken);
+                            } catch (error) {
+                                console.error("自訂 Token 登入失敗:", error);
+                                // 自訂 Token 失敗後，嘗試匿名登入
+                                try {
+                                    await signInAnonymously(window.auth);
+                                } catch (anonError) {
+                                    console.error("匿名登入失敗:", anonError);
+                                    showMessage("認證失敗，無法儲存資料。", 'error');
+                                }
+                            }
+                        } else {
+                            // 如果沒有自訂 token，直接匿名登入
+                             try {
+                                await signInAnonymously(window.auth);
+                            } catch (anonError) {
+                                console.error("匿名登入失敗:", anonError);
+                                showMessage("認證失敗，無法儲存資料。", 'error');
+                            }
+                        }
+                    }
+                    document.getElementById('loading-form-overlay').classList.add('hidden');
+                });
+
+                // 渲染下拉選單並設置事件監聽器
+                renderCategorySelects();
+                document.getElementById('expense-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    saveExpense();
+                });
+
+            } catch (e) {
+                console.error("初始化 Firebase 失敗: ", e);
+                showMessage(`應用程式啟動失敗: ${e.message}`, 'error');
+                document.getElementById('loading-form-overlay').classList.add('hidden');
+            }
+        }
+
+        window.onload = initializeAppAndAuth;
+
+    </script>
+</head>
+<body>
+    <div id="main-container">
+        <!-- 表單區塊 -->
+        <div class="form-card relative">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-3 flex items-center">
+                <svg class="w-6 h-6 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                新增費用申報
+            </h2>
+
+            <!-- 載入覆蓋層 -->
+            <div id="loading-form-overlay" class="loading-overlay">
+                <div class="spinner"></div>
+                <p class="ml-4 text-indigo-600 font-semibold">載入中，請稍候...</p>
+            </div>
+
+            <form id="expense-form" class="space-y-4">
+
+                <!-- 認證狀態 & 訊息 -->
+                <div class="flex flex-col md:flex-row md:space-x-4">
+                    <div id="auth-status" class="p-2 text-xs bg-gray-200 text-gray-700 rounded-lg flex-1 mb-2 md:mb-0 transition duration-300">
+                        正在連線認證...
+                    </div>
+                    <div id="message-box" class="opacity-0 transition duration-300 flex-1"></div>
+                </div>
+
+                <!-- 費用大項/細目 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="expense-major" class="block text-sm font-medium text-gray-700">會計科目 (大項)*</label>
+                        <!-- 移除 disabled 屬性，交給 JS 處理 -->
+                        <select id="expense-major" name="major-category" required disabled
+                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border shadow-sm">
+                        </select>
+                    </div>
+                    <div>
+                        <label for="expense-minor" class="block text-sm font-medium text-gray-700">會計科目 (細目)*</label>
+                        <select id="expense-minor" name="minor-category" required disabled
+                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 bg-gray-50 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border shadow-sm">
+                            <option value="" disabled selected>請先選擇大項</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 金額/幣別 -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="expense-amount" class="block text-sm font-medium text-gray-700">金額 (Amount)*</label>
+                        <input type="number" step="0.01" min="0.01" id="expense-amount" name="amount" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="1200.00">
+                    </div>
+                    <div>
+                        <label for="expense-currency" class="block text-sm font-medium text-gray-700">幣別 (Currency)*</label>
+                        <select id="expense-currency" name="currency" required
+                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border shadow-sm">
+                            <option value="TWD" selected>TWD (新臺幣)</option>
+                            <option value="USD">USD (美元)</option>
+                            <option value="EUR">EUR (歐元)</option>
+                            <option value="JPY">JPY (日圓)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 發生日期 -->
+                <div>
+                    <label for="expense-date" class="block text-sm font-medium text-gray-700">發生日期 (Date)*</label>
+                    <input type="date" id="expense-date" name="date" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
+
+                <!-- 說明 -->
+                <div>
+                    <label for="expense-description" class="block text-sm font-medium text-gray-700">說明/備註 (Description)</label>
+                    <textarea id="expense-description" name="description" rows="3" placeholder="請簡述這筆費用的用途..."
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                </div>
+
+                <!-- 儲存按鈕 -->
+                <div class="pt-4">
+                    <button id="save-button" type="submit"
+                        class="w-full inline-flex justify-center items-center py-3 px-6 border border-transparent shadow-lg text-base font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 transform hover:scale-[1.01] active:scale-[0.99]"
+                        aria-label="儲存費用申報">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v8a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4L14 7m0 0l-2-2m2 2l2 2"/></svg>
+                        儲存申報
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 申報清單區塊 -->
+        <div class="list-card relative">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-3 flex items-center">
+                <svg class="w-6 h-6 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                我的費用申報清單 (即時更新)
+            </h2>
+
+            <!-- 載入覆蓋層 -->
+            <div id="loading-list-overlay" class="loading-overlay">
+                <div class="spinner"></div>
+                <p class="ml-4 text-indigo-600 font-semibold">正在載入清單...</p>
+            </div>
+
+            <div id="expense-list" class="space-y-3">
+                <p class="text-center text-gray-400 py-8">等待資料載入...</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

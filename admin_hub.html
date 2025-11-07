@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB Admin Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* 使用 Inter 字體 */
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        /* 隱藏未載入時的內容 */
+        [x-cloak] { display: none; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'igb-blue': '#1c4e80',
+                        'igb-light': '#e6f0f5',
+                        'igb-red': '#cc3333' // 新增紅色用於錯誤模擬
+                    }
+                }
+            }
+        }
+
+        // --- 核心邏輯區塊 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const userIdDisplay = document.getElementById('userIdDisplay');
+            const permissionsDisplay = document.getElementById('permissionsDisplay');
+            const projectList = document.getElementById('projectList');
+            const fetchButton = document.getElementById('fetchButton');
+            const toggleAuthButton = document.getElementById('toggleAuthButton');
+            const messageBox = document.getElementById('messageBox');
+            
+            // 模擬用戶資訊，現在用變數追蹤狀態
+            let currentUser = {
+                id: '1001',
+                permissions: 'igb:project:read:progress, igb:design:write:asset',
+                isAuthorized: true // 初始狀態為有權限
+            };
+
+            const REQUIRED_PERMISSION = 'igb:project:read:progress';
+
+            // 模擬後端 API 的 JSON 響應
+            const MOCK_PROJECTS_SUCCESS = [
+                { id: "PROJ-1001", name: "新一代 EHSN 網路架構升級", status: "進行中", progress_percent: 75, owner: "John Doe" },
+                { id: "PROJ-1002", name: "機房環境監控系統建置 (Phase II)", status: "暫停", progress_percent: 30, owner: "Jane Smith" },
+                { id: "PROJ-1003", name: "雲端資源優化與自動化", status: "已完成", progress_percent: 100, owner: "Alex Chen" }
+            ];
+
+            // --- 介面更新函數 ---
+            const updateUI = () => {
+                userIdDisplay.textContent = currentUser.id;
+                permissionsDisplay.textContent = currentUser.permissions;
+                
+                // 更新切換按鈕的文字和顏色
+                if (currentUser.isAuthorized) {
+                    toggleAuthButton.textContent = '切換為【權限不足】用戶 (403 測試)';
+                    toggleAuthButton.classList.remove('bg-igb-red');
+                    toggleAuthButton.classList.add('bg-green-600');
+                    userContextIndicator.classList.remove('bg-red-500');
+                    userContextIndicator.classList.add('bg-green-500');
+                } else {
+                    toggleAuthButton.textContent = '切換回【正常存取】用戶 (200 測試)';
+                    toggleAuthButton.classList.remove('bg-green-600');
+                    toggleAuthButton.classList.add('bg-igb-red');
+                    userContextIndicator.classList.remove('bg-green-500');
+                    userContextIndicator.classList.add('bg-red-500');
+                }
+                lucide.createIcons(); // 重新渲染圖示
+            };
+            
+            // --- 核心功能函數 ---
+            
+            const displayMessage = (message, type) => {
+                messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'bg-yellow-100', 'text-yellow-800');
+                
+                let bgColor = 'bg-yellow-100';
+                let textColor = 'text-yellow-800';
+
+                if (type === 'success') {
+                    bgColor = 'bg-green-100';
+                    textColor = 'text-green-800';
+                } else if (type === 'error') {
+                    bgColor = 'bg-red-100';
+                    textColor = 'text-red-800';
+                }
+
+                messageBox.classList.add(bgColor, textColor);
+                messageBox.innerHTML = `<span class="font-semibold">${type === 'error' ? '錯誤' : type === 'success' ? '成功' : '資訊'}：</span> ${message}`;
+
+                setTimeout(() => {
+                    messageBox.classList.add('hidden');
+                }, 5000);
+            };
+
+            const renderProgressBar = (percent) => {
+                let colorClass = 'bg-blue-500';
+                if (percent === 100) {
+                    colorClass = 'bg-green-500';
+                } else if (percent < 50) {
+                    colorClass = 'bg-yellow-500';
+                }
+
+                return `
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="${colorClass} h-2.5 rounded-full" style="width: ${percent}%"></div>
+                    </div>
+                    <span class="text-xs font-medium text-gray-500">${percent}%</span>
+                `;
+            };
+
+            const fetchProjects = () => {
+                // 模擬網路延遲和按鈕狀態
+                fetchButton.disabled = true;
+                fetchButton.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 載入中...';
+                projectList.innerHTML = '';
+                
+                setTimeout(() => {
+                    fetchButton.disabled = false;
+                    fetchButton.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> 擷取專案列表';
+                    lucide.createIcons(); 
+
+                    if (!currentUser.isAuthorized) {
+                        // --- 模擬 403 Forbidden 錯誤 ---
+                        displayMessage(`【403 Forbidden 模擬】權限不足：用戶 ${currentUser.id} 缺少所需權限 '${REQUIRED_PERMISSION}'。`, 'error');
+                        projectList.innerHTML = `<div class="p-6 text-center text-red-600 bg-red-50 rounded-xl border border-red-300 shadow-inner">
+                            <i data-lucide="lock" class="w-8 h-8 mx-auto mb-2"></i>
+                            <p class="font-bold text-lg">存取被拒！</p>
+                            <p class="text-sm">後端安全閘道器 (AuthSDK) 阻止了此請求。</p>
+                            <p class="text-xs mt-1 text-red-800">缺少權限: ${REQUIRED_PERMISSION}</p>
+                        </div>`;
+                        lucide.createIcons(); 
+                        return;
+                    }
+
+                    // --- 模擬 200 OK 成功響應 ---
+                    displayMessage(`【200 OK 模擬】成功擷取 ${MOCK_PROJECTS_SUCCESS.length} 個專案。`, 'success');
+                    
+                    let html = '';
+                    MOCK_PROJECTS_SUCCESS.forEach(project => {
+                        html += `
+                            <div class="p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-lg transition duration-200">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-lg font-semibold text-igb-blue">${project.name}</h3>
+                                    <span class="text-xs font-medium px-2 py-0.5 rounded-full ${project.status === '已完成' ? 'bg-green-100 text-green-800' : project.status === '進行中' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}">
+                                        ${project.status}
+                                    </span>
+                                </div>
+                                <div class="text-sm text-gray-600 mb-3">
+                                    <p><span class="font-medium text-gray-800">專案 ID:</span> ${project.id}</p>
+                                    <p><span class="font-medium text-gray-800">負責人:</span> ${project.owner}</p>
+                                </div>
+                                <div class="mt-2">
+                                    <p class="text-sm font-medium text-gray-800 mb-1">進度:</p>
+                                    ${renderProgressBar(project.progress_percent)}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    projectList.innerHTML = html;
+
+                }, 1000); // 模擬延遲 1 秒
+            };
+
+            // --- 事件監聽 ---
+            
+            // 權限切換事件
+            toggleAuthButton.addEventListener('click', () => {
+                if (currentUser.isAuthorized) {
+                    // 切換到無權限用戶 (模擬 Designer)
+                    currentUser.id = '1002';
+                    currentUser.permissions = 'igb:design:write:asset'; // 缺少 igb:project:read:progress
+                    currentUser.isAuthorized = false;
+                    displayMessage('用戶已切換為【無權限存取專案】的 Designer (ID 1002)。', 'info');
+                } else {
+                    // 切換回有權限用戶 (模擬 Project Manager)
+                    currentUser.id = '1001';
+                    currentUser.permissions = 'igb:project:read:progress, igb:design:write:asset';
+                    currentUser.isAuthorized = true;
+                    displayMessage('用戶已切換回【有權限存取專案】的 PM (ID 1001)。', 'info');
+                }
+                updateUI(); // 更新介面顯示
+                fetchProjects(); // 切換後自動觸發一次 API 呼叫
+            });
+
+            // API 呼叫事件
+            fetchButton.addEventListener('click', fetchProjects);
+
+            // 首次載入
+            updateUI();
+            fetchProjects();
+        });
+    </script>
+</head>
+<body class="min-h-screen p-4">
+
+    <div class="max-w-4xl mx-auto">
+        <header class="text-center py-6 mb-6 bg-white rounded-xl shadow-md border-b-4 border-igb-blue">
+            <h1 class="text-3xl font-extrabold text-gray-900 flex items-center justify-center">
+                <i data-lucide="shield-check" class="w-7 h-7 mr-3 text-igb-blue"></i>
+                IGB 設計中心 - Admin Hub
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">後端安全機制 **前端驗證介面**</p>
+        </header>
+
+        <div id="messageBox" class="p-3 mb-6 rounded-lg text-sm hidden transition duration-300"></div>
+
+        <div id="userContext" class="bg-igb-light p-5 mb-6 rounded-xl shadow-lg border-2 border-igb-blue relative">
+            <h2 class="text-xl font-bold text-igb-blue mb-3 flex items-center">
+                <i data-lucide="user-check" class="w-5 h-5 mr-2"></i>
+                當前模擬用戶情境
+            </h2>
+            
+            <div id="userContextIndicator" class="absolute top-4 right-4 w-4 h-4 rounded-full bg-green-500 shadow-md border-2 border-white" title="用戶有權限"></div>
+
+            <div class="space-y-2 text-sm">
+                <p class="text-gray-800 font-medium">
+                    用戶 ID (X-User-ID): <span id="userIdDisplay" class="font-mono bg-white p-1 rounded-md shadow-inner text-igb-blue"></span>
+                </p>
+                <p class="text-gray-800">
+                    權限清單 (X-User-Permissions): <span id="permissionsDisplay" class="font-mono text-xs bg-white p-1 rounded-md shadow-inner break-words"></span>
+                </p>
+            </div>
+            
+        </div>
+        
+        <div class="mb-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+            <button id="fetchButton" class="flex-1 flex items-center justify-center px-6 py-3 bg-igb-blue text-white font-semibold rounded-xl shadow-md hover:bg-opacity-90 transition duration-300 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i>
+                擷取專案列表
+            </button>
+            <button id="toggleAuthButton" class="flex-1 flex items-center justify-center px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-md hover:bg-opacity-90 transition duration-300 transform active:scale-95">
+                切換為【權限不足】用戶 (403 測試)
+            </button>
+        </div>
+        <p class="text-xs text-gray-500 mt-2 mb-6">點擊上方按鈕，在瀏覽器端模擬 PM (有權限) 和 Designer (無權限) 之間的切換。</p>
+
+        <section class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                <i data-lucide="folder-check" class="w-6 h-6 mr-2 text-igb-blue"></i>
+                專案數據 (模擬後端響應)
+            </h2>
+            <div id="projectList" class="space-y-4">
+                </div>
+        </section>
+
+    </div>
+
+</body>
+</html>
+```eof
+
+### 現在，您可以開始測試了！
+
+1.  請在 Canvas 中點擊 **"Preview"** 按鈕。
+2.  **初始狀態：** 點擊 **"擷取專案列表"** 按鈕，您將看到 **200 OK 成功** 模擬。
+3.  **403 測試：** 點擊右邊的 **"切換為【權限不足】用戶"** 按鈕。
+4.  **再次點擊** **"擷取專案列表"**，您將看到 **403 Forbidden 失敗** 的模擬訊息。
+
+您對這個帶有權限切換功能的 Admin Hub 滿意嗎？

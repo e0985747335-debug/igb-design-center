@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 數位企業命令中心</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        /* 使用 Inter 字體 */
+        :root {
+            font-family: 'Inter', sans-serif;
+        }
+        /* 自訂模組卡片樣式 */
+        .module-card {
+            transition: all 0.3s ease;
+            transform: scale(1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .module-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.5), 0 4px 6px -4px rgba(59, 130, 246, 0.5);
+            border-color: #3b82f6; /* Blue-500 */
+        }
+        /* 核心方塊自訂動畫 */
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.33);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+        .core-pulse {
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        /* Dashboard 卡片樣式 */
+        .dashboard-card {
+            transition: all 0.2s ease-in-out;
+            border: 1px solid transparent;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3), 0 4px 6px -4px rgba(37, 99, 235, 0.3);
+            border-color: #3b82f6; /* Blue-500 */
+        }
+        /* 導航按鈕樣式 */
+        .nav-button {
+            transition: all 0.2s;
+        }
+        .nav-button:hover {
+            background-color: #374151; /* Gray-700 */
+        }
+
+        /* ============================================== */
+        /* 列印樣式優化 */
+        /* ============================================== */
+        @media print {
+            /* 隱藏非報表內容：所有帶有 print-hide 類別的元素和腳註 */
+            .print-hide, footer {
+                display: none !important;
+            }
+            /* 確保報表內容佔滿頁面，移除背景色 */
+            body {
+                background-color: #fff !important;
+                color: #000 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            /* 移除所有陰影和顏色背景，使列印乾淨 */
+            .dashboard-card, .bg-gray-800, .bg-gray-900, .bg-gray-700, .bg-gray-600 {
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
+                background-color: #fff !important;
+                color: #000 !important;
+            }
+            /* 確保 KPI 文字顏色清晰 */
+            .text-yellow-300, .text-indigo-300, .text-red-300, .text-green-300 {
+                color: #000 !important;
+            }
+            /* 讓右側內容區塊 (圖表/待辦事項) 佔滿整行 */
+            .lg\:col-span-2 {
+                grid-column: span 3 / span 3 !important; /* Force full width for the content area */
+                width: 100% !important;
+            }
+            /* 讓圖表更清晰 */
+            canvas {
+                /* Chart.js 導出的圖片在列印時會自動調整，但我們確保容器寬度 */
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-4 md:p-8">
+
+    <div id="app-container">
+
+        <section id="main-menu-view" class="">
+            <header class="mb-8 text-center">
+                <h1 class="text-4xl md:text-5xl font-extrabold text-blue-400 tracking-tight">
+                    IGB ERP 數位企業命令中心
+                </h1>
+                <p class="text-lg text-gray-400 mt-2">
+                    統合數據流，驅動決策，實現卓越營運
+                </p>
+            </header>
+
+            <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                <div class="lg:col-span-1 bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700">
+                    <h2 class="text-2xl font-bold text-gray-50 mb-6 border-b border-blue-500/50 pb-3">
+                        <svg class="inline w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+                        系統全貌：IGB 數位企業核心
+                    </h2>
+
+                    <div class="flex flex-col items-center justify-center p-6 bg-gray-700/50 rounded-lg">
+
+                        <div class="relative w-32 h-32 flex items-center justify-center mb-10">
+                            <span class="absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75 core-pulse"></span>
+                            <div class="relative inline-flex rounded-full h-28 w-28 bg-blue-600 flex flex-col items-center justify-center border-4 border-blue-400 shadow-xl">
+                                <span class="text-xl font-extrabold text-white">IGB</span>
+                                <span class="text-xs font-medium text-blue-100 mt-1">命令中心</span>
+                            </div>
+                        </div>
+
+                        <div class="w-full flex justify-between text-center mb-6">
+                            <div class="text-sm font-medium text-green-400">數據驅動決策</div>
+                            <div class="text-sm font-medium text-yellow-400">即時洞察</div>
+                        </div>
+
+                        <div class="w-full grid grid-cols-3 gap-3 text-center">
+                            <div class="p-2 bg-gray-600 rounded-md text-xs font-semibold">前端應用 (Apps)</div>
+                            <div class="p-2 bg-gray-600 rounded-md text-xs font-semibold">物聯網 (IoT)</div>
+                            <div class="p-2 bg-gray-600 rounded-md text-xs font-semibold">傳統系統 (Legacy)</div>
+                        </div>
+
+                        <div class="mt-8 pt-4 border-t border-gray-600 w-full">
+                            <h3 class="text-lg font-semibold text-gray-300 mb-2">核心價值：統合與優化</h3>
+                            <ul class="space-y-2 text-sm text-gray-400">
+                                <li class="flex items-center">
+                                    <svg class="w-4 h-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.001 12.001 0 0012 21a12.001 12.001 0 008.618-3.016z"></path></svg>
+                                    業務流程自動化 (BPA)
+                                </li>
+                                <li class="flex items-center">
+                                    <svg class="w-4 h-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    單一真實數據源 (Single Source of Truth)
+                                </li>
+                                <li class="flex items-center">
+                                    <svg class="w-4 h-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7v10M17 5v14m-12 0h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                    跨部門協作透明化
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2 bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700">
+                    <h2 class="text-2xl font-bold text-gray-50 mb-6 border-b border-blue-500/50 pb-3">
+                        <svg class="inline w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 9.1-5"/><path d="M12 22v-8"/><path d="m11.2 15-8.4-4.8"/><path d="m12.8 15 8.4-4.8"/></svg>
+                        數位化企業的核心模組！
+                    </h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-green-500 cursor-pointer" onclick="showView('finance')">
+                            <h3 class="text-xl font-semibold text-green-400 mb-1">財務管理 (Finance)</h3>
+                            <p class="text-sm text-gray-400">總帳、應收/應付、固定資產、預算與財務分析。確保會計準確性與現金流健康。</p>
+                        </div>
+
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-yellow-500 cursor-pointer">
+                            <h3 class="text-xl font-semibold text-yellow-400 mb-1">供應鏈管理 (SCM)</h3>
+                            <p class="text-sm text-gray-400">採購、供應商管理、庫存優化及物流追蹤。從源頭到交付的全流程控制。</p>
+                        </div>
+
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-red-500 cursor-pointer">
+                            <h3 class="text-xl font-semibold text-red-400 mb-1">生產製造 (Manufacturing)</h3>
+                            <p class="text-sm text-gray-400">物料清單 (BOM)、工單管理、產能規劃 (MRP) 及車間執行系統 (MES) 整合。</p>
+                        </div>
+
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-pink-500 cursor-pointer">
+                            <h3 class="text-xl font-semibold text-pink-400 mb-1">人力資源 (HR)</h3>
+                            <p class="text-sm text-gray-400">員工資料、考勤管理、薪資計算與發放、績效考核及人才發展。</p>
+                        </div>
+
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-indigo-500 cursor-pointer">
+                            <h3 class="text-xl font-semibold text-indigo-400 mb-1">客戶關係管理 (CRM)</h3>
+                            <p class="text-sm text-gray-400">銷售機會追蹤、客戶服務支援、行銷活動管理及售後服務。</p>
+                        </div>
+
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-blue-500 cursor-pointer">
+                            <h3 class="text-xl font-semibold text-blue-400 mb-1">商業智慧 (BI)</h3>
+                            <p class="text-sm text-gray-400">數據倉庫、報表儀表板、數據挖掘與預測分析。為高層決策提供支持。</p>
+                        </div>
+
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-purple-500 cursor-pointer">
+                            <h3 class="text-xl font-semibold text-purple-400 mb-1">專案管理 (Project Mgmt)</h3>
+                            <p class="text-sm text-gray-400">專案規劃、資源分配、進度追蹤、時間表管理及成本控制。</p>
+                        </div>
+
+                        <div class="module-card p-4 bg-gray-700 rounded-lg border-l-4 border-teal-500 cursor-pointer">
+                            <h3 class="text-xl font-semibold text-teal-400 mb-1">倉儲管理 (WMS)</h3>
+                            <p class="text-sm text-gray-400">入庫、出庫、盤點、儲位管理及批次追溯。提升倉庫作業效率與準確性。</p>
+                        </div>
+
+                    </div>
+                </div>
+            </main>
+        </section>
+
+        <section id="finance-module-view" class="hidden">
+             <header class="mb-8 border-b border-gray-700 pb-4">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-4xl md:text-5xl font-extrabold text-green-400 tracking-tight flex items-center">
+                        <svg class="w-8 h-8 md:w-10 md:h-10 mr-3 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 19H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2z"/><path d="M17 9h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2"/><rect x="7" y="13" width="6" height="4" rx="1"/></svg>
+                        IGB 財務管理中心 (Financial Dashboard)
+                    </h1>
+
+                    <div class="flex space-x-4">
+                        <button onclick="exportFinancialReport()" class="flex items-center text-green-400 hover:text-green-300 transition duration-150 p-2 rounded-lg bg-gray-800 border border-green-500/50 print-hide">
+                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-7"/></svg>
+                            匯出報表 (PDF)
+                        </button>
+                        <button onclick="showView('main-menu')" class="flex items-center text-blue-400 hover:text-blue-300 transition duration-150 p-2 rounded-lg bg-gray-800 border border-blue-500/50 print-hide">
+                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+                            返回 ERP 總覽
+                        </button>
+                    </div>
+
+                </div>
+                <p class="text-lg text-gray-400 mt-2">
+                    即時監控財務績效、現金流與預算執行情況
+                </p>
+            </header>
+
+            <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+
+                <div class="dashboard-card bg-gray-800 p-5 rounded-xl shadow-lg border-l-4 border-yellow-500">
+                    <p class="text-sm font-medium text-gray-400">當前現金餘額</p>
+                    <p class="text-3xl font-bold text-yellow-300 mt-1">$ 1,850,000</p>
+                    <p class="text-xs text-gray-500 mt-2">較上月增長: +4.2%</p>
+                </div>
+
+                <div class="dashboard-card bg-gray-800 p-5 rounded-xl shadow-lg border-l-4 border-indigo-500">
+                    <p class="text-sm font-medium text-gray-400">應收帳款 (AR)</p>
+                    <p class="text-3xl font-bold text-indigo-300 mt-1">$ 450,000</p>
+                    <p class="text-xs text-gray-500 mt-2">逾期金額: $ 55,000</p>
+                </div>
+
+                <div class="dashboard-card bg-gray-800 p-5 rounded-xl shadow-lg border-l-4 border-red-500">
+                    <p class="text-sm font-medium text-gray-400">應付帳款 (AP)</p>
+                    <p class="text-3xl font-bold text-red-300 mt-1">$ 210,000</p>
+                    <p class="text-xs text-gray-500 mt-2">需在 7 天內支付: $ 75,000</p>
+                </div>
+
+                <div class="dashboard-card bg-gray-800 p-5 rounded-xl shadow-lg border-l-4 border-green-500">
+                    <p class="text-sm font-medium text-gray-400">淨利潤率 (YTD)</p>
+                    <p class="text-3xl font-bold text-green-300 mt-1">15.8%</p>
+                    <p class="text-xs text-gray-500 mt-2">目標達成率: 98%</p>
+                </div>
+            </section>
+
+            <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                <div class="lg:col-span-1 bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700 h-full print-hide">
+                    <h2 class="text-2xl font-bold text-gray-50 mb-4 border-b border-gray-600 pb-3">
+                        財務模組導航
+                    </h2>
+
+                    <nav class="space-y-3">
+                        <a onclick="showView('gl')" class="nav-button flex items-center p-3 rounded-lg bg-gray-700 text-blue-300 font-semibold border-2 border-blue-500 cursor-pointer">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                            總帳 (General Ledger)
+                        </a>
+                        <a href="#" class="nav-button flex items-center p-3 rounded-lg bg-gray-700 hover:text-indigo-400 text-gray-300">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                            應收帳款 (Accounts Receivable)
+                        </a>
+                        <a href="#" class="nav-button flex items-center p-3 rounded-lg bg-gray-700 hover:text-red-400 text-gray-300">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2h-2"/><path d="M18 6h-8"/><path d="M18 10h-8"/><path d="M10 14h8"/></svg>
+                            應付帳款 (Accounts Payable)
+                        </a>
+                        <a href="#" class="nav-button flex items-center p-3 rounded-lg bg-gray-700 hover:text-yellow-400 text-gray-300">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M12 18h.01"/></svg>
+                            固定資產 (Fixed Assets)
+                        </a>
+                        <a href="#" class="nav-button flex items-center p-3 rounded-lg bg-gray-700 hover:text-green-400 text-gray-300">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                            預算與分析 (Budgeting)
+                        </a>
+                    </nav>
+                </div>
+
+                <div class="lg:col-span-2 space-y-8">
+
+                    <div class="dashboard-card bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                        <h2 class="text-xl font-bold text-gray-50 mb-4">
+                            過去 6 個月現金流量趨勢
+                        </h2>
+                        <div class="h-64">
+                            <canvas id="cashFlowChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                        <h2 class="text-xl font-bold text-gray-50 mb-4 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            待處理財務活動 (Action Required)
+                        </h2>
+                        <ul class="space-y-3">
+                            <li class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                                <div class="flex items-center">
+                                    <span class="text-red-400 mr-3 text-lg font-bold">AP</span>
+                                    <div>
+                                        <p class="text-sm font-semibold">應付帳款：支付供應商 A 逾期發票 #1001</p>
+                                        <p class="text-xs text-gray-400">金額: $25,000 | 截止日: 2025/10/20</p>
+                                    </div>
+                                </div>
+                                <button onclick="showToast('已提交支付請求：供應商 A。', 'success')" class="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded-full hover:bg-red-700">
+                                    立即處理
+                                </button>
+                            </li>
+                            <li class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                                <div class="flex items-center">
+                                    <span class="text-indigo-400 mr-3 text-lg font-bold">AR</span>
+                                    <div>
+                                        <p class="text-sm font-semibold">應收帳款：客戶 B 信用額度審核</p>
+                                        <p class="text-xs text-gray-400">請求金額: $100,000 | 提交日: 2025/10/25</p>
+                                    </div>
+                                </div>
+                                <button onclick="showToast('客戶 B 信用額度已核准。', 'success')" class="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-full hover:bg-blue-700">
+                                    審批
+                                </button>
+                            </li>
+                            <li class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                                <div class="flex items-center">
+                                    <span class="text-yellow-400 mr-3 text-lg font-bold">GL</span>
+                                    <div>
+                                        <p class="text-sm font-semibold">總帳：等待核准的日記帳分錄</p>
+                                        <p class="text-xs text-gray-400">筆數: 4 筆 | 總金額: $12,500</p>
+                                    </div>
+                                </div>
+                                <button onclick="showToast('總帳分錄已載入，請審核。', 'warning')" class="px-3 py-1 text-xs font-medium text-white bg-yellow-600 rounded-full hover:bg-yellow-700">
+                                    查看
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </main>
+        </section>
+
+        <section id="general-ledger-view" class="hidden">
+             <header class="mb-8 border-b border-gray-700 pb-4">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-4xl md:text-5xl font-extrabold text-blue-400 tracking-tight flex items-center">
+                        <svg class="w-8 h-8 md:w-10 md:h-10 mr-3 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16.5V9a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v7.5"/><path d="M5 21v-7"/><path d="M19 21v-7"/><path d="M21 17H3"/></svg>
+                        IGB 總帳管理 (General Ledger)
+                    </h1>
+
+                    <div class="flex space-x-4 print-hide">
+                        <button onclick="showView('finance')" class="flex items-center text-green-400 hover:text-green-300 transition duration-150 p-2 rounded-lg bg-gray-800 border border-green-500/50">
+                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+                            返回財務儀表板
+                        </button>
+                    </div>
+
+                </div>
+                <p class="text-lg text-gray-400 mt-2">
+                    檢視並管理所有日記帳分錄、確保借貸平衡與總帳準確性
+                </p>
+            </header>
+
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 mb-8 print-hide">
+                <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex items-center space-x-2">
+                        <label for="date-start" class="text-gray-400 text-sm whitespace-nowrap">日期範圍:</label>
+                        <input type="date" id="date-start" value="2025-10-01" class="bg-gray-700 border border-gray-600 text-gray-100 rounded-lg p-2 text-sm focus:ring-blue-500 focus:border-blue-500">
+                        <span class="text-gray-400">-</span>
+                        <input type="date" id="date-end" value="2025-10-31" class="bg-gray-700 border border-gray-600 text-gray-100 rounded-lg p-2 text-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <label for="account-filter" class="text-gray-400 text-sm">帳戶:</label>
+                        <select id="account-filter" class="bg-gray-700 border border-gray-600 text-gray-100 rounded-lg p-2 text-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">所有帳戶</option>
+                            <option value="1010">1010-現金</option>
+                            <option value="4000">4000-銷貨收入</option>
+                            <option value="5000">5000-薪資費用</option>
+                        </select>
+                    </div>
+
+                    <div class="flex-grow max-w-sm">
+                        <input type="text" placeholder="輸入參考編號或描述關鍵字" class="w-full bg-gray-700 border border-gray-600 text-gray-100 rounded-lg p-2 text-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <button onclick="showToast('已根據篩選條件查詢總帳。', 'success')" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                        查詢
+                    </button>
+
+                    <button onclick="showToast('新的日記帳分錄已開啟，請填寫。', 'success')" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150">
+                        <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                        新增日記帳分錄
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700 overflow-x-auto">
+                <h2 class="text-xl font-bold text-gray-50 mb-4">日記帳分錄列表 (10 月份)</h2>
+
+                <table class="min-w-full divide-y divide-gray-700">
+                    <thead>
+                        <tr class="text-left text-xs font-medium text-gray-400 uppercase tracking-wider bg-gray-700">
+                            <th scope="col" class="px-6 py-3">日期</th>
+                            <th scope="col" class="px-6 py-3">參考編號</th>
+                            <th scope="col" class="px-6 py-3">會計科目</th>
+                            <th scope="col" class="px-6 py-3">描述/摘要</th>
+                            <th scope="col" class="px-6 py-3">狀態</th> <th scope="col" class="px-6 py-3 text-right">借方 (Debit)</th>
+                            <th scope="col" class="px-6 py-3 text-right">貸方 (Credit)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800">
+                        <tr class="hover:bg-gray-700 transition duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-100">2025-10-05</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-400">INV-2025-0012</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">1010-現金</td>
+                            <td class="px-6 py-4 text-sm text-gray-400">應收帳款支付-客戶 C</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-700 text-green-100">
+                                    已核准
+                                </span>
+                            </td> <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-green-400">$ 5,000.00</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-300">-</td>
+                        </tr>
+                        <tr class="hover:bg-gray-700 transition duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-100"></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-400"></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">4000-銷貨收入</td>
+                            <td class="px-6 py-4 text-sm text-gray-400"></td>
+                            <td class="px-6 py-4 whitespace-nowrap"></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-300">-</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-red-400">$ 5,000.00</td>
+                        </tr>
+
+                        <tr class="hover:bg-gray-700 transition duration-150 border-t border-gray-600">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-100">2025-10-25</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-400">JNL-2025-0045</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">5000-薪資費用</td>
+                            <td class="px-6 py-4 text-sm text-gray-400">管理部門薪資支付</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-700 text-yellow-100">
+                                    待審核
+                                </span>
+                            </td> <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-green-400">$ 12,000.00</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-300">-</td>
+                        </tr>
+                        <tr class="hover:bg-gray-700 transition duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-100"></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-400"></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">1010-現金</td>
+                            <td class="px-6 py-4 text-sm text-gray-400"></td>
+                            <td class="px-6 py-4 whitespace-nowrap"></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-300">-</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-red-400">$ 12,000.00</td>
+                        </tr>
+
+                        <tr class="bg-gray-700 font-bold text-lg border-t-2 border-blue-500">
+                            <td class="px-6 py-4 text-gray-50" colspan="5">總計 (Total)</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-green-300">$ 17,000.00</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-red-300">$ 17,000.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="mt-4 text-center text-sm font-semibold text-gray-400">
+                    借貸合計平衡檢查：
+                    <span class="text-green-500">借方總額與貸方總額相等 (Balanced)</span>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-3 print-hide">
+        </div>
+
+    <footer class="mt-10 pt-4 border-t border-gray-700 text-center text-gray-500 text-sm">
+        <p>IGB ERP 系統 — 數位化轉型的藍圖 | 2025 年</p>
+    </footer>
+
+    <script>
+        // Chart.js 初始化函數
+        let cashFlowChartInstance = null;
+        function initializeCashFlowChart() {
+            const ctx = document.getElementById('cashFlowChart');
+
+            // 如果圖表已經存在，先銷毀它
+            if (cashFlowChartInstance) {
+                cashFlowChartInstance.destroy();
+            }
+
+            // 隨機生成模擬數據
+            const cashIn = [350000, 420000, 480000, 500000, 520000, 550000];
+            const cashOut = [210000, 250000, 280000, 310000, 300000, 340000];
+            const netCash = cashIn.map((c, i) => c - cashOut[i]);
+
+            const chartData = {
+                labels: ['四月', '五月', '六月', '七月', '八月', '九月'],
+                datasets: [
+                    {
+                        label: '現金流入 (Cash In)',
+                        data: cashIn,
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.3,
+                        fill: true,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: '淨現金流 (Net Flow)',
+                        data: netCash,
+                        borderColor: 'rgb(59, 130, 246)', // Blue-500
+                        backgroundColor: 'rgba(59, 130, 246, 0.4)',
+                        tension: 0.3,
+                        fill: false,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: '現金流出 (Cash Out)',
+                        data: cashOut,
+                        borderColor: 'rgb(239, 68, 68)', // Red-500
+                        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                        tension: 0.3,
+                        fill: false,
+                        yAxisID: 'y',
+                        borderDash: [5, 5]
+                    }
+                ]
+            };
+
+            cashFlowChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#d1d5db' // Gray-300
+                            }
+                        },
+                        title: {
+                            display: false,
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#9ca3af' // Gray-400
+                            },
+                            grid: {
+                                color: '#374151' // Gray-700
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                color: '#9ca3af', // Gray-400
+                                callback: function(value, index, values) {
+                                    return '$' + (value / 1000) + 'K';
+                                }
+                            },
+                            grid: {
+                                color: '#374151' // Gray-700
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ==============================================
+        // Toast 訊息顯示功能
+        // ==============================================
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            let bgColor = 'bg-green-600';
+            let iconSvg = '<svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>'; // Info/Checkmark
+
+            if (type === 'error') {
+                bgColor = 'bg-red-600';
+                iconSvg = '<svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>';
+            } else if (type === 'warning') {
+                bgColor = 'bg-yellow-600';
+                iconSvg = '<svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+            } else if (type === 'success') {
+                bgColor = 'bg-green-600';
+                iconSvg = '<svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M9 11l3 3L22 4"/></svg>';
+            }
+
+            toast.className = `${bgColor} text-white p-4 rounded-lg shadow-xl flex items-center max-w-sm opacity-0 transition-opacity duration-300 transform translate-x-1/2`;
+            toast.innerHTML = `${iconSvg}<span class="text-sm font-semibold">${message}</span>`;
+
+            container.appendChild(toast);
+
+            // Fade in
+            setTimeout(() => {
+                toast.classList.remove('opacity-0', 'translate-x-1/2');
+                toast.classList.add('opacity-100', 'translate-x-0');
+            }, 50);
+
+            // Fade out and remove
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-x-0');
+                toast.classList.add('opacity-0', 'translate-x-1/2');
+
+                // Remove from DOM after transition
+                setTimeout(() => {
+                    if (container.contains(toast)) {
+                        container.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // 匯出報表功能：呼叫瀏覽器列印對話框
+        function exportFinancialReport() {
+            window.print();
+        }
+
+        // 頁面視圖管理器
+        function showView(viewId) {
+            // 定義短 ID 到完整 HTML ID 的映射
+            const views = {
+                'main-menu': 'main-menu-view',
+                'finance': 'finance-module-view',
+                'gl': 'general-ledger-view'
+            };
+
+            const targetId = views[viewId];
+            if (!targetId) {
+                console.error(`Invalid viewId: ${viewId}`);
+                return;
+            }
+
+            // 1. 隱藏所有已知視圖
+            Object.values(views).forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.classList.add('hidden');
+                }
+            });
+
+            // 2. 顯示目標視圖
+            const targetElement = document.getElementById(targetId);
+            if (targetElement) {
+                targetElement.classList.remove('hidden');
+            } else {
+                console.error(`Target view element not found for ID: ${targetId}`);
+                return;
+            }
+
+            // 3. 如果切換到財務儀表板，則重新初始化圖表
+            if (viewId === 'finance') {
+                // 給予瀏覽器一些時間來繪製 DOM，然後初始化 Chart.js
+                setTimeout(initializeCashFlowChart, 100);
+            }
+        }
+
+        // 頁面加載完成後，預設顯示主選單
+        document.addEventListener('DOMContentLoaded', function() {
+            showView('main-menu');
+        });
+    </script>
+
+</body>
+</html>

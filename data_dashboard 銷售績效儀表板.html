@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP 企業資源規劃儀表板</title>
+    <!-- 載入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 Chart.js 用於數據圖表 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <style>
+        /* 設定字體為 Inter */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* 自定義滾動條樣式，讓深色模式更美觀 */
+        .dashboard-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .dashboard-container::-webkit-scrollbar-track {
+            background: #1f2937; /* bg-gray-800 */
+        }
+        .dashboard-container::-webkit-scrollbar-thumb {
+            background: #4b5563; /* bg-gray-600 */
+            border-radius: 4px;
+        }
+        .dashboard-container::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* bg-gray-500 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 antialiased">
+
+    <div id="app" class="flex min-h-screen">
+
+        <!-- 側邊欄導航 (Sidebar) -->
+        <aside class="w-64 bg-gray-800 p-6 space-y-6 hidden md:block shadow-2xl">
+            <div class="text-2xl font-bold text-indigo-400 border-b border-gray-700 pb-4 mb-4">
+                ERP 總覽
+            </div>
+            <nav class="space-y-2">
+                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg bg-indigo-700/50 text-white font-semibold transition duration-200 hover:bg-indigo-600">
+                    <!-- Icon: Home -->
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6m-6 0h-2a1 1 0 01-1-1v-4m7 0h-3"></path></svg>
+                    <span>儀表板</span>
+                </a>
+                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg text-gray-300 transition duration-200 hover:bg-gray-700 hover:text-white">
+                    <!-- Icon: Shopping Cart -->
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    <span>銷售訂單</span>
+                </a>
+                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg text-gray-300 transition duration-200 hover:bg-gray-700 hover:text-white">
+                    <!-- Icon: Box -->
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+                    <span>庫存管理</span>
+                </a>
+                <a href="#" class="flex items-center space-x-3 p-3 rounded-lg text-gray-300 transition duration-200 hover:bg-gray-700 hover:text-white">
+                    <!-- Icon: Users -->
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m0 0v-2a3 3 0 014.54-1.857M7 20v-2c0-.598.237-1.177.659-1.639l3.428-3.428a2 2 0 012.828 0l3.428 3.428c.422.462.659 1.041.659 1.639v2m-9 0h6"></path></svg>
+                    <span>客戶關係</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- 主要內容區域 -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 dashboard-container">
+
+            <!-- 頂部標題和使用者資訊 -->
+            <header class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-extrabold text-white">企業營運儀表板</h1>
+                <div class="flex items-center space-x-4">
+                    <button class="p-2 rounded-full text-gray-400 hover:bg-gray-700 transition duration-200">
+                        <!-- Icon: Bell -->
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    </button>
+                    <div class="flex items-center space-x-2 bg-gray-800 p-2 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                        <img src="https://placehold.co/40x40/0d9488/ffffff?text=U" alt="" class="w-10 h-10 rounded-full border-2 border-indigo-500">
+                        <span class="hidden sm:inline text-sm font-medium">系統管理員</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 關鍵績效指標 (KPI Cards) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
+                <!-- 1. 當月營收 -->
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-indigo-500 transition duration-300">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-gray-400">當月營收</p>
+                        <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V9m0 3v1m0 3v1"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2z"></path></svg>
+                    </div>
+                    <p class="text-3xl font-bold text-white mt-2">$285,450</p>
+                    <div class="flex items-center text-sm mt-3">
+                        <span class="text-green-400 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                            +12.5%
+                        </span>
+                        <span class="text-gray-400 ml-2">與上月比較</span>
+                    </div>
+                </div>
+
+                <!-- 2. 新訂單數 -->
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-green-500 transition duration-300">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-gray-400">新訂單數</p>
+                        <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </div>
+                    <p class="text-3xl font-bold text-white mt-2">1,580</p>
+                    <div class="flex items-center text-sm mt-3">
+                        <span class="text-red-400 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                            -4.1%
+                        </span>
+                        <span class="text-gray-400 ml-2">與上週比較</span>
+                    </div>
+                </div>
+
+                <!-- 3. 庫存缺貨警告 -->
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-yellow-500 transition duration-300">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-gray-400">庫存缺貨警告</p>
+                        <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </div>
+                    <p class="text-3xl font-bold text-white mt-2">14</p>
+                    <div class="flex items-center text-sm mt-3">
+                        <span class="text-gray-400">需立即處理</span>
+                    </div>
+                </div>
+
+                <!-- 4. 未結清應收帳款 -->
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 hover:border-red-500 transition duration-300">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-gray-400">未結清應收帳款</p>
+                        <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V9m0 3v1m0 3v1"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2z"></path></svg>
+                    </div>
+                    <p class="text-3xl font-bold text-white mt-2">$92,100</p>
+                    <div class="flex items-center text-sm mt-3">
+                        <span class="text-orange-400 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            15 天以上
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 圖表區塊 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+
+                <!-- 1. 月度銷售趨勢圖 (佔 2/3 寬度) -->
+                <div class="lg:col-span-2 bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                    <h2 class="text-lg font-semibold text-white mb-4">月度銷售趨勢 (最近六個月)</h2>
+                    <div class="h-80">
+                        <canvas id="salesChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 2. 產品銷售佔比圖 (佔 1/3 寬度) -->
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                    <h2 class="text-lg font-semibold text-white mb-4">產品類別銷售佔比</h2>
+                    <div class="h-80 flex items-center justify-center">
+                        <canvas id="productMixChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 最近活動/表格區塊 -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                <h2 class="text-lg font-semibold text-white mb-4">最近 5 筆待發貨訂單</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-700">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                    訂單 ID
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                    客戶名稱
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                    金額 (USD)
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                    狀態
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                    預計出貨日
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800">
+                            <!-- 範例數據行 -->
+                            <tr class="hover:bg-gray-700 transition duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">#SO-10928</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">台積電 A 部門</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">$15,200</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-800 text-yellow-300">
+                                        待發貨
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">2025/11/05</td>
+                            </tr>
+                            <tr class="hover:bg-gray-700 transition duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">#SO-10927</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">鴻海科技</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">$5,890</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-800 text-yellow-300">
+                                        待發貨
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">2025/11/01</td>
+                            </tr>
+                            <tr class="hover:bg-gray-700 transition duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">#SO-10926</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">聯發科 B 部門</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">$22,350</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-800 text-green-300">
+                                        已備貨
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">2025/10/28</td>
+                            </tr>
+                            <tr class="hover:bg-gray-700 transition duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">#SO-10925</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">廣達電腦</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">$4,500</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-800 text-red-300">
+                                        待採購
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">2025/11/10</td>
+                            </tr>
+                            <tr class="hover:bg-gray-700 transition duration-150">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">#SO-10924</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">華碩公司</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">$8,120</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-800 text-green-300">
+                                        已備貨
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">2025/10/27</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4 flex justify-center">
+                    <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium">查看所有訂單</button>
+                </div>
+            </div>
+
+            <footer class="mt-8 text-center text-gray-500 text-sm">
+                &copy; 2025 現代化 ERP 系統。保留所有權利。
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        // 初始化圖表
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- 1. 月度銷售趨勢圖 (折線圖) ---
+            const salesCtx = document.getElementById('salesChart').getContext('2d');
+
+            // 定義漸變色用於填充區域
+            const gradient = salesCtx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(99, 102, 241, 0.5)'); // Indigo-500 start
+            gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');   // Transparent end
+
+            new Chart(salesCtx, {
+                type: 'line',
+                data: {
+                    labels: ['5月', '6月', '7月', '8月', '9月', '10月'],
+                    datasets: [{
+                        label: '銷售總額 (千 USD)',
+                        data: [180, 220, 195, 250, 285, 310], // 範例數據
+                        borderColor: 'rgb(99, 102, 241)', // indigo-500
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.3, // 曲線平滑度
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: 'rgb(99, 102, 241)',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // 允許容器控制大小
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(75, 85, 99, 0.3)' }, // gray-600
+                            ticks: { color: 'white' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: 'white' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: 'white' }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(17, 24, 39, 0.9)', // gray-900
+                            borderColor: 'rgb(99, 102, 241)',
+                            borderWidth: 1,
+                            titleColor: 'white',
+                            bodyColor: 'white'
+                        }
+                    }
+                }
+            });
+
+            // --- 2. 產品銷售佔比圖 (甜甜圈圖/Doughnut Chart) ---
+            const productCtx = document.getElementById('productMixChart').getContext('2d');
+            new Chart(productCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['電子元件', '軟體授權', '諮詢服務', '配件'],
+                    datasets: [{
+                        label: '銷售佔比',
+                        data: [45, 25, 20, 10], // 範例百分比數據
+                        backgroundColor: [
+                            'rgb(99, 102, 241)',  // Indigo
+                            'rgb(34, 197, 94)',   // Green
+                            'rgb(249, 115, 22)',  // Orange
+                            'rgb(239, 68, 68)',   // Red
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: 'white' }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + '%';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

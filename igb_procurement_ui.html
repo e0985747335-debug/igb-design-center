@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 採購管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        /* Custom Tailwind Configuration - using colors from your overall ERP theme */
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'erp-primary': '#06D6A0', /* Teal/Green Accent */
+                        'erp-neutral': '#118AB2', /* Professional Blue for Headers */
+                        'erp-bg-light': '#f8fafd',
+                        'erp-dark': '#073B4C',
+                        'erp-bg-dark-panel': '#363062', /* Dark purple from screenshot */
+                        'erp-card-bg-light': '#D4ADFC', /* Light purple from screenshot (for detail panels) */
+                        'erp-detail-bg': '#5C469C', /* Deeper purple for detail headers */
+                        'erp-detail-accent': '#8E6AD1', /* Accent for text fields in details */
+                        'erp-button-bg': '#6A3E9C', /* Button color */
+                        'erp-yellow-accent': '#FFD369' /* Yellow for items/金額 */
+                    }
+                }
+            }
+        }
+
+        /* Scrollbar styles for dark panels */
+        .custom-scrollbar-dark::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar-dark::-webkit-scrollbar-track {
+            background: #4a4282; /* Slightly lighter track for contrast */
+        }
+        .custom-scrollbar-dark::-webkit-scrollbar-thumb {
+            background-color: #6a62a0;
+            border-radius: 4px;
+        }
+        .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+            background-color: #8c82d4;
+        }
+        
+        /* Specific styling for the top menu bar to match the screenshot */
+        .top-menu-item.active {
+            background-color: #5C469C; /* Deeper purple when active */
+            color: white;
+            font-weight: 600;
+        }
+
+        /* Left sidebar active item */
+        .sidebar-item.active {
+            background-color: #5C469C; /* Matches the top active button */
+            color: white;
+            font-weight: 600;
+        }
+
+        /* Input field styling in dark theme */
+        .dark-input {
+            @apply bg-erp-detail-accent bg-opacity-30 text-white placeholder-gray-300 border-none rounded-md p-2 focus:ring-1 focus:ring-erp-primary focus:outline-none;
+        }
+        .dark-select {
+            @apply bg-erp-detail-accent bg-opacity-30 text-white border-none rounded-md p-2 focus:ring-1 focus:ring-erp-primary focus:outline-none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans antialiased text-gray-800">
+
+    <div class="min-h-screen flex flex-col bg-[#2D2A4A] overflow-hidden">
+        <!-- Top Navigation Bar --><nav class="bg-erp-dark-panel text-white p-2 md:p-3 flex items-center justify-between shadow-lg z-10">
+            <div class="flex items-center space-x-2 md:space-x-4">
+                <a href="#" class="text-xl md:text-2xl font-bold text-erp-primary mr-4">IGB ERP</a>
+                <button class="top-menu-item py-2 px-3 md:px-4 rounded-md text-sm md:text-base hover:bg-[#5C469C] transition duration-150">會計</button>
+                <button class="top-menu-item py-2 px-3 md:px-4 rounded-md text-sm md:text-base active">採購管理</button>
+                <button class="top-menu-item py-2 px-3 md:px-4 rounded-md text-sm md:text-base hover:bg-[#5C469C] transition duration-150">商品管理</button>
+                <button class="top-menu-item py-2 px-3 md:px-4 rounded-md text-sm md:text-base hover:bg-[#5C469C] transition duration-150">廠商管理</button>
+                <button class="top-menu-item py-2 px-3 md:px-4 rounded-md text-sm md:text-base hover:bg-[#5C469C] transition duration-150">人事管理</button>
+                <button class="top-menu-item py-2 px-3 md:px-4 rounded-md text-sm md:text-base hover:bg-[#5C469C] transition duration-150">ERP 管理</button>
+                <button class="top-menu-item py-2 px-3 md:px-4 rounded-md text-sm md:text-base hover:bg-[#5C469C] transition duration-150">ERP 雲端</button>
+            </div>
+            <div class="flex items-center space-x-2 md:space-x-4">
+                <span class="text-gray-300 text-sm md:text-base">👤 莊士杰</span>
+                <span class="text-gray-300 text-sm md:text-base">📅 2024/03/28 10:20</span>
+            </div>
+        </nav>
+
+        <!-- Main Content Area --><div class="flex flex-1 overflow-hidden">
+            <!-- Left Sidebar --><aside class="w-28 md:w-48 bg-erp-dark-panel text-gray-200 py-6 px-2 md:px-4 flex-shrink-0 shadow-xl custom-scrollbar-dark overflow-y-auto">
+                <h3 class="text-lg md:text-xl font-bold text-gray-500 mb-4 px-2">採購業務</h3>
+                <nav class="space-y-2">
+                    <button class="sidebar-item w-full text-left py-2 px-2 md:px-3 rounded-md text-sm md:text-base active transition duration-150">採購處理</button>
+                    <button class="sidebar-item w-full text-left py-2 px-2 md:px-3 rounded-md text-sm md:text-base hover:bg-[#5C469C] transition duration-150">製作採購單</button>
+                    <button class="sidebar-item w-full text-left py-2 px-2 md:px-3 rounded-md text-sm md:text-base hover:bg-[#5C469C] transition duration-150">驗收處理</button>
+                </nav>
+            </aside>
+
+            <!-- Main Panel - Procurement List and Details --><main class="flex-1 p-4 md:p-6 flex flex-col lg:flex-row gap-6 overflow-auto custom-scrollbar-dark">
+                
+                <!-- Procurement List --><div class="flex-1 bg-erp-bg-dark-panel rounded-xl shadow-2xl p-4 lg:p-6 flex flex-col text-white min-w-[300px] lg:min-w-[400px]">
+                    <h2 class="text-2xl font-bold mb-4">採購單列表</h2>
+                    <div class="mb-4 flex items-center space-x-2">
+                        <input type="text" placeholder="搜尋..." class="flex-grow dark-input text-sm md:text-base">
+                        <button class="p-2 rounded-md bg-erp-button-bg hover:bg-opacity-80 transition duration-150">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto custom-scrollbar-dark min-h-[200px] lg:min-h-0">
+                        <table class="min-w-full divide-y divide-gray-700">
+                            <thead>
+                                <tr>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">項次</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">採購單號</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">供應商名稱</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">採購人員</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-700">
+                                <!-- Data rows from screenshot --><tr class="bg-erp-detail-bg bg-opacity-50 text-white cursor-pointer hover:bg-opacity-70 transition duration-150">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium">1</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">01.01 1234567</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">貝爾服裝</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">IBM</td>
+                                </tr>
+                                <tr class="hover:bg-erp-detail-bg hover:bg-opacity-20 cursor-pointer transition duration-150">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium">2</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">01.02 2345670</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">智慧電子</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">Rob</td>
+                                </tr>
+                                <tr class="hover:bg-erp-detail-bg hover:bg-opacity-20 cursor-pointer transition duration-150">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium">3</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">01.03 3456789</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">台積電</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">Bob</td>
+                                </tr>
+                                <tr class="hover:bg-erp-detail-bg hover:bg-opacity-20 cursor-pointer transition duration-150">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium">4</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">01.04 4567890</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">聯發科</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">David</td>
+                                </tr>
+                                <tr class="hover:bg-erp-detail-bg hover:bg-opacity-20 cursor-pointer transition duration-150">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium">5</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">01.05 5678901</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">廣達</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">Charlie</td>
+                                </tr>
+                                <tr class="hover:bg-erp-detail-bg hover:bg-opacity-20 cursor-pointer transition duration-150">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium">6</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">01.06 6789012</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">和碩聯合</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">Eve</td>
+                                </tr>
+                                <tr class="hover:bg-erp-detail-bg hover:bg-opacity-20 cursor-pointer transition duration-150">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium">7</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">01.07 7890123</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">友達光電</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">Frank</td>
+                                </tr>
+                                <tr class="hover:bg-erp-detail-bg hover:bg-opacity-20 cursor-pointer transition duration-150">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium">8</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">01.08 8901234</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">群創</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">Grace</td>
+                                </tr>
+                                <tr class="hover:bg-erp-detail-bg hover:bg-opacity-20 cursor-pointer transition duration-150">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium">9</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">01.09 9012345</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">日月光</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">Monica</td>
+                                </tr>
+                                <tr class="hover:bg-erp-detail-bg hover:bg-opacity-20 cursor-pointer transition duration-150">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium">10</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">01.10 0123456</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">力積電</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">Judy</td>
+                                </tr>
+                                <tr class="hover:bg-erp-detail-bg hover:bg-opacity-20 cursor-pointer transition duration-150">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium">11</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">01.11 1123457</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">聯華電子</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">Ivan</td>
+                                </tr>
+                                <tr class="hover:bg-erp-detail-bg hover:bg-opacity-20 cursor-pointer transition duration-150">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium">12</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">01.12 1234568</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">艾司科</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">Kevin</td>
+                                </tr>
+                                <tr class="hover:bg-erp-detail-bg hover:bg-opacity-20 cursor-pointer transition duration-150">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium">13</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">01.13 1323469</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">杜邦</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">Linda</td>
+                                </tr>
+                                <tr class="hover:bg-erp-detail-bg hover:bg-opacity-20 cursor-pointer transition duration-150">
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium">14</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">01.14 1478900</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">科慕</td>
+                                    <td class="px-3 py-2 whitespace-nowrap text-sm">Mike</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <button class="bg-erp-button-bg text-white py-2 px-4 rounded-md hover:bg-opacity-80 transition duration-150">新增採購單</button>
+                    </div>
+                </div>
+
+                <!-- Procurement Details --><div class="w-full lg:w-96 flex-shrink-0 bg-erp-detail-bg bg-opacity-80 rounded-xl shadow-2xl p-4 lg:p-6 text-white flex flex-col gap-4">
+                    <h2 class="text-2xl font-bold text-white mb-2">採購單資料 <span class="text-gray-300 text-lg">1234567</span></h2>
+                    
+                    <!-- Data Fields --><div class="space-y-3">
+                        <div>
+                            <label for="order-num" class="block text-sm font-medium text-gray-300">採購單號</label>
+                            <input type="text" id="order-num" value="1234567" class="dark-input w-full mt-1" readonly>
+                        </div>
+                        <div>
+                            <label for="order-date" class="block text-sm font-medium text-gray-300">採購日期</label>
+                            <input type="date" id="order-date" value="2024-01-01" class="dark-input w-full mt-1">
+                        </div>
+                        <div>
+                            <label for="vendor-num" class="block text-sm font-medium text-gray-300">供應商編號</label>
+                            <input type="text" id="vendor-num" value="A0123" class="dark-input w-full mt-1">
+                        </div>
+                        <div>
+                            <label for="vendor-name" class="block text-sm font-medium text-gray-300">供應商名稱</label>
+                            <div class="flex mt-1">
+                                <input type="text" id="vendor-name" value="貝爾服裝" class="dark-input flex-grow">
+                                <button class="ml-2 p-2 rounded-md bg-erp-button-bg hover:bg-opacity-80 transition duration-150">查詢</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="requester" class="block text-sm font-medium text-gray-300">請購人員</label>
+                            <input type="text" id="requester" value="IBM" class="dark-input w-full mt-1">
+                        </div>
+                        <div>
+                            <label for="payment-terms" class="block text-sm font-medium text-gray-300">付款方式</label>
+                            <select id="payment-terms" class="dark-select w-full mt-1">
+                                <option>期票30天</option>
+                                <option>現金支付</option>
+                                <option>匯款60天</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="notes" class="block text-sm font-medium text-gray-300">備註</label>
+                            <textarea id="notes" rows="2" class="dark-input w-full mt-1">專門用於生產線 A 的物料採購。</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Procurement Items --><div class="bg-erp-card-bg-light rounded-lg p-3 mt-4 text-erp-dark">
+                        <h3 class="text-xl font-bold mb-3">採購商品清單</h3>
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr>
+                                    <th class="text-left py-1 text-gray-600">項次</th>
+                                    <th class="text-left py-1 text-gray-600">商品種類/名稱</th>
+                                    <th class="text-left py-1 text-gray-600">數量</th>
+                                    <th class="text-left py-1 text-gray-600">單價</th>
+                                    <th class="text-left py-1 text-gray-600">總額</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-gray-200">
+                                    <td class="py-1">1</td>
+                                    <td class="py-1">A10101 / T恤-黑色</td>
+                                    <td class="py-1">100</td>
+                                    <td class="py-1">50</td>
+                                    <td class="py-1 font-medium">5,000</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1">2</td>
+                                    <td class="py-1">A31002 / T恤-白色</td>
+                                    <td class="py-1">50</td>
+                                    <td class="py-1">50</td>
+                                    <td class="py-1 font-medium">2,500</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <button class="mt-3 text-sm text-erp-button-bg hover:text-opacity-80 transition duration-150 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            新增品項
+                        </button>
+                    </div>
+
+                    <div class="mt-auto text-right text-lg font-bold">
+                        <span class="text-gray-300 mr-2">採購總金額 (未稅):</span>
+                        <span class="text-erp-yellow-accent text-2xl">13,500</span>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-erp-detail-accent flex justify-end space-x-3">
+                        <button class="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-500 transition duration-150">列印採購單</button>
+                        <button class="bg-erp-button-bg text-white py-2 px-4 rounded-md hover:bg-opacity-80 transition duration-150">保存/確認</button>
+                        <button class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-500 transition duration-150">作廢</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+</body>
+</html>
