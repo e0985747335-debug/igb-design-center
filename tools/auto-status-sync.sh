@@ -6,7 +6,7 @@
 WATCH_DIR="/home/iven/igb-design-center"
 LOG_FILE="$WATCH_DIR/auto-status-sync.log"
 RATE_LIMIT_FILE="/tmp/git_autowatch_last_run"
-RATE_LIMIT_SECONDS=45
+RATE_LIMIT_SECONDS=5
 
 # 🔍 限定允許同步的檔案類型
 WHITELIST_REGEX='(\.py|\.sh|\.md|\.yml|\.yaml|\.html|\.js|\.css|\.json|\.sql|\.ini|\.conf|\.service)$'
