@@ -17,3 +17,5 @@ auto-status-sync.log
 # --- System tmp ---
 *.tmp
 __pycache__/
+data/postgres/
+logs/
