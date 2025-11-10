@@ -1,0 +1,249 @@
+!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 2.0 Command Center - 商業儀表板</title>
+    <script src="./chart.umd.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
+</head>
+
+<body class="bg-gray-50 font-sans">
+
+    <header class="bg-white shadow-md p-4 sticky top-0 z-10">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-800">ERP 2.0 Command Center</h1>
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-500">用戶 ID: ...</span>
+                <span class="text-sm font-medium text-green-600">系統狀態: 連線中</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 space-y-6">
+
+        <section class="bg-white p-4 rounded-lg shadow-md flex space-x-4 items-center">
+            <h3 class="text-lg font-semibold text-gray-700">數據篩選:</h3>
+
+            <div class="flex items-center space-x-2">
+                <label for="startDate" class="text-sm font-medium text-gray-600">起始月份:</label>
+                <input type="month" id="startDate"
+                    class="border border-gray-300 rounded-md p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <label for="endDate" class="text-sm font-medium text-gray-600">結束月份:</label>
+                <input type="month" id="endDate"
+                    class="border border-gray-300 rounded-md p-1.5 text-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+        </section>
+
+        <section class="grid grid-cols-3 gap-6">
+
+            <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500">
+                <p class="text-sm font-medium text-gray-500">銷貨收入 (Total Revenue)</p>
+                <p id="totalRevenue" class="text-3xl font-extrabold text-gray-900 mt-1">$0</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500">
+                <p class="text-sm font-medium text-gray-500">銷貨成本 (Total Cost)</p>
+                <p id="totalCost" class="text-3xl font-extrabold text-gray-900 mt-1">$0</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500">
+                <p class="text-sm font-medium text-gray-500">總毛利 (Gross Profit)</p>
+                <p id="grossProfit" class="text-3xl font-extrabold text-gray-900 mt-1">$0</p>
+            </div>
+
+        </section>
+
+        <section class="grid grid-cols-3 gap-6">
+
+            <div class="col-span-2 bg-white p-4 rounded-lg shadow-md w-full">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">銷貨收入與成本趨勢圖 (月份)</h2>
+                <div class="h-96">
+                    <canvas id="revenueCostChart"></canvas>
+                </div>
+            </div>
+
+            <div class="col-span-1 bg-white p-4 rounded-lg shadow-md w-full">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">MDM 狀態分佈</h2>
+                <div class="h-96 flex items-center justify-center">
+                    <canvas id="mdmDoughnutChart"></canvas>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <script>
+        // 定義圖表變數
+        let revenueCostChart;
+        let mdmDoughnutChart;
+
+        // 模擬資料 (如果您的 Firebase 連線尚未設定，會使用這個)
+        const initialChartData = [
+            { month: "2024-05", revenue: 1200000, cost: 750000 },
+            { month: "2024-06", revenue: 1350000, cost: 800000 },
+            { month: "2024-07", revenue: 1500000, cost: 900000 },
+            { month: "2024-08", revenue: 1600000, cost: 950000 },
+            { month: "2024-09", revenue: 1800000, cost: 1050000 },
+            { month: "2024-10", revenue: 1950000, cost: 1100000 },
+            { month: "2024-11", revenue: 2100000, cost: 1200000 },
+            { month: "2024-12", revenue: 2200000, cost: 1250000 },
+            { month: "2025-01", revenue: 2400000, cost: 1350000 },
+            { month: "2025-02", revenue: 2600000, cost: 1400000 },
+            { month: "2025-03", revenue: 2800000, cost: 1500000 },
+            { month: "2025-04", revenue: 3000000, cost: 1600000 },
+        ];
+        let mdmChartData = {
+            labels: ['已完成', '進行中', '已取消', '待處理'],
+            data: [45, 30, 15, 10]
+        };
+
+        // 格式化數字為千位數
+        const formatNumber = (num) => new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', minimumFractionDigits: 0 }).format(num).replace('TWD', '$');
+
+        // 銷貨收入與成本趨勢圖
+        const renderRevenueCostChart = (data) => {
+            if (revenueCostChart) revenueCostChart.destroy();
+
+            const ctx = document.getElementById('revenueCostChart');
+            if (!ctx) return; // 安全檢查
+
+            const labels = data.map(d => d.month);
+            const revenues = data.map(d => d.revenue);
+            const costs = data.map(d => d.cost);
+
+            revenueCostChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        type: 'line',
+                        label: '銷貨收入',
+                        data: revenues,
+                        borderColor: '#3b82f6', // 藍色
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        fill: false,
+                        yAxisID: 'y'
+                    }, {
+                        type: 'bar',
+                        label: '銷貨成本',
+                        data: costs,
+                        backgroundColor: '#ef4444', // 紅色
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += formatNumber(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: '收入 ($)'
+                            },
+                            // 將 Y 軸的刻度數字格式化
+                            ticks: {
+                                callback: function (value, index, values) {
+                                    return formatNumber(value);
+                                }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: false, // 隱藏第二個 Y 軸，但保留配置
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    }
+                }
+            });
+        };
+
+        // MDM 甜甜圈圖
+        const createMdmDoughnutChart = () => {
+            if (mdmDoughnutChart) mdmDoughnutChart.destroy();
+            const ctx = document.getElementById('mdmDoughnutChart');
+            if (!ctx) return; // 安全檢查
+
+            mdmDoughnutChart = new Chart(ctx.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: mdmChartData.labels,
+                    datasets: [{
+                        data: mdmChartData.data,
+                        backgroundColor: ['#3b82f6', '#f97316', '#16a34a', '#ef4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const value = context.parsed;
+                                    const percentage = ((value / total) * 100).toFixed(1) + '%';
+                                    return `${context.label}: ${value} (${percentage})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        // 篩選器處理邏輯
+        const filterData = (data, startMonth, endMonth) => {
+            return data.filter(d => {
+                const month = d.month;
+                return month >= startMonth && month <= endMonth;
+            });
+        };
+
+        const applyFilters = () => {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            if (startDate && endDate) {
+                const filteredData = filterData(initialChartData, startDate, endDate);
+                renderRevenueCostChart(filteredData);
+                updateKPIs(filteredData); // 使用過濾後的數據更新 KPI
+            } else {
+                // 如果日期不完整，則顯示全部資料
+        

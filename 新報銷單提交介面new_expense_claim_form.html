@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>提交新的報銷單</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 設定字體和顏色主題 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#10497E',
+                        'secondary-gray': '#F7F9FB',
+                        'accent-orange': '#FF7A00',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 確保表格內的輸入框樣式一致 */
+        .detail-input {
+            @apply w-full p-2 border border-gray-300 rounded-md focus:ring-primary-blue focus:border-primary-blue transition duration-150;
+        }
+        /* 不可編輯欄位的樣式 */
+        .locked-input {
+            @apply bg-gray-100 cursor-not-allowed border-dashed;
+        }
+        /* 確保下拉選單在鎖定時依然可見 */
+        .detail-input:disabled {
+            @apply opacity-100 bg-gray-100 cursor-not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans p-4 sm:p-8">
+
+    <div id="app" class="max-w-4xl mx-auto bg-white shadow-xl rounded-xl">
+        <header class="bg-primary-blue text-white p-6 rounded-t-xl">
+            <h1 class="text-3xl font-bold">提交新的費用報銷單</h1>
+            <p class="text-primary-blue-200 mt-1 opacity-80">請填寫報銷單資訊及各項費用明細，簡化您的報銷流程。</p>
+        </header>
+
+        <main class="p-6 space-y-8">
+
+            <!-- 報銷單基本資訊區塊 -->
+            <section class="border border-gray-200 p-5 rounded-lg bg-secondary-gray shadow-inner">
+                <h2 class="text-xl font-semibold text-primary-blue mb-4 border-b pb-2">報銷單基本資訊</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="claimTitle" class="block text-sm font-medium text-gray-700 mb-1">報銷單標題</label>
+                        <input type="text" id="claimTitle" value="2025年10月出差費用" placeholder="例如：10月份台北出差費用" class="detail-input">
+                    </div>
+                    <div>
+                        <label for="claimerName" class="block text-sm font-medium text-gray-700 mb-1">報銷人</label>
+                        <input type="text" id="claimerName" value="王小明 (A1024)" readonly class="detail-input bg-gray-200 cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label for="claimerDept" class="block text-sm font-medium text-gray-700 mb-1">所屬部門</label>
+                        <input type="text" id="claimerDept" value="業務發展部" readonly class="detail-input bg-gray-200 cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label for="dateSubmitted" class="block text-sm font-medium text-gray-700 mb-1">填報日期</label>
+                        <input type="date" id="dateSubmitted" class="detail-input" value="2025-10-25">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="purpose" class="block text-sm font-medium text-gray-700 mb-1">報銷事由</label>
+                        <textarea id="purpose" rows="2" placeholder="請簡述此次報銷的目的（例如：拜訪客戶、參加研討會等）" class="detail-input">拜訪台北重要客戶，討論年度合作方案。</textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 費用明細區塊 -->
+            <section class="space-y-4">
+                <h2 class="text-xl font-semibold text-primary-blue border-b pb-2">費用明細</h2>
+
+                <div class="overflow-x-auto">
+                    <table id="expenseTable" class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-primary-blue/10">
+                            <tr>
+                                <th class="px-3 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider w-[100px]">日期</th>
+                                <th class="px-3 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider w-[150px]">費用類別</th>
+                                <th class="px-3 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">費用描述</th>
+                                <th class="px-3 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider w-[120px]">金額 (TWD)</th>
+                                <th class="px-3 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider w-[60px]">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expenseDetails" class="bg-white divide-y divide-gray-200">
+                            <!-- 明細將由 JS 插入 -->
+                        </tbody>
+                        <tfoot class="bg-primary-blue/5">
+                            <tr>
+                                <td colspan="3" class="px-3 py-4 text-right font-bold text-gray-700">總報銷金額：</td>
+                                <td id="totalAmount" class="px-3 py-4 text-right text-lg font-extrabold text-accent-orange">0</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <button id="addRowBtn" class="flex items-center space-x-2 bg-primary-blue text-white py-2 px-4 rounded-lg hover:bg-primary-blue/90 transition duration-150 shadow-md">
+                    <!-- Plus icon SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    <span>新增費用明細</span>
+                </button>
+            </section>
+
+            <!-- 附件/發票區塊 -->
+            <section class="border border-gray-200 p-5 rounded-lg bg-secondary-gray shadow-inner">
+                <h2 class="text-xl font-semibold text-primary-blue mb-4 border-b pb-2">附件與說明</h2>
+
+                <div class="mb-4">
+                    <label for="attachments" class="block text-sm font-medium text-gray-700 mb-1">上傳發票/憑證 (限圖片或PDF)</label>
+                    <input type="file" id="attachments" multiple class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-blue/10 file:text-primary-blue hover:file:bg-primary-blue/20">
+                </div>
+
+                <div class="mb-4">
+                    <label for="claimNotes" class="block text-sm font-medium text-gray-700 mb-1">備註</label>
+                    <textarea id="claimNotes" rows="3" placeholder="如有其他特殊說明請在此填寫" class="detail-input">已附上所有電子發票的截圖。</textarea>
+                </div>
+            </section>
+
+            <!-- 提交與操作按鈕 -->
+            <div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
+                <button onclick="saveDraft()" class="bg-gray-400 text-white py-3 px-6 rounded-lg hover:bg-gray-500 transition duration-150 font-semibold shadow-md">
+                    儲存草稿
+                </button>
+                <button onclick="submitClaim()" class="bg-accent-orange text-white py-3 px-6 rounded-lg hover:bg-accent-orange/90 transition duration-150 font-semibold shadow-xl">
+                    提交審批
+                </button>
+            </div>
+
+            <!-- 訊息顯示框 (取代 alert) -->
+            <div id="messageBox" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+                <div class="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full transform transition-all scale-100 opacity-100">
+                    <h3 id="msgTitle" class="text-xl font-bold mb-3 text-primary-blue">提示</h3>
+                    <!-- 訊息內容區塊將動態更新 -->
+                    <p id="msgText" class="text-gray-700 mb-4">操作訊息。</p>
+                    <div id="msgActions" class="flex justify-end">
+                        <button onclick="closeMessageBox()" class="bg-primary-blue text-white py-2 px-4 rounded-md hover:bg-primary-blue/90">
+                            確定
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // 簡化的費用類別清單
+        const expenseCategories = [
+            "餐飲費", "交通費", "住宿費", "機票/火車票", "通訊費",
+            "辦公用品", "印刷/影印費", "差旅津貼", "其他費用"
+        ];
+
+        // 報銷明細資料陣列
+        let expenses = [
+            { date: '2025-10-22', category: '交通費', description: '高鐵北高往返 (公司預付)', amount: 3000, isLocked: true },
+            { date: '2025-10-22', category: '餐飲費', description: '客戶午餐招待 (限額)', amount: 850, isLocked: true },
+            { date: '2025-10-23', category: '住宿費', description: '台北市區飯店一晚', amount: 3500, isLocked: false },
+        ];
+
+        const expenseDetailsBody = document.getElementById('expenseDetails');
+        const addRowBtn = document.getElementById('addRowBtn');
+        const totalAmountDisplay = document.getElementById('totalAmount');
+        const messageBox = document.getElementById('messageBox');
+        const msgTitle = document.getElementById('msgTitle');
+        const msgText = document.getElementById('msgText');
+        const msgActions = document.getElementById('msgActions'); // 新增操作區塊
+
+        // === 輔助函數：訊息框 (更新：支援動態操作按鈕) ===
+        function showMessageBox(title, message, isError = false, actionsHtml = '') {
+            msgTitle.textContent = title;
+            msgText.innerHTML = message; // 使用 innerHTML 允許連結
+            msgTitle.classList.toggle('text-red-600', isError);
+            msgTitle.classList.toggle('text-primary-blue', !isError);
+
+            // 重置操作區塊
+            if (actionsHtml) {
+                msgActions.innerHTML = actionsHtml;
+            } else {
+                msgActions.innerHTML = `<button onclick="closeMessageBox()" class="bg-primary-blue text-white py-2 px-4 rounded-md hover:bg-primary-blue/90">確定</button>`;
+            }
+
+            messageBox.classList.remove('hidden');
+            messageBox.classList.add('flex');
+        }
+
+        function closeMessageBox() {
+            messageBox.classList.add('hidden');
+            messageBox.classList.remove('flex');
+        }
+
+        // === 主要渲染函數 (無變更) ===
+        function renderExpenseDetails() {
+            expenseDetailsBody.innerHTML = '';
+
+            expenses.forEach((expense, index) => {
+                const isLocked = expense.isLocked;
+                const readonlyAttr = isLocked ? 'readonly' : '';
+                const lockedClass = isLocked ? 'locked-input' : '';
+
+                const row = expenseDetailsBody.insertRow();
+                row.dataset.index = index;
+
+                // 1. 日期
+                const dateCell = row.insertCell();
+                dateCell.innerHTML = `<input type="date" value="${expense.date}" class="detail-input text-xs ${lockedClass}" ${readonlyAttr} data-field="date" data-index="${index}">`;
+
+                // 2. 費用類別 (下拉選單)
+                const categoryCell = row.insertCell();
+                const categorySelect = document.createElement('select');
+                categorySelect.className = `detail-input text-xs ${lockedClass}`;
+                categorySelect.disabled = isLocked;
+                categorySelect.dataset.field = 'category';
+                categorySelect.dataset.index = index;
+
+                expenseCategories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat;
+                    option.textContent = cat;
+                    if (cat === expense.category) {
+                        option.selected = true;
+                    }
+                    categorySelect.appendChild(option);
+                });
+                categoryCell.appendChild(categorySelect);
+
+                // 3. 費用描述
+                const descriptionCell = row.insertCell();
+                descriptionCell.className = 'py-2';
+                descriptionCell.innerHTML = `<input type="text" value="${expense.description}" placeholder="請簡述費用用途" class="detail-input ${lockedClass}" ${readonlyAttr} data-field="description" data-index="${index}">`;
+
+                // 4. 金額
+                const amountCell = row.insertCell();
+                amountCell.className = 'py-2 text-right';
+                amountCell.innerHTML = `<input type="number" step="0.01" min="0" value="${expense.amount}" class="detail-input text-right ${lockedClass}" ${readonlyAttr} data-field="amount" data-index="${index}">`;
+
+                // 5. 操作 (刪除按鈕或鎖定圖示)
+                const actionCell = row.insertCell();
+                actionCell.className = 'text-center';
+
+                if (isLocked) {
+                    // 如果鎖定，顯示鎖定圖示
+                    actionCell.innerHTML = `
+                        <span title="此費用不可編輯或刪除" class="text-gray-500 p-2">
+                            <!-- Lock icon SVG -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                    `;
+                } else {
+                    // 否則顯示刪除按鈕
+                    actionCell.innerHTML = `
+                        <button onclick="deleteExpense(${index})" class="text-red-600 hover:text-red-800 transition duration-150 p-2 rounded-full">
+                            <!-- Trash icon SVG -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    `;
+                }
+            });
+            calculateTotal();
+        }
+
+        // === 資料操作函數 (無變更) ===
+        function updateExpenseField(index, field, value) {
+            const expense = expenses[index];
+            if (!expense) return;
+            if (expense.isLocked) {
+                 showMessageBox("操作限制", "此費用明細已被鎖定，不可修改。", true);
+                 renderExpenseDetails();
+                 return;
+            }
+            if (field === 'amount') {
+                const parsedAmount = parseFloat(value);
+                if (isNaN(parsedAmount) || parsedAmount < 0) {
+                    showMessageBox("輸入錯誤", "金額必須是一個有效的正數。", true);
+                    return;
+                }
+                expense[field] = parsedAmount;
+            } else {
+                expense[field] = value;
+            }
+            calculateTotal();
+        }
+
+        function deleteExpense(index) {
+            if (expenses[index].isLocked) {
+                showMessageBox("操作限制", "此費用明細已被鎖定，不可刪除。", true);
+                return;
+            }
+            expenses.splice(index, 1);
+            renderExpenseDetails();
+            showMessageBox("成功", "費用明細已刪除。");
+        }
+
+        addRowBtn.addEventListener('click', () => {
+            const today = new Date().toISOString().substring(0, 10);
+            expenses.push({
+                date: today,
+                category: expenseCategories[0],
+                description: '',
+                amount: 0,
+                isLocked: false
+            });
+            renderExpenseDetails();
+            showMessageBox("成功", "已新增一筆費用明細，請填寫內容。");
+
+            const tableContainer = document.querySelector('.overflow-x-auto');
+            if (tableContainer) {
+                tableContainer.scrollTop = tableContainer.scrollHeight;
+            }
+        });
+
+        function calculateTotal() {
+            const total = expenses.reduce((sum, item) => sum + (item.amount || 0), 0);
+            totalAmountDisplay.textContent = total.toLocaleString('zh-TW', { minimumFractionDigits: 2 });
+        }
+
+        expenseDetailsBody.addEventListener('change', (event) => {
+            const target = event.target;
+            const index = parseInt(target.dataset.index);
+            const field = target.dataset.field;
+
+            if (field && !isNaN(index)) {
+                updateExpenseField(index, field, target.value);
+            }
+        });
+
+        // === 報銷單操作函數 (submitClaim 函數已更新，加入連結至 claim_status.html) ===
+
+        function getClaimData() {
+            return {
+                title: document.getElementById('claimTitle').value,
+                claimer: document.getElementById('claimerName').value,
+                department: document.getElementById('claimerDept').value,
+                submitDate: document.getElementById('dateSubmitted').value,
+                purpose: document.getElementById('purpose').value,
+                notes: document.getElementById('claimNotes').value,
+                details: expenses,
+                totalAmount: expenses.reduce((sum, item) => sum + (item.amount || 0), 0),
+                attachments: Array.from(document.getElementById('attachments').files).map(f => f.name)
+            };
+        }
+
+        function validateClaimData(data) {
+            if (!data.title.trim()) return "報銷單標題不能為空。";
+            if (!data.purpose.trim()) return "報銷事由不能為空。";
+            if (data.details.length === 0) return "報銷明細不能為空。請新增至少一筆費用。";
+            if (data.totalAmount <= 0) return "總金額必須大於 0。";
+
+            for (const detail of data.details) {
+                if (!detail.description.trim()) return `費用描述不能為空（日期：${detail.date}）。`;
+                if (!detail.amount || detail.amount <= 0) return `費用金額必須大於 0（日期：${detail.date}）。`;
+            }
+
+            return null; // 通過驗證
+        }
+
+        function submitClaim() {
+            const data = getClaimData();
+            const validationError = validateClaimData(data);
+
+            if (validationError) {
+                showMessageBox("提交失敗 (驗證錯誤)", validationError, true);
+                return;
+            }
+
+            // 模擬提交到後台系統
+            console.log("--- 提交的報銷單數據 ---", data);
+
+            const successMessage = `報銷單「${data.title}」已成功提交！總金額：TWD ${data.totalAmount.toLocaleString('zh-TW')}。`;
+
+            // 替換確認按鈕為追蹤連結
+            const actions = `
+                <a href="./claim_status.html" class="bg-accent-orange text-white py-2 px-4 rounded-md hover:bg-accent-orange/90 transition duration-150 font-semibold inline-flex items-center space-x-2">
+                    <span>前往追蹤審批狀態</span>
+                    <!-- Arrow icon SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </a>
+                <button onclick="closeMessageBox()" class="bg-gray-400 text-white py-2 px-4 rounded-md hover:bg-gray-500 ml-2">
+                    關閉
+                </button>
+            `;
+
+            showMessageBox("提交成功", successMessage, false, actions);
+        }
+
+        function saveDraft() {
+            const data = getClaimData();
+
+            if (!data.title.trim()) {
+                 showMessageBox("儲存草稿失敗", "請至少為草稿輸入一個標題。", true);
+                 return;
+            }
+
+            // 模擬儲存到瀏覽器本地儲存或後台伺服器
+            console.log("--- 儲存的草稿數據 ---", data);
+
+            showMessageBox("草稿已儲存", `報銷單草稿「${data.title}」已儲存於本地。`);
+        }
+
+        // 初始化：載入時渲染現有明細
+        window.onload = renderExpenseDetails;
+    </script>
+</body>
+</html>

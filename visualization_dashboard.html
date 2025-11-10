@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>視覺化儀表板</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 Chart.js 視覺化庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* 定義字體為 Inter */
+        body { font-family: 'Inter', sans-serif; background-color: #f7f7f7; }
+        .card { background-color: white; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+    </style>
+</head>
+<body>
+    <div id="app" class="p-4 sm:p-8 min-h-screen">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">視覺化儀表板</h1>
+            <p class="text-gray-600">長條圖已串接 Firestore 實時數據 (sales_data)</p>
+            <div id="authStatus" class="mt-2 text-sm text-gray-500">
+                <!-- 認證狀態將顯示在這裡 -->
+            </div>
+            <p id="firestorePath" class="mt-1 text-xs text-blue-600 font-medium hidden">
+                <!-- Firestore 集合路徑將顯示在這裡 -->
+            </p>
+        </header>
+
+        <div id="chartContainer" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 圖表卡片 1: 長條圖 (動態數據) -->
+            <div class="card p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">每月銷售長條圖 (動態)</h2>
+                <canvas id="barChart"></canvas>
+            </div>
+
+            <!-- 圖表卡片 2: 折線圖 (靜態數據) -->
+            <div class="card p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">年度趨勢折線圖 (靜態)</h2>
+                <canvas id="lineChart"></canvas>
+            </div>
+
+            <!-- 圖表卡片 3: 圓餅圖 (靜態數據) -->
+            <div class="card p-6 lg:col-span-1 lg:col-start-2">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700 text-center">產品類別圓餅圖 (靜態)</h2>
+                <div class="max-w-xs mx-auto">
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK 模組匯入 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel, collection, query, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 必須使用的全域變數
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db, auth;
+        let barChartInstance = null; // 儲存長條圖實例
+
+        // Chart.js 顏色配置
+        const chartColors = {
+            primary: 'rgb(59, 130, 246)',
+            secondary: 'rgb(249, 115, 22)',
+            tertiary: 'rgb(16, 185, 129)',
+            muted: 'rgb(203, 213, 225)',
+        };
+
+        // =================================================================
+        // 靜態圖表初始化 (維持不變)
+        // =================================================================
+
+        function initializeLineChart() {
+             new Chart(document.getElementById('lineChart'), {
+                type: 'line',
+                data: {
+                    labels: ['2020', '2021', '2022', '2023', '2024'],
+                    datasets: [{
+                        label: '用戶增長人數',
+                        data: [150, 320, 480, 550, 690],
+                        borderColor: chartColors.tertiary,
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { position: 'top', labels: { usePointStyle: true } } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function initializePieChart() {
+            new Chart(document.getElementById('pieChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['電子產品', '服裝', '家居用品', '食品'],
+                    datasets: [{
+                        data: [35, 25, 15, 25],
+                        backgroundColor: [
+                            chartColors.primary,
+                            chartColors.secondary,
+                            chartColors.tertiary,
+                            chartColors.muted,
+                        ],
+                        hoverOffset: 16,
+                        borderWidth: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } },
+                    }
+                }
+            });
+        }
+
+        // =================================================================
+        // 動態長條圖初始化與 Firestore 串接
+        // =================================================================
+
+        function createBarChart(labels, data) {
+            return new Chart(document.getElementById('barChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '銷售額 (單位: 萬元)',
+                        data: data,
+                        backgroundColor: chartColors.primary,
+                        borderColor: chartColors.primary,
+                        borderWidth: 1,
+                        borderRadius: 8,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { position: 'top', labels: { usePointStyle: true } } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function initializeChartsWithFirestore(firestore, appId) {
+            // 靜態圖表初始化
+            initializeLineChart();
+            initializePieChart();
+
+            // 設置 Firestore 路徑 (公開資料集合)
+            // 路徑格式: /artifacts/{appId}/public/data/sales_data
+            const collectionName = 'sales_data';
+            const publicDataPath = `/artifacts/${appId}/public/data/${collectionName}`;
+            const q = query(collection(firestore, publicDataPath));
+
+            // 顯示路徑給用戶
+            document.getElementById('firestorePath').textContent = `請在 Firestore 建立並編輯此集合: ${publicDataPath}`;
+            document.getElementById('firestorePath').classList.remove('hidden');
+
+            // 設置實時監聽 (onSnapshot)
+            onSnapshot(q, (snapshot) => {
+                const salesData = [];
+                snapshot.forEach((doc) => {
+                    // 將資料及其 ID 放入陣列
+                    salesData.push({ id: doc.id, ...doc.data() });
+                });
+
+                // 排序: 假設文件中有 'month_order' 欄位來確保月份順序
+                salesData.sort((a, b) => (a.month_order || 0) - (b.month_order || 0));
+
+                const labels = salesData.map(d => d.month || 'N/A');
+                const data = salesData.map(d => d.sales || 0);
+
+                if (barChartInstance) {
+                    // 更新現有的圖表實例
+                    barChartInstance.data.labels = labels;
+                    barChartInstance.data.datasets[0].data = data;
+                    barChartInstance.update();
+                } else {
+                    // 首次創建圖表
+                    barChartInstance = createBarChart(labels, data);
+                }
+
+            }, (error) => {
+                console.error("從 Firestore 讀取銷售數據時發生錯誤:", error);
+                // 讀取錯誤時，若圖表未初始化，則使用預設靜態數據
+                if (!barChartInstance) {
+                    barChartInstance = createBarChart(['一月', '二月', '三月'], [10, 20, 15]);
+                    console.log("發生錯誤，已使用靜態數據初始化長條圖。");
+                }
+            });
+        }
+
+        // =================================================================
+        // Firebase 初始化與認證
+        // =================================================================
+
+        if (Object.keys(firebaseConfig).length > 0) {
+            setLogLevel('debug');
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            onAuthStateChanged(auth, async (user) => {
+                const statusEl = document.getElementById('authStatus');
+                let userId;
+                if (user) {
+                    userId = user.uid;
+                    statusEl.textContent = `認證狀態：已登入 (用戶 ID: ${userId})`;
+                    // 認證成功後，開始串接 Firestore
+                    initializeChartsWithFirestore(db, appId);
+                } else {
+                    try {
+                        // 嘗試使用自訂令牌或匿名登入
+                        if (initialAuthToken) {
+                            const result = await signInWithCustomToken(auth, initialAuthToken);
+                            userId = result.user.uid;
+                        } else {
+                            const result = await signInAnonymously(auth);
+                            userId = result.user.uid;
+                        }
+                        // 認證成功後，開始串接 Firestore
+                        initializeChartsWithFirestore(db, appId);
+                        statusEl.textContent = `認證狀態：已登入 (用戶 ID: ${userId})`;
+                    } catch (error) {
+                        console.error("Firebase 認證失敗:", error);
+                        userId = crypto.randomUUID();
+                        statusEl.textContent = `認證狀態：匿名登入失敗，使用隨機 ID: ${userId}`;
+                        // 無法認證，但仍嘗試使用靜態圖表
+                        initializeLineChart();
+                        initializePieChart();
+                        createBarChart(['錯誤', '靜態'], [10, 20]);
+                    }
+                }
+            });
+        } else {
+            document.getElementById('authStatus').textContent = "Firebase 未配置，應用程式使用靜態數據。";
+            console.warn("Firebase 配置遺失。");
+             // 如果未配置，則使用靜態圖表
+            document.addEventListener('DOMContentLoaded', () => {
+                initializeLineChart();
+                initializePieChart();
+                createBarChart(['一月', '二月', '三月'], [12, 19, 3]);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系統健康儀表板 (V9)</title>
+    <!-- 載入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 使用 Inter 作為主要字體 */
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 sm:p-8">
+
+    <div id="app" class="max-w-4xl mx-auto">
+        <header class="mb-8">
+            <h1 class="text-4xl font-extrabold text-indigo-700 tracking-tight mb-2">
+                系統健康儀表板
+            </h1>
+            <p class="text-gray-500">Firebase V9 環境與數據狀態檢查</p>
+        </header>
+
+        <!-- 狀態卡片區 -->
+        <div class="space-y-6 mb-8">
+            <!-- 認證狀態卡片 -->
+            <div id="authStatusCard" class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-semibold text-gray-800">使用者認證狀態</h2>
+                    <span id="authStatusText" class="px-3 py-1 text-sm font-medium rounded-full bg-gray-200 text-gray-700">初始化中...</span>
+                </div>
+            </div>
+
+            <!-- 資料庫模式卡片 -->
+            <div id="dbModeCard" class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-semibold text-gray-800">資料庫模式</h2>
+                    <span id="dbModeText" class="px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-700">正常 (生產)</span>
+                </div>
+                <p id="dbModeWarning" class="text-sm mt-3 text-red-500 hidden">
+                    <strong class="font-bold">警告:</strong> 偵測到配置錯誤，系統處於備用模式，資料庫操作將被阻止。
+                </p>
+            </div>
+        </div>
+
+        <!-- 操作與測試區 -->
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">操作與測試</h2>
+            <p class="text-gray-600 mb-4">點擊下方按鈕測試系統在當前狀態下是否允許復原操作。</p>
+            <button id="recoveryButton" onclick="handleRecovery()"
+                class="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
+                執行數據復原 (測試)
+            </button>
+        </div>
+
+        <!-- 自訂訊息框 -->
+        <div id="messageBox" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+            <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full text-center">
+                <p id="messageText" class="text-lg font-semibold text-gray-800 mb-4"></p>
+                <button onclick="hideMessage()" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase 腳本和初始化 -->
+    <script type="module">
+        // 載入 Firebase 模組
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel, getDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 全域變數
+        let app;
+        let db;
+        let auth;
+        let isAuthReady = false;
+        let isFallbackMode = false;
+        let userId = 'unknown';
+
+        // 設置 Firebase 日誌級別為 Debug
+        setLogLevel('Debug');
+
+        // --- 1. 取得環境配置與初始化檢查 ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        let firebaseConfig;
+
+        try {
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } else {
+                // 偵測到配置缺失，進入備用模式
+                throw new Error("Firebase 配置 (firebaseConfig) 缺失。");
+            }
+        } catch (e) {
+            console.warn("[V9 WARNING] 偵測到 Firebase 配置缺失。正在使用備用配置進行初始化。資料庫操作預計會失敗，直到配置被修復。", e);
+            isFallbackMode = true;
+
+            // 備用配置：使用假值初始化，避免應用程式崩潰
+            firebaseConfig = {
+                apiKey: "FAKE_KEY",
+                authDomain: "fake-project.firebaseapp.com",
+                projectId: "fake-project-id"
+            };
+        }
+
+        // 初始化 Firebase
+        app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+
+        // UI 元素
+        const dbModeText = document.getElementById('dbModeText');
+        const dbModeCard = document.getElementById('dbModeCard');
+        const dbModeWarning = document.getElementById('dbModeWarning');
+        const authStatusText = document.getElementById('authStatusText');
+        const authStatusCard = document.getElementById('authStatusCard');
+
+        // 更新 UI 顯示資料庫模式
+        if (isFallbackMode) {
+            dbModeText.textContent = '備用模式 (鎖定)';
+            dbModeCard.classList.remove('border-green-500');
+            dbModeCard.classList.add('border-red-500');
+            dbModeText.classList.remove('bg-green-100', 'text-green-700');
+            dbModeText.classList.add('bg-red-100', 'text-red-700');
+            dbModeWarning.classList.remove('hidden');
+        } else {
+            dbModeText.textContent = '正常模式 (已連接)';
+            dbModeCard.classList.remove('border-yellow-500');
+            dbModeCard.classList.add('border-green-500');
+        }
+
+        // --- 2. 認證流程 ---
+        async function initializeAuth() {
+            if (isFallbackMode) {
+                // 備用模式下不嘗試實際登入，只模擬狀態
+                authStatusText.textContent = '無法登入 (備用模式)';
+                authStatusCard.classList.remove('border-yellow-500');
+                authStatusCard.classList.add('border-red-500');
+                isAuthReady = true;
+                return;
+            }
+
+            try {
+                // 設置 Session 級別的持久性
+                await setPersistence(auth, browserSessionPersistence);
+
+                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                    console.log("Firebase: 使用 Custom Token 登入成功。");
+                } else {
+                    // 如果沒有 token，則使用匿名登入
+                    await signInAnonymously(auth);
+                    console.warn("Firebase: 未偵測到初始 Auth Token，切換至匿名登入。");
+                }
+
+            } catch (error) {
+                console.error("Firebase 認證失敗:", error);
+                window.showMessage(`認證錯誤：${error.message}. 請檢查 Console 獲取詳情。`);
+            }
+        }
+
+        // 啟動認證
+        initializeAuth();
+
+        // --- 3. 認證狀態監聽 ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                userId = user.uid;
+                authStatusText.textContent = `已登入 (ID: ${userId.substring(0, 8)}...)`;
+                authStatusCard.classList.remove('border-yellow-500', 'border-red-500');
+                authStatusCard.classList.add('border-green-500');
+                isAuthReady = true;
+                console.log(`Firebase: 使用者 ID 設置為 ${userId}`);
+            } else {
+                userId = 'anonymous_or_logged_out';
+                authStatusText.textContent = '未登入/匿名';
+                authStatusCard.classList.remove('border-yellow-500', 'border-green-500');
+                authStatusCard.classList.add('border-red-500');
+                isAuthReady = true;
+                console.log("Firebase: 認證狀態變為 '未登入/匿名'");
+            }
+        });
+
+        // --- 4. UI 訊息函數 (取代 alert()) ---
+        window.showMessage = function(message) {
+            const messageBox = document.getElementById('messageBox');
+            const messageText = document.getElementById('messageText');
+            messageText.textContent = message;
+            messageBox.classList.remove('hidden');
+        }
+
+        window.hideMessage = function() {
+            document.getElementById('messageBox').classList.add('hidden');
+        }
+
+        // --- 5. 復原操作邏輯 (關鍵檢查點) ---
+        window.handleRecovery = async function() {
+            // 檢查點：確保資料庫已初始化、認證完成且非備用模式
+            if (!db || !isAuthReady || isFallbackMode) {
+                window.showMessage("資料庫或認證尚未準備好，或處於備用模式。您必須登入才能執行復原操作。");
+                return;
+            }
+
+            // 假設復原操作需要讀取一個特殊的設定文件
+            try {
+                const docRef = doc(db, `artifacts/${appId}/users/${userId}/system_configs/recovery_config`);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    window.showMessage(`復原成功！配置數據已讀取。上次復原時間: ${docSnap.data().lastRecovery || 'N/A'}`);
+                } else {
+                    window.showMessage("復原操作已啟動，但未找到復原配置數據。");
+                }
+            } catch (error) {
+                console.error("復原操作執行失敗:", error);
+                window.showMessage(`數據庫存取錯誤：${error.message}`);
+            }
+        }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid 流程圖檢視器</title>
+    <!-- 載入 Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 Noto Sans 字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f0f4f8;
+        }
+        /* 確保 Mermaid 容器居中且響應式 */
+        #mermaid-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            min-height: 80vh;
+        }
+        .mermaid {
+            width: 100%;
+            max-width: 1000px;
+            height: auto;
+            background: white;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            /* 強制 Mermaid 內容換行，防止超出行寬 */
+            overflow-x: auto;
+        }
+    </style>
+    <!-- 載入 Mermaid JS 庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Mermaid 流程圖檢視</h1>
+        <p class="text-center text-lg text-gray-600 mb-8">以下是您的 Mermaid 代碼渲染後的流程圖：</p>
+        
+        <!-- Mermaid 容器 -->
+        <div id="mermaid-container">
+            <!-- 這是 Mermaid 渲染圖形的地方 -->
+            <div class="mermaid">
+                graph TD
+                    A[開始/重啟] --> B(處理);
+                    B --> C{決策};
+                    C -- 是 --> D[最終處理];
+                    C -- 否 --> A;
+                    D --> E((結束));
+            </div>
+        </div>
+
+        <div class="mt-8 p-4 bg-white rounded-xl shadow-lg">
+            <h2 class="text-xl font-semibold text-gray-700 mb-3">流程圖代碼 (可編輯)</h2>
+            <textarea id="mermaid-code" rows="8" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm font-mono bg-gray-50" oninput="renderChart()">
+graph TD
+    A[開始/重啟] --> B(處理);
+    B --> C{決策};
+    C -- 是 --> D[最終處理];
+    C -- 否 --> A;
+    D --> E((結束));
+            </textarea>
+            <button onclick="renderChart()" class="w-full mt-4 py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 ease-in-out">
+                更新圖形預覽
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 設定 Mermaid 渲染選項
+        mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
+        /**
+         * 渲染 Mermaid 圖表
+         */
+        function renderChart() {
+            const code = document.getElementById('mermaid-code').value;
+            const container = document.querySelector('.mermaid');
+            
+            // 清空舊圖表
+            container.innerHTML = ''; 
+
+            if (code.trim() === '') {
+                container.innerHTML = '<p class="text-center text-gray-400 p-4">請輸入 Mermaid 代碼</p>';
+                return;
+            }
+
+            // 使用 render 函數進行渲染
+            mermaid.render('mermaid-chart', code)
+                .then(({ svg, bindFunctions }) => {
+                    container.innerHTML = svg;
+                    if (bindFunctions) {
+                        bindFunctions();
+                    }
+                })
+                .catch(error => {
+                    console.error("Mermaid 渲染錯誤:", error);
+                    container.innerHTML = `<div class="text-red-500 font-bold p-4">渲染錯誤: 請檢查您的 Mermaid 代碼語法。</div><pre class="text-sm bg-red-50 p-3 rounded-lg overflow-x-auto">${error.message}</pre>`;
+                });
+        }
+
+        // 在頁面載入完成後初始化渲染
+        window.onload = function() {
+            renderChart();
+        };
+
+    </script>
+
+</body>
+</html>

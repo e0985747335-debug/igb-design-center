@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 2.0 微服務狀態監控</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Lucide icons -->
+    <script src="https://unpkg.com/lucide-icons"></script>
+    <!-- 引入 Inter 字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 自定義樣式 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* 更深的暗色背景 */
+            color: #e5e7eb; /* 淺灰文本 */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* 監控卡片容器 */
+        .monitor-container {
+            width: 100%;
+            max-width: 900px; /* 稍微增加寬度以容納篩選器 */
+            background-color: #161b22; /* 卡片背景 */
+            border: 1px solid #30363d;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 服務卡片樣式 */
+        .service-card {
+            border-bottom: 1px solid #2d333b;
+            transition: background-color 0.3s ease;
+            cursor: pointer; /* 增加點擊指示 */
+        }
+
+        .service-card:hover {
+            background-color: #1f252c;
+        }
+
+        /* 狀態指示燈 */
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 5px currentColor; /* 發光效果 */
+            animation: pulse-glow 1.5s infinite;
+        }
+
+        /* 脈衝動畫 - 僅對 Online/Degraded 狀態 */
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+        
+        /* 關閉動畫的狀態 */
+        .status-dot.offline, .status-dot.degraded {
+            animation: none;
+        }
+        
+        /* 彈出視窗樣式 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal-content {
+            background-color: #161b22;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #30363d;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8);
+        }
+
+        /* 手機響應式調整 */
+        @media (max-width: 640px) {
+            .service-card > div {
+                flex-direction: column;
+                align-items: flex-start;
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+            .service-card .status-indicator {
+                margin-top: 8px;
+            }
+            #filter-controls {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="monitor-container rounded-lg p-4 sm:p-6">
+        
+        <header class="mb-6 border-b pb-4 border-gray-700">
+            <h1 class="text-3xl font-bold text-green-400">微服務狀態儀表板</h1>
+            <p class="text-gray-400 mt-1 text-sm">IGB ERP 2.0 核心服務健康度報告</p>
+            <p id="last-checked" class="text-gray-500 text-xs mt-2"></p>
+        </header>
+
+        <!-- 互動控制區塊：篩選與刷新 -->
+        <div id="filter-controls" class="flex justify-between items-center mb-6 flex-wrap">
+            <input type="text" id="search-input" oninput="filterServices()" 
+                   placeholder="依名稱或描述搜索服務..."
+                   class="flex-grow w-full sm:w-1/2 bg-[#0d1117] border border-gray-600 rounded-lg p-2.5 text-sm text-gray-300 focus:ring-blue-500 focus:border-blue-500 transition mb-3 sm:mb-0 sm:mr-4">
+            
+            <select id="status-filter" onchange="filterServices()"
+                    class="bg-[#0d1117] border border-gray-600 rounded-lg p-2.5 text-sm text-gray-300 focus:ring-blue-500 focus:border-blue-500 transition cursor-pointer mb-3 sm:mb-0 sm:mr-4">
+                <option value="All">所有狀態</option>
+                <option value="Online">在線 (Online)</option>
+                <option value="Degraded">降級 (Degraded)</option>
+                <option value="Offline">離線 (Offline)</option>
+                <option value="Checking">檢查中 (Checking)</option>
+            </select>
+
+             <button id="refresh-btn" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 shadow-md shadow-blue-800/50 w-full sm:w-auto" onclick="checkAllServices()">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                <span>手動刷新狀態</span>
+            </button>
+        </div>
+
+        <section id="service-list">
+            <!-- 服務列表將由 JavaScript 動態載入 -->
+        </section>
+
+    </div>
+    
+    <!-- 服務細節彈出視窗 (Modal) -->
+    <div id="service-detail-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="flex justify-between items-start mb-4 border-b border-gray-700 pb-3">
+                <h2 id="modal-title" class="text-2xl font-bold text-green-400">服務詳細資料</h2>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div id="modal-content-body" class="space-y-4">
+                <!-- 服務細節與歷史日誌將載入於此 -->
+            </div>
+            
+            <button onclick="closeModal()" class="mt-6 w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 rounded-lg transition">
+                關閉
+            </button>
+        </div>
+    </div>
+
+
+    <script>
+        // 核心微服務定義
+        const services = [
+            { id: 'postgres-ha', name: 'PostgreSQL HA Cluster', description: '核心數據庫 Patroni 集群 (HA)', icon: 'database', config: 'Patroni 3節點集群 (Master-Slave-Witness)。負責人: 張架構師。' },
+            { id: 'fastapi-gateway', name: 'FastAPI API Gateway', description: '應用服務網關', icon: 'zap', config: 'Python FastAPI 服務，負責處理所有內部 API 請求。' },
+            { id: 'mdm-service', name: 'MDM Admin Hub Service', description: '主數據管理與配置服務', icon: 'settings', config: '自建微服務，確保 COA、客戶、物料 D1-D4 維度數據一致性。' },
+            { id: 'ztna-proxy', name: 'ZTNA/Kong Proxy', description: '零信任安全與路由閘道', icon: 'shield', config: 'Kong API Gateway 實例，負責 ZTNA 策略和 Header 注入。' },
+            { id: 'wallet-ledger', name: 'Wallet Ledger Service', description: '交易/錢包 ACID 事務服務', icon: 'book-open', config: '專門使用 PostgreSQL ACID 事務，保障 Wallet 交易的完整性和不可逆性。' },
+        ];
+
+        // 狀態到 Tailwind CSS 顏色的映射
+        const statusMap = {
+            'Online': { color: 'text-green-400', dotClass: 'bg-green-500' },
+            'Degraded': { color: 'text-yellow-400', dotClass: 'bg-yellow-500' },
+            'Offline': { color: 'text-red-400', dotClass: 'bg-red-500' },
+            'Checking': { color: 'text-blue-400', dotClass: 'bg-blue-500' }
+        };
+        
+        // 初始化所有服務的狀態
+        services.forEach(s => s.currentStatus = 'Checking');
+
+
+        // 模擬服務檢查的異步函數
+        function simulateCheck(serviceId) {
+            return new Promise(resolve => {
+                const delay = Math.random() * 1000 + 500;
+                setTimeout(() => {
+                    let newStatus;
+                    const rand = Math.random();
+                    if (serviceId === 'postgres-ha' && rand < 0.2) {
+                        newStatus = 'Degraded';
+                    } else if (rand < 0.1) {
+                        newStatus = 'Offline';
+                    } else {
+                        newStatus = 'Online';
+                    }
+                    resolve(newStatus);
+                }, delay);
+            });
+        }
+
+        // 渲染單個服務卡片 (新增了 onclick 事件)
+        function renderService(service) {
+            const map = statusMap[service.currentStatus] || statusMap['Checking'];
+            // 避免 Degraded 狀態一直脈衝，只讓 Online 有脈衝動畫
+            const dotAnimationClass = service.currentStatus === 'Online' ? '' : 'status-dot';
+            
+            return `
+                <div id="${service.id}" class="service-card p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center" onclick="openServiceDetail('${service.id}')">
+                    
+                    <!-- 左側: 服務信息 -->
+                    <div class="flex items-center space-x-4 mb-2 sm:mb-0">
+                        <i data-lucide="${service.icon}" class="w-6 h-6 text-gray-400"></i>
+                        <div>
+                            <p class="font-semibold text-white">${service.name}</p>
+                            <p class="text-xs text-gray-500">${service.description}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 右側: 狀態指示器 -->
+                    <div class="status-indicator flex items-center space-x-2 text-sm font-medium ${map.color} w-full sm:w-auto justify-start sm:justify-end">
+                        <span class="${dotAnimationClass} ${map.dotClass}"></span>
+                        <span class="status-text">${service.currentStatus}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 主渲染函數：根據篩選條件繪製列表
+        function renderServiceList(filteredServices = services) {
+            const listContainer = document.getElementById('service-list');
+            listContainer.innerHTML = filteredServices.map(renderService).join('');
+            lucide.createIcons(); // 重新渲染 Lucide icons
+        }
+        
+        // ==================================================================
+        // 互動功能 1: 服務細節彈出視窗
+        // ==================================================================
+
+        // 模擬生成歷史健康檢查日誌
+        function generateLog(serviceId) {
+            const logs = [];
+            const now = new Date().getTime();
+            const statuses = ['Online', 'Degraded', 'Offline', 'Online', 'Online'];
+
+            for (let i = 0; i < 10; i++) {
+                const timeAgo = i * (Math.random() * 10000 + 30000); // 30秒 - 40秒前
+                const timestamp = new Date(now - timeAgo).toLocaleString('zh-TW');
+                const statusIndex = Math.floor(Math.random() * statuses.length);
+                const status = statuses[statusIndex];
+                
+                logs.push({ timestamp, status });
+            }
+            return logs;
+        }
+
+        function openServiceDetail(serviceId) {
+            const service = services.find(s => s.id === serviceId);
+            if (!service) return;
+
+            // 1. 更新標題
+            document.getElementById('modal-title').textContent = `${service.name} - 詳細狀態`;
+
+            // 2. 獲取日誌和配置
+            const logs = generateLog(serviceId);
+            const bodyContainer = document.getElementById('modal-content-body');
+            
+            let logHtml = `<h3 class="font-semibold text-lg text-gray-300 mb-2">歷史健康檢查 (模擬)</h3>`;
+            logHtml += `<div class="bg-[#0d1117] p-3 rounded-lg max-h-40 overflow-y-scroll text-xs space-y-1">`;
+            
+            logs.forEach(log => {
+                const color = statusMap[log.status].color.replace('text-', 'text-');
+                logHtml += `<p class="flex justify-between"><span class="text-gray-500">${log.timestamp}</span><span class="${color}">${log.status}</span></p>`;
+            });
+            logHtml += `</div>`;
+
+            let configHtml = `
+                <h3 class="font-semibold text-lg text-gray-300 mb-2 mt-4">配置備註</h3>
+                <div class="bg-[#0d1117] p-3 rounded-lg text-sm text-gray-400">
+                    ${service.config}
+                </div>
+            `;
+
+            bodyContainer.innerHTML = configHtml + logHtml;
+
+            // 3. 顯示彈出視窗
+            document.getElementById('service-detail-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('service-detail-modal').classList.add('hidden');
+        }
+
+        // ==================================================================
+        // 互動功能 2: 服務篩選與搜索
+        // ==================================================================
+        
+        function filterServices() {
+            const searchInput = document.getElementById('search-input').value.toLowerCase();
+            const statusFilter = document.getElementById('status-filter').value;
+            
+            const filtered = services.filter(service => {
+                const matchesSearch = service.name.toLowerCase().includes(searchInput) || 
+                                      service.description.toLowerCase().includes(searchInput);
+                
+                const matchesStatus = statusFilter === 'All' || service.currentStatus === statusFilter;
+                
+                return matchesSearch && matchesStatus;
+            });
+            
+            renderServiceList(filtered);
+        }
+        
+        // ==================================================================
+        // 狀態檢查與初始化
+        // ==================================================================
+
+        async function checkAllServices() {
+            const refreshBtn = document.getElementById('refresh-btn');
+            
+            // 設置按鈕為載入狀態
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> <span>檢查中...</span>';
+            lucide.createIcons();
+            
+            // 將所有服務先標記為 Checking
+            services.forEach(s => s.currentStatus = 'Checking');
+            filterServices();
+
+            // 執行模擬檢查
+            for (let i = 0; i < services.length; i++) {
+                const service = services[i];
+                // 執行模擬檢查
+                const newStatus = await simulateCheck(service.id);
+                // 更新服務數據
+                service.currentStatus = newStatus;
+                
+                // 實時更新 UI 列表
+                filterServices(); 
+            }
+
+            // 更新最後檢查時間
+            const now = new Date();
+            document.getElementById('last-checked').textContent = `最後檢查時間: ${now.toLocaleString('zh-TW')}`;
+
+            // 恢復按鈕狀態
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4"></i> <span>手動刷新狀態</span>';
+            lucide.createIcons();
+        }
+
+        // 初始載入
+        window.onload = () => {
+            renderServiceList();
+            checkAllServices(); // 頁面加載後立即檢查一次
+            // 設置定時自動刷新 (每 60 秒)
+            setInterval(checkAllServices, 60000); 
+        };
+    </script>
+</body>
+</html>

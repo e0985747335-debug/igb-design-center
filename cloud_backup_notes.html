@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雲端備忘錄 (Firestore 備用)</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 設置 Inter 字體 */
+        :root {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom alert styles */
+        .custom-alert {
+            /* 讓初始的 transform 設置生效，並確保動畫平滑 */
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; 
+        }
+        .custom-alert.success {
+            background-color: #10b981; /* Green 500 */
+        }
+        .custom-alert.error {
+            background-color: #ef4444; /* Red 500 */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 sm:p-8">
+
+    <!-- 主應用程式容器 -->
+    <div id="app" class="max-w-4xl mx-auto">
+
+        <header class="mb-8">
+            <h1 class="text-3xl font-extrabold text-blue-800 text-center">
+                ☁️ 雲端備忘錄 ☁️
+            </h1>
+            <p class="text-center text-gray-500 mt-1">您的資料會安全地備份在您的私人雲端儲存空間。</p>
+        </header>
+
+        <!-- 備註輸入區塊 -->
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">新增備用項目</h2>
+            <textarea id="note-input"
+                      rows="3"
+                      placeholder="輸入您的備忘錄、待辦事項或重要資訊..."
+                      class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out resize-none"
+                      disabled> <!-- 優化: 初始禁用 -->
+            </textarea>
+
+            <button id="add-note-btn"
+                    class="mt-4 w-full sm:w-auto px-6 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 transition duration-150 ease-in-out transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+                    disabled>
+                儲存到雲端
+            </button>
+            <p id="auth-status" class="text-sm mt-3 text-red-500 font-medium">正在驗證雲端連線...</p>
+        </div>
+
+        <!-- 備註列表區塊 -->
+        <div class="mt-8">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">我的雲端備用項目</h2>
+            <div id="notes-container" class="space-y-4">
+                <p id="loading-msg" class="text-center text-gray-500 p-4">正在載入雲端資料...</p>
+                <!-- 備註將會在這裡動態載入 -->
+            </div>
+            <div id="empty-state" class="hidden text-center p-8 bg-white rounded-xl shadow-lg mt-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">沒有備用資料</h3>
+                <p class="mt-1 text-sm text-gray-500">輸入一些文字，點擊「儲存到雲端」來開始備份吧！</p>
+            </div>
+        </div>
+        
+        <!-- 使用者 ID 顯示 -->
+        <footer class="mt-10 pt-4 border-t border-gray-200 text-center text-xs text-gray-400">
+            <p>您的使用者 ID (用於資料隔離): <span id="user-id" class="font-mono text-gray-600 break-all"></span></p>
+        </footer>
+
+    </div>
+
+    <!-- Firebase 腳本 -->
+    <script type="module">
+        // 匯入 Firebase SDK 模組
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, onSnapshot, collection, query, serverTimestamp, deleteDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 設定 Firebase 全域變數
+        let app;
+        let db;
+        let auth;
+        let userId = null;
+        let isAuthReady = false;
+
+        // 獲取 Canvas 環境提供的變數
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        const noteInput = document.getElementById('note-input');
+        const addNoteBtn = document.getElementById('add-note-btn');
+        const notesContainer = document.getElementById('notes-container');
+        const loadingMsg = document.getElementById('loading-msg');
+        const emptyState = document.getElementById('empty-state');
+        const authStatus = document.getElementById('auth-status');
+        const userIdDisplay = document.getElementById('user-id');
+
+        // 設定 Firestore 記錄級別
+        setLogLevel('debug');
+
+        /**
+         * 函式：初始化 Firebase 服務並處理認證
+         */
+        async function initFirebase() {
+            if (!firebaseConfig) {
+                authStatus.textContent = '錯誤: 缺乏 Firebase 配置。無法進行雲端備份。';
+                console.error("Firebase config is missing.");
+                return;
+            }
+
+            try {
+                // 1. 初始化應用程式
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // 2. 監聽認證狀態變化
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userIdDisplay.textContent = userId;
+                        // 優化: 顯示成功連線狀態
+                        authStatus.textContent = '雲端連線成功。'; 
+                        authStatus.classList.remove('text-red-500');
+                        authStatus.classList.add('text-green-600');
+                        
+                        // 優化: 啟用 UI
+                        noteInput.disabled = false; // 啟用輸入框
+                        addNoteBtn.disabled = false;
+                        isAuthReady = true;
+                        
+                        // 設定即時監聽器
+                        setupRealtimeListener();
+                    } else {
+                        // 如果用戶未登入，嘗試登入
+                        await handleSignIn();
+                    }
+                });
+
+                // 3. 處理初始登入
+                async function handleSignIn() {
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                            console.log("Signed in with custom token.");
+                        } else {
+                            // 作為匿名用戶登入，以在 Canvas 環境中建立一個 UID
+                            await signInAnonymously(auth);
+                            console.log("Signed in anonymously.");
+                        }
+                    } catch (error) {
+                        console.error("Firebase 登入失敗:", error);
+                        authStatus.textContent = `雲端登入失敗: ${error.message}`;
+                        isAuthReady = true; // 即使失敗也設定為 true 以完成初始化
+                    }
+                }
+
+            } catch (error) {
+                console.error("Firebase 初始化失敗:", error);
+                authStatus.textContent = `Firebase 初始化失敗: ${error.message}`;
+            }
+        }
+
+        /**
+         * 函式：獲取備註集合的參考 (使用私人路徑)
+         * @returns {object} Firestore 集合參考
+         */
+        function getNotesCollectionRef() {
+            if (!db || !userId) {
+                console.error("Firestore 或 User ID 尚未準備好.");
+                return null;
+            }
+            // 私人資料路徑: /artifacts/{appId}/users/{userId}/cloud_backup_notes
+            return collection(db, `artifacts/${appId}/users/${userId}/cloud_backup_notes`);
+        }
+
+        /**
+         * 函式：新增備註到 Firestore
+         */
+        async function addNote() {
+            const content = noteInput.value.trim();
+
+            if (!content) {
+                alertUser('備註內容不能為空！', 'error'); // 優化: 提示類型
+                return;
+            }
+
+            const notesRef = getNotesCollectionRef();
+            if (!notesRef) return;
+
+            addNoteBtn.disabled = true;
+            noteInput.disabled = true; // 優化: 暫時禁用輸入，提供操作回饋
+
+            try {
+                await addDoc(notesRef, {
+                    content: content,
+                    createdAt: serverTimestamp(),
+                    completed: false
+                });
+
+                noteInput.value = ''; // 清空輸入框
+                alertUser('備註已成功儲存到雲端！', 'success'); // 優化: 成功提示
+                noteInput.focus(); // 優化: 儲存後將焦點回到輸入框
+            } catch (e) {
+                console.error("新增文件時發生錯誤: ", e);
+                alertUser('儲存到雲端失敗，請檢查控制台。', 'error');
+            } finally {
+                // 優化: 只有在認證準備好後才重新啟用按鈕和輸入框
+                if (isAuthReady) {
+                    addNoteBtn.disabled = false;
+                    noteInput.disabled = false;
+                }
+            }
+        }
+
+        /**
+         * 函式：在 UI 中顯示備註列表
+         * @param {Array<Object>} notes - 備註物件的陣列
+         */
+        function displayNotes(notes) {
+            notesContainer.innerHTML = ''; // 清空現有列表
+
+            loadingMsg.classList.add('hidden');
+
+            if (notes.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            notes.forEach(note => {
+                const noteElement = document.createElement('div');
+                noteElement.id = `note-${note.id}`;
+                noteElement.className = 'flex items-start justify-between bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition duration-200';
+                
+                // 處理時間戳記
+                let timestampText = '正在儲存...';
+                if (note.createdAt && note.createdAt.seconds) {
+                    timestampText = new Date(note.createdAt.seconds * 1000).toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short' });
+                }
+                
+                // 備註內容
+                const contentHTML = `
+                    <div class="flex-1 mr-4">
+                        <p class="text-gray-800 whitespace-pre-wrap">${note.content}</p>
+                        <p class="text-xs text-gray-400 mt-1">
+                            ${timestampText}
+                        </p>
+                    </div>
+                `;
+                
+                // 刪除按鈕
+                const deleteButton = `
+                    <button data-id="${note.id}" 
+                            class="delete-btn text-red-400 hover:text-red-600 p-2 rounded-full transition duration-150 ease-in-out flex-shrink-0"
+                            title="刪除備註">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                `;
+
+                noteElement.innerHTML = contentHTML + deleteButton;
+                notesContainer.appendChild(noteElement);
+            });
+        }
+
+        /**
+         * 函式：設定 Firestore 即時監聽器
+         */
+        function setupRealtimeListener() {
+            const notesRef = getNotesCollectionRef();
+            if (!notesRef) {
+                loadingMsg.textContent = '無法連線到雲端資料庫。';
+                return;
+            }
+
+            // 建立查詢：獲取所有資料
+            const q = query(notesRef);
+
+            // 設定 onSnapshot 監聽器
+            onSnapshot(q, (snapshot) => {
+                let notes = [];
+                snapshot.forEach((doc) => {
+                    notes.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+
+                // 在客戶端排序，根據建立時間降序排列 (新的備註在最上面)
+                notes.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+                displayNotes(notes);
+            }, (error) => {
+                console.error("監聽資料失敗: ", error);
+                loadingMsg.textContent = '資料載入失敗，請檢查控制台。';
+            });
+        }
+
+        /**
+         * 函式：處理刪除備註
+         * @param {string} noteId - 要刪除的備註 ID
+         */
+        async function deleteNote(noteId) {
+             // 視覺回饋：在刪除操作期間，先將備註調暗
+            const noteElement = document.getElementById(`note-${noteId}`);
+            if (noteElement) {
+                noteElement.style.opacity = '0.5';
+                noteElement.style.pointerEvents = 'none';
+            }
+
+            const notesRef = getNotesCollectionRef();
+            if (!notesRef) return;
+
+            try {
+                // 刪除文件
+                await deleteDoc(doc(notesRef, noteId));
+                alertUser('備註已成功刪除。', 'success'); // 優化: 成功刪除提示
+                // onSnapshot 會自動更新 UI
+                console.log(`文件 ID ${noteId} 已成功刪除。`);
+            } catch (e) {
+                console.error("刪除文件時發生錯誤: ", e);
+                alertUser('刪除失敗，請重試。', 'error');
+                // 恢復視覺回饋
+                if (noteElement) {
+                    noteElement.style.opacity = '1';
+                    noteElement.style.pointerEvents = 'auto';
+                }
+            }
+        }
+        
+        /**
+         * 函式：模擬 alert() 提示 (優化為支持 success/error 類型)
+         * @param {string} message - 提示訊息
+         * @param {string} type - 提示類型 ('success' 或 'error')
+         */
+        function alertUser(message, type = 'error') {
+            const existingAlert = document.getElementById('custom-alert');
+            if (existingAlert) existingAlert.remove();
+
+            const alertDiv = document.createElement('div');
+            alertDiv.id = 'custom-alert';
+            
+            // 使用 CSS 類別控制顏色和動畫
+            alertDiv.className = `fixed top-4 right-4 text-white p-4 rounded-lg shadow-xl z-50 custom-alert transform ${type}`;
+            
+            // 初始狀態為稍微移出螢幕外 (translate-x-full)
+            alertDiv.style.transform = 'translateX(120%)';
+            document.body.appendChild(alertDiv);
+            
+            // 確保它在添加到 DOM 後立即滑入
+            requestAnimationFrame(() => {
+                alertDiv.style.transform = 'translateX(0)';
+            });
+
+
+            alertDiv.textContent = message;
+
+            setTimeout(() => {
+                // 開始滑出動畫
+                alertDiv.style.transform = 'translateX(120%)';
+                alertDiv.style.opacity = '0';
+                
+                alertDiv.addEventListener('transitionend', () => alertDiv.remove(), { once: true });
+            }, 3000);
+        }
+
+        // --- 事件監聽器 ---
+
+        document.addEventListener('DOMContentLoaded', initFirebase);
+
+        // 監聽「儲存到雲端」按鈕點擊
+        addNoteBtn.addEventListener('click', addNote);
+        
+        // 優化: 監聽 Enter 鍵儲存
+        noteInput.addEventListener('keydown', (event) => {
+            // 如果按下 Enter 且沒有按 Shift (通常用於換行) 且認證已準備好
+            if (event.key === 'Enter' && !event.shiftKey && isAuthReady) {
+                event.preventDefault(); // 防止新增換行
+                addNote();
+            }
+        });
+
+        // 監聽備註容器內的刪除按鈕點擊 (事件委託)
+        notesContainer.addEventListener('click', (event) => {
+            const deleteButton = event.target.closest('.delete-btn');
+            if (deleteButton) {
+                const noteId = deleteButton.dataset.id;
+                
+                if (noteId && isAuthReady) {
+                    deleteNote(noteId);
+                }
+            }
+        });
+
+    </script>
+</body>
+</html>

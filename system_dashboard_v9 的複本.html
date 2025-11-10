@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系統健康儀表板 V9 (強制備用配置)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-normal: #10B981; /* Emerald 500 */
+            --color-warning: #F59E0B; /* Amber 500 */
+            --color-error: #EF4444; /* Red 500 */
+            --color-unknown: #6B7280; /* Gray 500 */
+            font-family: 'Inter', sans-serif;
+        }
+
+        .status-normal { background-color: var(--color-normal); }
+        .status-warning { background-color: var(--color-warning); }
+        .status-error { background-color: var(--color-error); }
+        .status-unknown { background-color: var(--color-unknown); }
+
+        .status-text-normal { color: var(--color-normal); }
+        .status-text-warning { color: var(--color-warning); }
+        .status-text-error { color: var(--color-error); }
+        .status-text-unknown { color: var(--color-unknown); }
+
+        .card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            border-radius: 0.75rem;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+    <script type="module">
+        // Firebase 導入
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import {
+            getFirestore, doc, getDoc, setDoc, updateDoc,
+            onSnapshot, collection, query, where, getDocs,
+            writeBatch, runTransaction, setLogLevel
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 全域變數 - 這是 Canvas 環境強制要求的
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        let firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // V9 修正: 備用配置，用於在 __firebase_config 缺失時避免初始化失敗
+        const FALLBACK_CONFIG = {
+            apiKey: "AIzaSy_FAKE_API_KEY",
+            authDomain: "fake-project-123.firebaseapp.com",
+            projectId: "fake-project-123", // 確保這裡有 projectId
+            storageBucket: "fake-project-123.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef0123456789"
+        };
+
+        // 檢查配置是否有效，如果無效，則使用備用配置
+        let isFallbackMode = false;
+        if (!firebaseConfig || !firebaseConfig.projectId) {
+            firebaseConfig = FALLBACK_CONFIG;
+            isFallbackMode = true;
+            console.warn("[V9 WARNING] 偵測到 Firebase 配置缺失。正在使用備用配置進行初始化。資料庫操作預計會失敗，直到配置被修復。");
+        }
+
+        let db, auth, userId = null;
+        let isAuthReady = false;
+
+        // V7 修正後的資料庫路徑 - 確保文件路徑為偶數段
+        const CONFIG_COLLECTION_PATH = `artifacts/${appId}/public/data/config`;
+        const CONFIG_DOC_ID = 'settings';
+        const UNITS_COLLECTION_PATH = `artifacts/${appId}/public/data/units`;
+
+        // 預設配置
+        const DEFAULT_UNITS = ["Unit-A", "Unit-B", "Unit-C", "Unit-D"];
+        const DEFAULT_CONFIG = {
+            normalThreshold: 85, // 正常分數 >= 85
+            warningThreshold: 60, // 警告分數 >= 60 且 < 85
+            lastUpdated: new Date().toISOString()
+        };
+
+        // UI 元素參考
+        const totalStatusElement = document.getElementById('totalStatus');
+        const unitContainer = document.getElementById('unitContainer');
+        const totalScoreElement = document.getElementById('totalScore');
+        const totalUnitElement = document.getElementById('totalUnit');
+        const configDisplay = document.getElementById('configDisplay');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const statusMessage = document.getElementById('statusMessage');
+        const modal = document.getElementById('statusModal');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalClose = document.getElementById('modalClose');
+
+        // 閾值輸入元素
+        const normalThresholdInput = document.getElementById('normalThresholdInput');
+        const warningThresholdInput = document.getElementById('warningThresholdInput');
+
+        /**
+         * 顯示自定義模態視窗（取代 alert()）
+         * @param {string} message - 要顯示的訊息
+         */
+        window.showMessage = (message) => {
+            modalMessage.textContent = message;
+            modal.classList.remove('hidden');
+        };
+
+        modalClose.onclick = () => {
+            modal.classList.add('hidden');
+        };
+
+        /**
+         * 根據分數和閾值計算狀態
+         * @param {number} score - 單元分數
+         * @param {object} config - 配置物件
+         * @returns {{status: string, color: string}} - 狀態和顏色類別
+         */
+        function calculateStatus(score, config) {
+            if (score >= config.normalThreshold) {
+                return { status: "正常", color: "normal" };
+            } else if (score >= config.warningThreshold) {
+                return { status: "警告", color: "warning" };
+            } else if (score < config.warningThreshold && score >= 0) {
+                return { status: "異常", color: "error" };
+            }
+            return { status: "未知", color: "unknown" };
+        }
+
+        /**
+         * 渲染單元卡片
+         * @param {object} unitData - 單元資料 { id: string, score: number, config: object }
+         * @returns {string} - HTML 字串
+         */
+        function renderUnitCard(unitData, config) {
+            const { status, color } = calculateStatus(unitData.score, config);
+            const scoreDisplay = unitData.score != null ? `${unitData.score.toFixed(2)}%` : 'N/A';
+
+            return `
+                <div id="card-${unitData.id}" class="card bg-white p-4 shadow-lg flex flex-col justify-between" style="border-left: 5px solid var(--color-${color});">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800">${unitData.id}</h3>
+                        <p class="text-sm text-gray-500">最新分數</p>
+                    </div>
+                    <div class="mt-2 flex justify-between items-center">
+                        <span class="text-2xl font-bold status-text-${color}">${scoreDisplay}</span>
+                        <span class="px-3 py-1 text-xs font-semibold rounded-full text-white status-${color}">${status}</span>
+                    </div>
+                    <div class="mt-3">
+                        <label for="score-input-${unitData.id}" class="block text-xs font-medium text-gray-700">更新分數 (0-100)</label>
+                        <div class="flex mt-1">
+                            <input type="number" id="score-input-${unitData.id}" min="0" max="100" step="0.01" placeholder="輸入新分數" class="flex-grow p-2 border border-gray-300 rounded-l-md focus:ring-blue-500 focus:border-blue-500 text-sm">
+                            <button onclick="window.updateUnitScore('${unitData.id}')" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-r-md text-sm transition duration-150 ease-in-out">
+                                更新分數
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * 渲染整個儀表板狀態
+         * @param {object} unitDataMap - 所有單元資料的映射
+         * @param {object} config - 配置物件
+         */
+        function renderDashboard(unitDataMap, config) {
+            const units = Object.values(unitDataMap);
+            let totalUnits = units.length;
+            let totalScore = units.reduce((sum, unit) => sum + (unit.score || 0), 0);
+
+            // 計算總體狀態
+            let errorCount = units.filter(unit => calculateStatus(unit.score, config).status === "異常").length;
+            let warningCount = units.filter(unit => calculateStatus(unit.score, config).status === "警告").length;
+
+            let overallStatus = "正常";
+            let overallColor = "normal";
+
+            if (errorCount > 0) {
+                overallStatus = "異常";
+                overallColor = "error";
+            } else if (warningCount > 0) {
+                overallStatus = "警告";
+                overallColor = "warning";
+            } else if (totalUnits === 0) {
+                overallStatus = "未知";
+                overallColor = "unknown";
+            }
+
+            // 更新總體狀態卡片
+            totalStatusElement.className = `status-${overallColor} text-white p-4 rounded-lg flex items-center justify-between shadow-lg`;
+            totalStatusElement.innerHTML = `
+                <div class="flex flex-col">
+                    <span class="text-lg font-bold">系統總體狀態</span>
+                    <span class="text-3xl font-extrabold">${overallStatus}</span>
+                </div>
+            `;
+
+            // 更新其他總結數據
+            totalScoreElement.textContent = units.length > 0 ? (totalScore / totalUnits).toFixed(2) : 'N/A';
+            totalUnitElement.textContent = totalUnits;
+
+            // 更新閾值配置顯示
+            configDisplay.innerHTML = `
+                <p class="text-sm"><span class="font-semibold text-gray-700">正常閾值:</span> ${config.normalThreshold}%</p>
+                <p class="text-sm"><span class="font-semibold text-gray-700">警告閾值:</span> ${config.warningThreshold}%</p>
+                <p class="text-xs text-gray-500 mt-2">最後更新: ${new Date(config.lastUpdated).toLocaleString('zh-TW')}</p>
+            `;
+
+            // 渲染單元卡片
+            unitContainer.innerHTML = units.map(unit => renderUnitCard(unit, config)).join('');
+
+            // 更新狀態訊息
+            statusMessage.textContent = overallStatus === "正常" ?
+                "所有單元運行正常。" :
+                `發現 ${errorCount} 個異常單元和 ${warningCount} 個警告單元。`;
+            statusMessage.className = `text-sm font-semibold mt-2 status-text-${overallColor}`;
+        }
+
+        /**
+         * 初始化 Firebase 和認證
+         */
+        async function initializeFirebase() {
+            setLogLevel('Debug');
+            console.log("Firebase Log Level set to Debug.");
+
+            try {
+                // V9 修正: 使用檢查後的 firebaseConfig 進行初始化
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                if (isFallbackMode) {
+                    window.showMessage("Firebase 配置失敗，使用備用模式運行。資料庫功能將無法工作。");
+                    userIdDisplay.textContent = `當前使用者 ID: (備用模式)`;
+                    // 在備用模式下，我們無法進行認證或讀寫，但可以確保應用程式不崩潰。
+                    // 為了 UI 不為空，我們可以模擬一些數據
+                    const simulatedUnits = DEFAULT_UNITS.map(id => ({
+                        id,
+                        score: Math.floor(Math.random() * 100),
+                        lastUpdated: new Date().toISOString()
+                    }));
+                    const simulatedUnitMap = simulatedUnits.reduce((acc, unit) => {
+                        acc[unit.id] = unit;
+                        return acc;
+                    }, {});
+                    renderDashboard(simulatedUnitMap, DEFAULT_CONFIG);
+                    return;
+                }
+
+                console.log("[AUTH] 正在等待認證狀態。");
+
+                // 認證流程：如果提供了自定義 token，則使用 token 登入；否則匿名登入。
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                // 設置認證狀態監聽器
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        isAuthReady = true;
+                        console.log(`[AUTH] 認證就緒。UserID: ${userId}`);
+                        userIdDisplay.textContent = `當前使用者 ID: ${userId}`;
+
+                        if (db) {
+                            await initializeDataIfEmpty();
+                            setupRealtimeListeners();
+                        }
+                    } else {
+                        userId = null;
+                        isAuthReady = false;
+                        userIdDisplay.textContent = `當前使用者 ID: (匿名登入失敗/未認證)`;
+                        console.error("[AUTH ERROR] 匿名登入失敗或已登出。");
+                        if (db) {
+                            // 即使認證失敗，仍嘗試監聽公共數據，但會受到安全規則限制
+                            setupRealtimeListeners();
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("[FIREBASE INIT ERROR]", error);
+                window.showMessage(`Firebase 初始化失敗: ${error.message}`);
+            }
+        }
+
+        /**
+         * 檢查並初始化預設數據（如果數據庫為空）
+         */
+        async function initializeDataIfEmpty() {
+            if (!db || !userId || isFallbackMode) return;
+
+            console.log(`[INIT] 開始檢查並初始化 UserID: ${userId} 的數據。`);
+
+            try {
+                // 1. 檢查配置 (Config)
+                const configRef = doc(db, CONFIG_COLLECTION_PATH, CONFIG_DOC_ID);
+                const configSnap = await getDoc(configRef);
+
+                if (!configSnap.exists()) {
+                    console.log("[INIT] 配置不存在，設定預設閾值。");
+                    await setDoc(configRef, DEFAULT_CONFIG).catch(e => {
+                        console.error("[INIT ERROR] 設定預設閾值失敗:", e);
+                        throw e;
+                    });
+                }
+
+                // 2. 檢查單元數據 (Units)
+                const batch = writeBatch(db);
+                let needsBatchCommit = false;
+
+                for (const unitName of DEFAULT_UNITS) {
+                    const unitRef = doc(db, UNITS_COLLECTION_PATH, unitName);
+
+                    const unitSnap = await getDoc(unitRef).catch(e => {
+                           console.error(`[INIT ERROR] 檢查單元 ${unitName} 時失敗:`, e);
+                           throw e;
+                    });
+
+                    if (!unitSnap.exists()) {
+                        console.log(`[INIT] 單元 ${unitName} 不存在，設定預設分數 0.00%。`);
+                        batch.set(unitRef, {
+                            score: 0.00,
+                            id: unitName,
+                            lastUpdated: new Date().toISOString()
+                        });
+                        needsBatchCommit = true;
+                    }
+                }
+
+                if (needsBatchCommit) {
+                    await batch.commit().then(() => {
+                        console.log("[INIT] 成功提交預設單元數據批次。");
+                    }).catch(e => {
+                        console.error("[INIT ERROR] 提交預設單元數據批次失敗:", e);
+                        throw e;
+                    });
+                }
+            } catch (error) {
+                console.error("[INIT ERROR] 初始化失敗 (權限?)", error);
+                window.showMessage(`初始化資料失敗 (請檢查權限): ${error.message}`);
+            }
+        }
+
+        /**
+         * 設置 Firestore 即時監聽器
+         */
+        function setupRealtimeListeners() {
+            if (!db || isFallbackMode) return;
+
+            console.log("[LISTENERS] 設定即時數據監聽器。");
+            let currentConfig = DEFAULT_CONFIG;
+            let currentUnits = {};
+            let isFirstLoad = true;
+
+            // 1. 監聽配置
+            const configRef = doc(db, CONFIG_COLLECTION_PATH, CONFIG_DOC_ID);
+            onSnapshot(configRef, (configSnap) => {
+                if (configSnap.exists()) {
+                    currentConfig = configSnap.data();
+                    // 更新閾值輸入欄位的值
+                    normalThresholdInput.value = currentConfig.normalThreshold;
+                    warningThresholdInput.value = currentConfig.warningThreshold;
+                } else {
+                    currentConfig = DEFAULT_CONFIG;
+                }
+                if (!isFirstLoad) {
+                    renderDashboard(currentUnits, currentConfig);
+                }
+            }, (error) => {
+                console.error("[LISTENERS ERROR] 監聽配置時失敗:", error);
+            });
+
+            // 2. 監聽單元數據
+            const unitsQuery = collection(db, UNITS_COLLECTION_PATH);
+            onSnapshot(unitsQuery, (snapshot) => {
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    currentUnits[data.id] = data;
+                });
+
+                // 刪除數據庫中不存在的單元
+                const activeIds = snapshot.docs.map(doc => doc.id);
+                Object.keys(currentUnits).forEach(id => {
+                    if (!activeIds.includes(id)) {
+                        delete currentUnits[id];
+                    }
+                });
+
+                renderDashboard(currentUnits, currentConfig);
+                isFirstLoad = false;
+
+            }, (error) => {
+                console.error("[LISTENERS ERROR] 監聽單元數據時失敗:", error);
+            });
+        }
+
+        /**
+         * V6 新功能: 更新閾值配置
+         */
+        window.updateThresholds = async () => {
+            if (!db || !isAuthReady || isFallbackMode) {
+                window.showMessage("資料庫或認證尚未準備好，或處於備用模式。您必須登入才能更新配置。");
+                return;
+            }
+
+            const newNormalThreshold = parseInt(normalThresholdInput.value, 10);
+            const newWarningThreshold = parseInt(warningThresholdInput.value, 10);
+
+            if (isNaN(newNormalThreshold) || isNaN(newWarningThreshold) ||
+                newNormalThreshold < 1 || newNormalThreshold > 100 ||
+                newWarningThreshold < 1 || newWarningThreshold > 99 ||
+                newNormalThreshold <= newWarningThreshold) {
+
+                window.showMessage("請輸入有效的閾值：正常閾值 (1-100) 必須大於 警告閾值 (1-99)。");
+                return;
+            }
+
+            const configRef = doc(db, CONFIG_COLLECTION_PATH, CONFIG_DOC_ID);
+
+            try {
+                // 使用 runTransaction 確保資料一致性
+                await runTransaction(db, async (transaction) => {
+                    // 執行更新
+                    transaction.set(configRef, {
+                        normalThreshold: newNormalThreshold,
+                        warningThreshold: newWarningThreshold,
+                        lastUpdated: new Date().toISOString()
+                    }, { merge: true });
+                });
+
+                window.showMessage("系統閾值已成功更新！儀表板將自動反映新的狀態計算。");
+            } catch (error) {
+                console.error("[UPDATE THRESHOLD ERROR] 無法更新閾值:", error);
+                window.showMessage(`無法更新閾值。錯誤訊息: ${error.message}`);
+            }
+        };
+
+
+        /**
+         * 更新單元分數
+         * @param {string} unitId - 單元 ID
+         */
+        window.updateUnitScore = async (unitId) => {
+            if (!db || !isAuthReady || isFallbackMode) {
+                window.showMessage("資料庫或認證尚未準備好，或處於備用模式。您必須登入才能更新分數。");
+                return;
+            }
+
+            const inputElement = document.getElementById(`score-input-${unitId}`);
+            let newScore = parseFloat(inputElement.value);
+
+            if (isNaN(newScore) || newScore < 0 || newScore > 100) {
+                window.showMessage("請輸入 0 到 100 之間有效的數字。");
+                return;
+            }
+
+            try {
+                const unitRef = doc(db, UNITS_COLLECTION_PATH, unitId);
+
+                await runTransaction(db, async (transaction) => {
+                    const unitSnap = await transaction.get(unitRef);
+
+                    if (!unitSnap.exists()) {
+                        transaction.set(unitRef, {
+                            score: newScore,
+                            id: unitId,
+                            lastUpdated: new Date().toISOString()
+                        });
+                    } else {
+                        transaction.update(unitRef, {
+                            score: newScore,
+                            lastUpdated: new Date().toISOString()
+                        });
+                    }
+                });
+
+                window.showMessage(`${unitId} 的分數已成功更新為 ${newScore.toFixed(2)}%。`);
+                inputElement.value = ''; // 清空輸入框
+            } catch (error) {
+                console.error(`[UPDATE ERROR] 無法更新 ${unitId} 的分數:`, error);
+                window.showMessage(`無法更新 ${unitId} 的分數。請檢查連線或權限。`);
+            }
+        };
+
+        /**
+         * 新增一個新的監控單元
+         */
+        window.addNewUnit = async () => {
+            if (!db || !isAuthReady || isFallbackMode) {
+                window.showMessage("資料庫或認證尚未準備好，或處於備用模式。您必須登入才能新增單元。");
+                return;
+            }
+
+            const inputElement = document.getElementById('newUnitIdInput');
+            const unitId = inputElement.value.trim();
+
+            if (!unitId || unitId.length < 1 || unitId.length > 30) {
+                window.showMessage("請輸入有效的單元 ID (1-30 個字元)。");
+                return;
+            }
+
+            const unitRef = doc(db, UNITS_COLLECTION_PATH, unitId);
+
+            try {
+                 // 檢查是否已存在
+                const unitSnap = await getDoc(unitRef);
+                if (unitSnap.exists()) {
+                   window.showMessage(`單元 ID: ${unitId} 已存在。請嘗試更新它的分數。`);
+                   return;
+                }
+
+                // 使用 setDoc 創建新單元
+                await setDoc(unitRef, {
+                    score: 0.00,
+                    id: unitId,
+                    lastUpdated: new Date().toISOString()
+                });
+
+                window.showMessage(`成功新增單元: ${unitId}。它現在已顯示在儀表板上。`);
+                inputElement.value = ''; // 清空輸入框
+            } catch (error) {
+                console.error(`[ADD UNIT ERROR] 無法新增單元 ${unitId}:`, error);
+                window.showMessage(`無法新增單元 ${unitId}。請檢查權限。`);
+            }
+        };
+
+        /**
+         * 自動復原所有異常/警告單元到 99.99%
+         */
+        window.performAutoRecovery = async () => {
+             if (!db || !isAuthReady || isFallbackMode) {
+                window.showMessage("資料庫或認證尚未準備好，或處於備用模式。您必須登入才能執行復原操作。");
+                return;
+            }
+
+            try {
+                const configRef = doc(db, CONFIG_COLLECTION_PATH, CONFIG_DOC_ID);
+                const configSnap = await getDoc(configRef);
+                const config = configSnap.exists() ? configSnap.data() : DEFAULT_CONFIG;
+
+                // 使用 getDocs 獲取所有單元 (One-time read for recovery action)
+                const unitsQuery = collection(db, UNITS_COLLECTION_PATH);
+                const snapshot = await getDocs(unitsQuery);
+
+                const batch = writeBatch(db);
+                let recoveryCount = 0;
+
+                snapshot.docs.forEach(unitDoc => {
+                    const unitData = unitDoc.data();
+                    const { status } = calculateStatus(unitData.score, config);
+
+                    // 檢查是否為異常 (Error) 或警告 (Warning) 狀態
+                    if (status === "異常" || status === "警告") {
+                        const unitRef = doc(db, UNITS_COLLECTION_PATH, unitData.id);
+                        batch.update(unitRef, {
+                            score: 99.99, // 復原至接近滿分
+                            lastUpdated: new Date().toISOString()
+                        });
+                        recoveryCount++;
+                    }
+                });
+
+                if (recoveryCount > 0) {
+                    await batch.commit();
+                    window.showMessage(`自動復原成功！共修復了 ${recoveryCount} 個異常或警告單元。`);
+                } else {
+                    window.showMessage("目前所有單元均為正常狀態，無需復原。");
+                }
+
+            } catch (error) {
+                console.error("[RECOVERY ERROR] 自動復原時發生錯誤:", error);
+                window.showMessage(`執行自動復原時發生錯誤。請檢查控制台或權限。`);
+            }
+        };
+
+        // 應用程式啟動
+        window.onload = initializeFirebase;
+    </script>
+</head>
+<body class="bg-gray-50 p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-6">系統健康儀表板 V9 (強制備用配置)</h1>
+
+        <div class="mb-4">
+            <p id="userIdDisplay" class="text-sm font-mono text-gray-600 truncate">當前使用者 ID: (載入中...)</p>
+        </div>
+
+        <!-- 總體狀態概覽 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <!-- 總體狀態卡片 -->
+            <div id="totalStatus" class="status-unknown text-white p-4 rounded-lg flex items-center justify-between shadow-lg col-span-1 md:col-span-2">
+                <div class="flex flex-col">
+                    <span class="text-lg font-bold">系統總體狀態</span>
+                    <span class="text-3xl font-extrabold">載入中</span>
+                </div>
+            </div>
+
+            <!-- 平均分數卡片 -->
+            <div class="card bg-white p-4">
+                <p class="text-sm text-gray-500">平均分數</p>
+                <span id="totalScore" class="text-3xl font-extrabold text-blue-600">N/A</span>
+            </div>
+
+            <!-- 單元總數卡片 -->
+            <div class="card bg-white p-4">
+                <p class="text-sm text-gray-500">監控單元總數</p>
+                <span id="totalUnit" class="text-3xl font-extrabold text-gray-800">0</span>
+            </div>
+        </div>
+
+        <!-- 訊息與控制面板 -->
+        <div class="bg-white p-4 rounded-lg shadow-lg mb-8 border border-gray-200">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div class="mb-4 md:mb-0">
+                    <h2 class="text-xl font-semibold text-gray-800">儀表板控制與訊息</h2>
+                    <p id="statusMessage" class="text-sm font-semibold mt-1 text-gray-600">正在載入數據...</p>
+                </div>
+
+                <div class="flex space-x-3 items-center">
+                    <div id="configDisplay" class="text-sm text-gray-600 bg-gray-100 p-2 rounded-md">
+                        <p class="text-sm">載入閾值...</p>
+                    </div>
+                    <button onclick="window.performAutoRecovery()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-5 rounded-lg shadow-md transition duration-150 ease-in-out">
+                        執行自動復原
+                    </button>
+                </div>
+            </div>
+
+            <!-- 更新閾值表單 -->
+            <div class="mt-6 pt-4 border-t border-gray-100">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">設定系統閾值</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label for="normalThresholdInput" class="block text-sm font-medium text-gray-700">正常分數 ( >= )</label>
+                        <input type="number" id="normalThresholdInput" min="1" max="100" step="1" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="例如: 85">
+                    </div>
+                    <div>
+                        <label for="warningThresholdInput" class="block text-sm font-medium text-gray-700">警告分數 ( >= )</label>
+                        <input type="number" id="warningThresholdInput" min="1" max="99" step="1" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="例如: 60">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="window.updateThresholds()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-md transition duration-150 ease-in-out">
+                            更新閾值設定
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新增單元表單 -->
+            <div class="mt-6 pt-4 border-t border-gray-100">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">新增監控單元</h3>
+                <div class="flex">
+                    <input type="text" id="newUnitIdInput" placeholder="輸入新的單元 ID (例如: Unit-E)" class="flex-grow p-3 border border-gray-300 rounded-l-lg focus:ring-green-500 focus:border-green-500 text-sm">
+                    <button onclick="window.addNewUnit()" class="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-5 rounded-r-lg shadow-md transition duration-150 ease-in-out">
+                        新增單元
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 單元詳細資訊 -->
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">單元狀態詳情</h2>
+        <div id="unitContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- 單元卡片將在這裡被渲染 -->
+            <div class="card bg-white p-4 text-center text-gray-500">
+                <p>正在從 Firebase 載入單元...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自定義模態視窗 (取代 alert) -->
+    <div id="statusModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">系統通知</h3>
+            <p id="modalMessage" class="text-gray-700 mb-6"></p>
+            <div class="flex justify-end">
+                <button id="modalClose" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-150 ease-in-out">
+                    確定
+                </button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

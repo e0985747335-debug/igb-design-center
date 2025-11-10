@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學習進度儀表板</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc;
+        }
+        .card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+        .progress-bar {
+            height: 10px;
+            border-radius: 9999px;
+            transition: width 0.5s ease-in-out;
+        }
+        .control-btn {
+            @apply px-4 py-2 font-bold rounded-lg transition duration-150 transform active:scale-95;
+        }
+    </style>
+    <!-- 引入 Firebase 相關模組 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 設置 Firestore 日誌級別為 Debug
+        setLogLevel('Debug');
+
+        // 全局變數
+        window.firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        window.initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // 數據結構
+        window.unitData = [
+            { id: 'css', name: 'CSS 佈局與美化', maxScore: 100, color: 'bg-green-500' },
+            { id: 'react', name: 'React 組件與狀態', maxScore: 100, color: 'bg-blue-500' },
+            { id: 'firebase', name: 'Firebase 數據庫', maxScore: 100, color: 'bg-orange-500' }
+        ];
+
+        window.db = null;
+        window.auth = null;
+        window.userId = null;
+        window.isAuthReady = false;
+        window.currentScores = {}; // 儲存當前最新的分數狀態
+
+        // 初始化 Firebase 和認證
+        if (window.firebaseConfig) {
+            const app = initializeApp(window.firebaseConfig);
+            window.db = getFirestore(app);
+            window.auth = getAuth(app);
+
+            // 監聽認證狀態變化
+            onAuthStateChanged(window.auth, async (user) => {
+                if (user) {
+                    window.userId = user.uid;
+                } else {
+                    // 如果沒有用戶，則匿名登入
+                    try {
+                        const anonymousUser = await signInAnonymously(window.auth);
+                        window.userId = anonymousUser.user.uid;
+                    } catch (error) {
+                        console.error("匿名登入失敗:", error);
+                        // 在登入失敗的情況下，我們將使用一個隨機 UUID 作為 fallback userId
+                        window.userId = crypto.randomUUID();
+                        document.getElementById('status-box').textContent = '認證狀態: (ERROR) 匿名登入失敗';
+                        document.getElementById('status-box').classList.add('bg-red-500', 'text-white');
+                    }
+                }
+                window.isAuthReady = true;
+                console.log("認證準備就緒，UserId:", window.userId);
+                document.getElementById('status-box').textContent = `認證狀態: (FIRESTORE) ${window.userId}`;
+
+                // 認證準備就緒後，開始訂閱數據
+                if (window.db && window.userId) {
+                    subscribeToData();
+                }
+            });
+
+            // 如果有初始認證 Token，則使用它進行登入
+            if (window.initialAuthToken) {
+                signInWithCustomToken(window.auth, window.initialAuthToken).catch(error => {
+                    console.error("Custom Token 登入失敗:", error);
+                });
+            }
+        } else {
+            // 如果沒有 Firebase 配置，則進入「本地數據模式」
+            window.isAuthReady = true;
+            window.userId = 'local-mode-user'; // 使用固定 ID 進行本地操作
+            document.getElementById('status-box').textContent = '認證狀態: (LOCAL) 測試模式';
+            document.getElementById('local-warning').classList.remove('hidden');
+            console.warn("未提供 Firebase 配置，正在使用本地數據模式。");
+            // 本地模式初始化數據
+            initializeLocalData();
+            // 立即渲染本地數據
+            const storedData = JSON.parse(localStorage.getItem(getLocalDataPath()));
+            window.currentScores = storedData.scores;
+            renderDashboard(window.currentScores);
+        }
+
+        // 設置本地數據的初始狀態
+        const getLocalDataPath = () => `localData_${window.userId}`;
+        const initializeLocalData = () => {
+            if (localStorage.getItem(getLocalDataPath()) === null) {
+                const initialScores = window.unitData.reduce((acc, unit) => {
+                    acc[unit.id] = 0;
+                    return acc;
+                }, {});
+                localStorage.setItem(getLocalDataPath(), JSON.stringify({ scores: initialScores }));
+            }
+        };
+
+        // 核心渲染函數
+        const renderDashboard = (scores) => {
+            window.currentScores = scores; // 更新全局分數狀態
+            let totalScore = 0;
+            let totalMaxScore = window.unitData.reduce((sum, unit) => sum + unit.maxScore, 0);
+
+            // 渲染單元進度
+            window.unitData.forEach(unit => {
+                const score = scores[unit.id] || 0;
+                totalScore += score;
+
+                const percentage = (score / unit.maxScore) * 100;
+
+                document.getElementById(`score-${unit.id}`).textContent = score;
+                document.getElementById(`max-score-${unit.id}`).textContent = unit.maxScore;
+                document.getElementById(`progress-text-${unit.id}`).textContent = `${percentage.toFixed(1)}% 進度`;
+                document.getElementById(`progress-bar-${unit.id}`).style.width = `${percentage}%`;
+
+                // 啟用/禁用按鈕
+                document.getElementById(`btn-minus-${unit.id}`).disabled = score <= 0;
+                document.getElementById(`btn-minus-${unit.id}`).classList.toggle('opacity-50', score <= 0);
+
+                document.getElementById(`btn-plus-${unit.id}`).disabled = score >= unit.maxScore;
+                document.getElementById(`btn-plus-${unit.id}`).classList.toggle('opacity-50', score >= unit.maxScore);
+            });
+
+            // 渲染總分
+            document.getElementById('total-score').textContent = totalScore;
+            document.getElementById('total-max-score').textContent = totalMaxScore;
+
+            // 滿分提示邏輯 (僅在非 0/0 情況下)
+            const completionBanner = document.getElementById('completion-banner');
+            if (totalScore === totalMaxScore && totalMaxScore > 0) {
+                completionBanner.classList.remove('hidden');
+            } else {
+                completionBanner.classList.add('hidden');
+            }
+        };
+
+
+        // 訂閱和渲染數據 (僅用於 Firestore)
+        window.subscribeToData = () => {
+            if (!window.db) return; // 僅在 Firestore 模式下執行
+
+            const dataPath = `/artifacts/${window.appId}/users/${window.userId}/dashboardData/current`;
+            const dataRef = doc(window.db, dataPath);
+
+            onSnapshot(dataRef, (docSnap) => {
+                let scores = {};
+                if (docSnap.exists()) {
+                    scores = docSnap.data().scores || {};
+                    console.log("Firestore 數據更新:", scores);
+                } else {
+                    // 初始化 Firestore 數據
+                    console.log("Firestore 文檔不存在，將初始化數據...");
+                    const initialScores = window.unitData.reduce((acc, unit) => { acc[unit.id] = 0; return acc; }, {});
+                    setDoc(dataRef, { scores: initialScores }, { merge: true }).catch(e => console.error("Firestore 初始化失敗:", e));
+                    scores = initialScores;
+                }
+                renderDashboard(scores);
+            }, (error) => {
+                console.error("Firestore 監聽錯誤:", error);
+                document.getElementById('status-box').textContent = `認證狀態: (ERROR) Firestore 監聽失敗`;
+                document.getElementById('status-box').classList.add('bg-red-500', 'text-white');
+            });
+        };
+
+        /**
+         * 獨立更新單個單元分數
+         * @param {string} unitId - 要更新的單元 ID
+         * @param {number} delta - 分數變化量 (+5 或 -5)
+         */
+        window.updateScore = async (unitId, delta) => {
+            if (!window.isAuthReady) {
+                console.warn("認證未準備就緒，無法更新分數。");
+                return;
+            }
+
+            const unit = window.unitData.find(u => u.id === unitId);
+            if (!unit) return;
+
+            // 從最新的分數狀態獲取當前分數
+            const currentScore = window.currentScores[unitId] || 0;
+
+            // 計算新分數，確保在 [0, maxScore] 範圍內
+            let newScore = currentScore + delta;
+            newScore = Math.max(0, newScore); // 不小於 0
+            newScore = Math.min(unit.maxScore, newScore); // 不大於 maxScore
+
+            const newScores = { ...window.currentScores, [unitId]: newScore };
+
+            const dataPath = `/artifacts/${window.appId}/users/${window.userId}/dashboardData/current`;
+            const dataRef = window.db ? doc(window.db, dataPath) : null;
+
+            // 數據更新和 UI 渲染
+            if (dataRef) {
+                try {
+                    await setDoc(dataRef, { scores: newScores }, { merge: true });
+                    console.log(`Firestore 數據已更新：${unitId} = ${newScore}`);
+                    // Firestore 的 onSnapshot 會自動觸發 renderDashboard
+                } catch (e) {
+                    console.error("更新 Firestore 數據失敗:", e);
+                }
+            } else {
+                // 本地模式更新
+                localStorage.setItem(getLocalDataPath(), JSON.stringify({ scores: newScores }));
+                console.log(`本地數據已更新並立即渲染：${unitId} = ${newScore}`);
+                renderDashboard(newScores); // 使用新分數立即更新 UI
+            }
+        };
+
+        // 獨立的重置按鈕邏輯
+        window.resetAllScores = async () => {
+            if (!window.isAuthReady) {
+                console.warn("認證未準備就緒，無法重置分數。");
+                return;
+            }
+
+            const newScores = window.unitData.reduce((acc, unit) => {
+                acc[unit.id] = 0;
+                return acc;
+            }, {});
+
+            const dataPath = `/artifacts/${window.appId}/users/${window.userId}/dashboardData/current`;
+            const dataRef = window.db ? doc(window.db, dataPath) : null;
+
+            if (dataRef) {
+                try {
+                    await setDoc(dataRef, { scores: newScores }, { merge: true });
+                    console.log("Firestore 數據已重置。");
+                } catch (e) {
+                    console.error("重置 Firestore 數據失敗:", e);
+                }
+            } else {
+                // 本地模式更新
+                localStorage.setItem(getLocalDataPath(), JSON.stringify({ scores: newScores }));
+                console.log("本地數據已重置並立即渲染。");
+                renderDashboard(newScores);
+            }
+        };
+
+
+    </script>
+</head>
+<body class="p-4 sm:p-8 min-h-screen">
+
+    <div id="status-box" class="fixed top-0 left-0 right-0 p-3 text-center text-sm font-semibold bg-blue-100 text-blue-800">
+        載入中...
+    </div>
+
+    <div class="max-w-4xl mx-auto pt-10">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">
+            學習進度儀表板
+        </h1>
+
+        <div id="local-warning" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-8 rounded-lg shadow-md">
+            <div class="flex items-center">
+                <svg class="h-6 w-6 mr-3 text-red-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.427 2.67-1.427 3.434 0L19.854 18H.146L8.257 3.099zM10 13a1 1 0 100 2 1 1 0 000-2zm-1-7a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg>
+                <p class="font-bold">本地數據模式啟動</p>
+            </div>
+            <p class="mt-2 text-sm">環境變數遺失，已切換到本地儲存。數據將不會被持久化或與其他用戶共享。</p>
+        </div>
+
+        <!-- 總學習分數卡片 -->
+        <div class="card bg-indigo-600 p-6 sm:p-8 rounded-xl text-white mb-8 transition duration-300 transform hover:scale-[1.01]">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h2 class="text-lg font-semibold mb-2">總學習分數 (滿分 <span id="total-max-score">300</span>)</h2>
+                    <p class="text-5xl font-extrabold tracking-tight">
+                        <span id="total-score">0</span> / <span class="text-indigo-200">300</span>
+                    </p>
+                </div>
+                <div class="text-5xl opacity-50">
+                    &#127919; <!-- 獎盃 Emoji -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 滿分提示 -->
+        <div id="completion-banner" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-8 rounded-lg shadow-md transition duration-300">
+            <div class="flex items-center">
+                <svg class="h-6 w-6 mr-3 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <p class="font-bold">恭喜！所有單元已滿分。</p>
+            </div>
+        </div>
+
+        <!-- 單元進度區塊 -->
+        <h2 class="text-2xl font-bold text-gray-700 mb-4">單元進度</h2>
+
+        <div class="space-y-4">
+            <!-- CSS 佈局與美化 -->
+            <div class="card bg-white p-5 rounded-xl">
+                <div class="flex justify-between items-center mb-2">
+                    <p class="text-lg font-semibold text-gray-800">CSS 佈局與美化</p>
+                    <p class="text-xl font-bold text-green-600">
+                        <span id="score-css">0</span> / <span id="max-score-css">100</span>
+                    </p>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full progress-bar mb-3">
+                    <div id="progress-bar-css" class="progress-bar bg-green-500" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <p id="progress-text-css" class="text-sm text-gray-500">0.0% 進度</p>
+                    <div class="flex space-x-2">
+                        <button id="btn-minus-css" onclick="updateScore('css', -5)" class="control-btn bg-red-100 text-red-600 hover:bg-red-200" title="減少 5 分">
+                            -5
+                        </button>
+                        <button id="btn-plus-css" onclick="updateScore('css', 5)" class="control-btn bg-green-100 text-green-600 hover:bg-green-200" title="增加 5 分">
+                            +5
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- React 組件與狀態 -->
+            <div class="card bg-white p-5 rounded-xl">
+                <div class="flex justify-between items-center mb-2">
+                    <p class="text-lg font-semibold text-gray-800">React 組件與狀態</p>
+                    <p class="text-xl font-bold text-blue-600">
+                        <span id="score-react">0</span> / <span id="max-score-react">100</span>
+                    </p>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full progress-bar mb-3">
+                    <div id="progress-bar-react" class="progress-bar bg-blue-500" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <p id="progress-text-react" class="text-sm text-gray-500">0.0% 進度</p>
+                    <div class="flex space-x-2">
+                        <button id="btn-minus-react" onclick="updateScore('react', -5)" class="control-btn bg-red-100 text-red-600 hover:bg-red-200" title="減少 5 分">
+                            -5
+                        </button>
+                        <button id="btn-plus-react" onclick="updateScore('react', 5)" class="control-btn bg-green-100 text-green-600 hover:bg-green-200" title="增加 5 分">
+                            +5
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Firebase 數據庫 -->
+            <div class="card bg-white p-5 rounded-xl">
+                <div class="flex justify-between items-center mb-2">
+                    <p class="text-lg font-semibold text-gray-800">Firebase 數據庫</p>
+                    <p class="text-xl font-bold text-orange-600">
+                        <span id="score-firebase">0</span> / <span id="max-score-firebase">100</span>
+                    </p>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full progress-bar mb-3">
+                    <div id="progress-bar-firebase" class="progress-bar bg-orange-500" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <p id="progress-text-firebase" class="text-sm text-gray-500">0.0% 進度</p>
+                    <div class="flex space-x-2">
+                        <button id="btn-minus-firebase" onclick="updateScore('firebase', -5)" class="control-btn bg-red-100 text-red-600 hover:bg-red-200" title="減少 5 分">
+                            -5
+                        </button>
+                        <button id="btn-plus-firebase" onclick="updateScore('firebase', 5)" class="control-btn bg-green-100 text-green-600 hover:bg-green-200" title="增加 5 分">
+                            +5
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 獨立的重置按鈕 -->
+        <h2 class="text-2xl font-bold text-gray-700 mt-8 mb-4">數據重置</h2>
+        <div class="flex justify-center">
+            <button id="reset-button" onclick="resetAllScores()" class="w-full sm:w-auto px-6 py-3 bg-red-600 text-white font-semibold rounded-lg shadow-lg hover:bg-red-700 transition duration-150 transform hover:scale-[1.05] active:scale-[0.98]">
+                重置所有分數為 0
+            </button>
+        </div>
+    </div>
+</body>
+</html>

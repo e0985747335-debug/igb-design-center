@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 總指揮中心</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* 設置 Inter 字體 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7fa;
+        }
+
+        /* IGB Logo 色系定義 */
+        :root {
+            --logo-blue: #00A3FF; /* 亮藍色 (主色) */
+            --logo-red: #E5001A;  /* 鮮紅色 (強調色) */
+            --logo-blue-light: #E0F2FF; /* 淺藍色背景 */
+        }
+        .bg-logo-blue { background-color: var(--logo-blue); }
+        .text-logo-blue { color: var(--logo-blue); }
+        .bg-logo-red { background-color: var(--logo-red); }
+        .text-logo-red { color: var(--logo-red); }
+        .border-logo-blue { border-color: var(--logo-blue); }
+        .shadow-logo-blue { box-shadow: 0 10px 15px -3px rgba(0, 163, 255, 0.2), 0 4px 6px -4px rgba(0, 163, 255, 0.1); }
+
+        /* 卡片效果 */
+        .dashboard-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-radius: 12px;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="min-h-screen">
+        <!-- 導覽列 (Header) - 使用 Logo 主色藍 -->
+        <header class="bg-logo-blue text-white shadow-lg">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+                <div class="flex items-center">
+                    <span class="text-3xl font-bold tracking-tight mr-4">IGB</span>
+                    <h1 class="text-xl font-medium hidden sm:block">總指揮中心 (Command Center)</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="p-2 rounded-full hover:bg-logo-blue-light hover:text-logo-blue transition duration-150">
+                        <!-- Bell Icon SVG -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M18.665 17.5A8.773 8.773 0 0 0 12 4.075c-3.568 0-6.793 2.193-8.083 5.5.02.043.045.085.068.127l.006.014c.063.118.156.22.28.324l.004.004c.003.003.004.005.007.008a10.04 10.04 0 0 0 .542.45c.44.382 1.05.61 1.696.61H16.92c.646 0 1.256-.228 1.696-.61a10.04 10.04 0 0 0 .542-.45c.003-.003.004-.005.007-.008l.004-.004c.124-.104.217-.206.28-.324l.006-.014c.023-.042.048-.084.068-.127z"/><path d="M9 19h6"/><path d="M12 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
+                        <span class="absolute top-2 right-4 w-3 h-3 bg-logo-red rounded-full ring-2 ring-white"></span>
+                    </button>
+                    <div class="flex items-center space-x-2 border-l border-gray-300 pl-4">
+                        <span class="text-sm font-light hidden sm:block">系統管理員</span>
+                        <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-logo-blue font-bold">A</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-6 border-b-2 border-logo-blue pb-2">營運數據總覽</h2>
+
+            <!-- KPI Cards Section -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                
+                <!-- KPI 1: 總營收 (使用 Logo Blue) -->
+                <div class="dashboard-card p-6 bg-white shadow-md border-b-4 border-logo-blue">
+                    <p class="text-sm text-gray-500 font-medium">本月總營收</p>
+                    <div class="flex items-end justify-between mt-1">
+                        <span class="text-3xl font-bold text-gray-900">$3,250,000</span>
+                        <span class="text-sm text-green-500 font-semibold flex items-center">
+                            +12.5%
+                            <!-- Arrow Up -->
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">目標達成率 85%</p>
+                </div>
+
+                <!-- KPI 2: 毛利率 (使用 Logo Blue) -->
+                <div class="dashboard-card p-6 bg-white shadow-md border-b-4 border-logo-blue">
+                    <p class="text-sm text-gray-500 font-medium">平均毛利率</p>
+                    <div class="flex items-end justify-between mt-1">
+                        <span class="text-3xl font-bold text-gray-900">28.7%</span>
+                        <span class="text-sm text-logo-red font-semibold flex items-center">
+                            -1.2%
+                            <!-- Arrow Down -->
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">與上季相比</p>
+                </div>
+
+                <!-- KPI 3: 待處理訂單數 -->
+                <div class="dashboard-card p-6 bg-white shadow-md border-b-4 border-yellow-500">
+                    <p class="text-sm text-gray-500 font-medium">待處理訂單數</p>
+                    <div class="flex items-end justify-between mt-1">
+                        <span class="text-3xl font-bold text-gray-900">45</span>
+                        <span class="text-sm text-yellow-600 font-semibold">
+                            (高優先級: 5)
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">過去 24 小時新增 3 筆</p>
+                </div>
+
+                <!-- KPI 4: 關鍵庫存警報 (使用 Logo Red 強調風險) -->
+                <div class="dashboard-card p-6 bg-white shadow-md border-b-4 border-logo-red">
+                    <p class="text-sm text-gray-500 font-medium">關鍵庫存警報</p>
+                    <div class="flex items-end justify-between mt-1">
+                        <span class="text-3xl font-bold text-logo-red">8</span>
+                        <span class="text-sm text-gray-600 font-semibold">
+                            項產品
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">需立即補貨</p>
+                </div>
+            </div>
+            
+            <!-- 數據洞察與行動區塊 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- 區塊 1: 待辦與審批 (To-Do and Approvals) -->
+                <div class="lg:col-span-2 bg-white p-6 dashboard-card shadow-lg">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4 border-b pb-2">待辦事項與審批流程</h3>
+                    
+                    <ul class="divide-y divide-gray-100">
+                        <li class="flex justify-between items-center py-3">
+                            <div class="flex items-center">
+                                <span class="w-3 h-3 bg-logo-red rounded-full mr-3"></span>
+                                <div>
+                                    <p class="font-medium">採購單審批 <span class="text-xs text-logo-red">(緊急)</span></p>
+                                    <p class="text-xs text-gray-500">供應商：A公司 | 金額：$120,000</p>
+                                </div>
+                            </div>
+                            <button class="text-sm text-logo-blue hover:underline">審批</button>
+                        </li>
+                        <li class="flex justify-between items-center py-3">
+                            <div class="flex items-center">
+                                <span class="w-3 h-3 bg-yellow-400 rounded-full mr-3"></span>
+                                <div>
+                                    <p class="font-medium">請假單審核 (人事管理)</p>
+                                    <p class="text-xs text-gray-500">員工：王小明 | 日期：12/10 - 12/12</p>
+                                </div>
+                            </div>
+                            <button class="text-sm text-logo-blue hover:underline">查看</button>
+                        </li>
+                        <li class="flex justify-between items-center py-3">
+                            <div class="flex items-center">
+                                <span class="w-3 h-3 bg-green-500 rounded-full mr-3"></span>
+                                <div>
+                                    <p class="font-medium">新品項資料補齊 (商品管理)</p>
+                                    <p class="text-xs text-gray-500">品號：PROD-987 | 待上傳圖片</p>
+                                </div>
+                            </div>
+                            <button class="text-sm text-logo-blue hover:underline">編輯</button>
+                        </li>
+                    </ul>
+                    <a href="#" class="block mt-4 text-sm text-logo-blue font-medium hover:underline">查看所有待辦事項 →</a>
+                </div>
+
+                <!-- 區塊 2: 快捷入口 (Quick Links) -->
+                <div class="bg-white p-6 dashboard-card shadow-lg">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4 border-b pb-2">模組快捷入口</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        
+                        <!-- Quick Link 1: 財務會計 (使用 Logo Red border) -->
+                        <a href="#" class="group block p-3 bg-logo-blue-light border border-logo-blue rounded-lg hover:bg-logo-blue hover:text-white transition duration-200 text-center">
+                            <p class="text-2xl mb-1 group-hover:text-white text-logo-red">💰</p>
+                            <span class="text-sm font-medium text-gray-800 group-hover:text-white">財務會計</span>
+                        </a>
+
+                        <!-- Quick Link 2: 進銷存 (使用 Logo Blue border) -->
+                        <a href="#" class="group block p-3 bg-logo-blue-light border border-logo-blue rounded-lg hover:bg-logo-blue hover:text-white transition duration-200 text-center">
+                            <p class="text-2xl mb-1 group-hover:text-white text-logo-blue">📦</p>
+                            <span class="text-sm font-medium text-gray-800 group-hover:text-white">進銷存</span>
+                        </a>
+                        
+                        <!-- Quick Link 3: 廠商管理 -->
+                        <a href="#" class="group block p-3 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition duration-200 text-center">
+                            <p class="text-2xl mb-1">🤝</p>
+                            <span class="text-sm font-medium text-gray-800">廠商管理</span>
+                        </a>
+
+                        <!-- Quick Link 4: 人事管理 -->
+                        <a href="#" class="group block p-3 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition duration-200 text-center">
+                            <p class="text-2xl mb-1">👤</p>
+                            <span class="text-sm font-medium text-gray-800">人事管理</span>
+                        </a>
+
+                        <!-- Quick Link 5: 雲端整合 -->
+                        <a href="#" class="group block p-3 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition duration-200 text-center">
+                            <p class="text-2xl mb-1">☁️</p>
+                            <span class="text-sm font-medium text-gray-800">雲端整合</span>
+                        </a>
+
+                        <!-- Quick Link 6: 數據中心 -->
+                        <a href="#" class="group block p-3 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition duration-200 text-center">
+                            <p class="text-2xl mb-1">📊</p>
+                            <span class="text-sm font-medium text-gray-800">數據中心</span>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 數據中心圖表佔位符 -->
+            <div class="mt-8 bg-white p-6 dashboard-card shadow-lg">
+                <h3 class="text-xl font-bold text-gray-900 mb-4 border-b pb-2">年度銷售趨勢分析</h3>
+                <div class="h-64 flex items-center justify-center bg-gray-50 rounded-lg text-gray-400 italic">
+                    <!-- 模擬圖表區塊 -->
+                    [在此處嵌入即時圖表，例如 Recharts 或 D3.js 銷售圖]
+                </div>
+            </div>
+
+        </main>
+
+        <!-- 頁腳 (Footer) - 使用深灰色底色，公司名強調使用 Logo 紅色 -->
+        <footer class="bg-gray-900 text-white p-4 mt-12">
+            <div class="max-w-7xl mx-auto text-center text-xs">
+                &copy; 2025 <span class="text-logo-red font-semibold">IGB ERP Solution</span>. All rights reserved. | 總指揮中心數據更新頻率：每 5 分鐘
+            </div>
+        </footer>
+    </div>
+    
+</body>
+</html>

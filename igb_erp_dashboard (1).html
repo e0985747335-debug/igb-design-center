@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP 2.0 戰略指揮中心</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 Lucide Icons (用於專業圖標) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* 字體更改為 Roboto Mono，增加科技感 */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700;800&display=swap');
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background-color: #0F121F; /* 更深的午夜藍背景 */
+            color: #E2E8F0; 
+        }
+        
+        /* 調整卡片/面板的深色背景，使其與主背景有層次感 */
+        .bg-card {
+            background-color: #1A2135; /* 略淺於背景，更具浮空感 */
+        }
+
+        /* 調整邊框和分隔線的顏色 */
+        .border-divider {
+            border-color: #2D3748;
+        }
+
+        /* 進度條動畫效果 */
+        .progress-bar-fill {
+            transition: width 1s ease-out;
+        }
+
+        /* 自定義滾動條 (美化深色模式下的滾動體驗) */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1F2940;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4A5568;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096;
+        }
+        /* 表格樣式調整 */
+        .risk-table th, .risk-table td {
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        /* 關鍵字體加粗，使用 font-extrabold */
+        .kpi-value {
+            font-weight: 800; /* Extra bold for key numbers */
+        }
+        .text-neon-violet {
+            color: #A78BFA; /* 稍微提亮的紫羅蘭色 (Violet-400 -> Violet-400 效果) */
+        }
+        .border-neon-violet {
+            border-color: #A78BFA;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <div id="app" class="max-w-7xl mx-auto">
+        <header class="mb-8">
+            <!-- 標題使用新的文字顏色和紫羅蘭主色，並加強字體 -->
+            <h1 class="text-3xl md:text-4xl font-extrabold text-neon-violet tracking-tight">
+                ERP 2.0 戰略指揮中心 (Strategic Command Center)
+            </h1>
+            <p class="text-gray-400 mt-1">統一管理 ERP 專案進度、資料治理與技術細節。</p>
+        </header>
+
+        <!-- 標籤頁導航 -->
+        <nav class="border-b border-divider mb-6">
+            <div class="flex flex-wrap -mb-px text-sm font-medium text-center" id="tab-nav">
+                <button data-tab="dashboard" class="tab-button inline-flex items-center justify-center p-3 border-b-2 rounded-t-lg focus:outline-none transition-colors duration-200 border-neon-violet text-neon-violet hover:text-violet-300 hover:border-violet-300" onclick="switchTab('dashboard')">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5 mr-2"></i> 專案儀表板
+                </button>
+                <button data-tab="mdm" class="tab-button inline-flex items-center justify-center p-3 border-b-2 rounded-t-lg focus:outline-none transition-colors duration-200 border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500" onclick="switchTab('mdm')">
+                    <i data-lucide="layers-3" class="w-5 h-5 mr-2"></i> MDM 執行時間軸
+                </button>
+                <button data-tab="risk" class="tab-button inline-flex items-center justify-center p-3 border-b-2 rounded-t-lg focus:outline-none transition-colors duration-200 border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500" onclick="switchTab('risk')">
+                    <i data-lucide="flame" class="w-5 h-5 mr-2"></i> 風險與問題追蹤
+                </button>
+                <button data-tab="specs" class="tab-button inline-flex items-center justify-center p-3 border-b-2 rounded-t-lg focus:outline-none transition-colors duration-200 border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500" onclick="switchTab('specs')">
+                    <i data-lucide="plug-zap" class="w-5 h-5 mr-2"></i> 技術規格與架構
+                </button>
+            </div>
+        </nav>
+
+        <!-- 標籤內容容器 -->
+        <main id="tab-content">
+            <!-- 儀表板內容 -->
+            <div id="dashboard-content" class="tab-pane">
+                <!-- 關鍵指標 (KPIs) 概覽 -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" id="kpi-cards">
+                    <!-- KPI 卡片將由 JS 渲染 -->
+                </div>
+
+                <!-- 專案模組進度概覽 -->
+                <h2 class="text-2xl font-semibold mb-4 text-gray-200 border-b border-divider pb-2">專案模組進度</h2>
+                <div class="space-y-4" id="module-progress">
+                    <!-- 模組進度條將由 JS 渲染 -->
+                </div>
+
+                <!-- 專案狀態摘要 -->
+                <h2 class="text-2xl font-semibold mt-8 mb-4 text-gray-200 border-b border-divider pb-2">階段狀態摘要</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="status-summary">
+                    <!-- 狀態摘要卡片將由 JS 渲染 -->
+                </div>
+            </div>
+
+            <!-- MDM 執行時間軸內容 -->
+            <div id="mdm-content" class="tab-pane hidden">
+                <h2 class="text-2xl font-semibold mb-6 text-gray-200">MDM (主數據管理) 執行時間軸</h2>
+                <div class="relative pl-6 sm:pl-10 pb-8" id="mdm-timeline">
+                    <!-- 時間軸垂直線 -->
+                    <div class="absolute inset-y-0 left-0 sm:left-4 w-0.5 bg-divider"></div>
+                    <!-- 時間軸節點將由 JS 渲染 -->
+                </div>
+            </div>
+
+            <!-- 新增：風險與問題追蹤內容 -->
+            <div id="risk-content" class="tab-pane hidden">
+                <h2 class="text-2xl font-semibold mb-6 text-gray-200 flex items-center">
+                    <i data-lucide="flame" class="w-6 h-6 mr-2 text-red-400"></i>
+                    關鍵風險與問題追蹤 (R/I Log)
+                </h2>
+                <div class="overflow-x-auto bg-card rounded-xl shadow-lg">
+                    <table class="min-w-full divide-y divide-divider risk-table">
+                        <thead class="bg-divider sticky top-0">
+                            <tr>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/12">ID</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/12">類型</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/12">模組</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/12">優先級</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-2/12">問題/風險描述</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-2/12">緩解/解決方案</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/12">狀態</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/12">負責人</th>
+                                <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/12">日期</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-divider" id="risk-issues-table-body">
+                            <!-- 風險與問題行將由 JS 渲染 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+
+            <!-- 技術規格內容 -->
+            <div id="specs-content" class="tab-pane hidden">
+                <h2 class="text-2xl font-semibold mb-6 text-gray-200">ERP 2.0 核心技術規格與架構</h2>
+
+                <!-- 核心架構圖 (Placeholder) -->
+                <div class="bg-card p-6 rounded-xl shadow-lg mb-8">
+                    <h3 class="text-xl font-medium text-neon-violet mb-4 flex items-center">
+                        <i data-lucide="cpu" class="w-5 h-5 mr-2"></i> 核心系統架構概覽
+                    </h3>
+                    <div class="border border-dashed border-divider p-8 text-center text-gray-500 rounded-lg h-64 flex items-center justify-center">
+                        <p class="text-lg">
+                            架構圖佔位符：<br>
+                            微服務 (Microservices) | 資料湖 (Data Lake) | API Gateway | MDM Hub
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 技術規格表格 -->
+                <div class="overflow-x-auto bg-card rounded-xl shadow-lg">
+                    <table class="min-w-full divide-y divide-divider" id="tech-specs-table">
+                        <thead class="bg-divider">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/4">項目</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">規格或技術</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider w-1/4">負責人</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-divider">
+                            <!-- 規格行將由 JS 渲染 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 初始化 Lucide Icons
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            // 首次加載後渲染所有數據
+            renderDashboard();
+            renderMDMTimeline();
+            renderTechSpecs();
+            renderRiskIssues();
+        });
+
+        // =========================================================
+        // 數據模型 (Data Model)
+        // =========================================================
+
+        const dashboardData = {
+            kpis: [
+                // 總體專案進度：80%
+                { id: 'progress', icon: 'trending-up', title: '總體專案進度', value: '80%', color: 'text-green-400', indicator: '+8% MTD' },
+                // MDM 資料同步率：99.5%
+                { id: 'mdm-sync', icon: 'database', title: 'MDM 資料同步率', value: '99.5%', color: 'text-neon-violet', indicator: '目標 99.5%' },
+                // 介面整合完成度：92/100
+                { id: 'integration', icon: 'git-merge', title: '介面整合完成度', value: '92/100', color: 'text-yellow-400', indicator: '剩餘 8 個' },
+                { id: 'risk', icon: 'alert-triangle', title: '關鍵風險等級', value: '中 (2)', color: 'text-red-400', indicator: '待解決 5 項' },
+            ],
+            modules: [
+                { name: '財務會計 (FI/CO)', progress: 95, status: '完成測試', color: 'bg-green-500' },
+                { name: '物料管理 (MM)', progress: 90, status: '準備上線', color: 'bg-violet-500' },
+                // 銷售與分銷 (SD) 模組進度：75%
+                { name: '銷售與分銷 (SD)', progress: 75, status: '核心開發完成', color: 'bg-yellow-500' },
+                { name: '生產規劃 (PP)', progress: 40, status: '藍圖設計', color: 'bg-orange-500' },
+            ],
+            statusSummary: [
+                { stage: '藍圖設計 (Blueprint)', date: '2024/Q4', status: '已完成', description: '高階需求確認與流程定義。' },
+                { stage: '系統開發 (Development)', date: '2025/Q1-Q3', status: '進行中 (75%)', description: '客製化程式與介面開發。' },
+                { stage: '單元測試 (Unit Test)', date: '2025/Q3', status: '已完成', description: '確保單個模組功能正確。' },
+                // 整合測試 (Integration Test) 階段狀態：85%
+                { stage: '整合測試 (Integration Test)', date: '2025/Q4', status: '進行中 (85%)', description: '跨模組流程測試與驗證。' },
+                { stage: '使用者驗收 (UAT)', date: '2026/Q1', status: '待開始', description: '關鍵用戶端到端業務驗收。' },
+                { stage: '上線切換 (Go-Live)', date: '2026/Q2', status: '規劃中', description: '資料轉換與正式系統啟用。' },
+            ]
+        };
+
+        const mdmTimelineData = [
+            { date: '2025-01-15', title: 'MDM 專案啟動', description: '確立 MDM 範圍、工具選型（SAP MDG/Informatica）與團隊組成。', type: 'start' },
+            { date: '2025-03-01', title: '關鍵數據標準化', description: '完成物料、客戶、供應商三大主數據的清洗與標準化定義。', type: 'milestone' },
+            { date: '2025-06-20', title: 'MDM 系統建置完成', description: 'MDM Hub 系統環境搭建、數據模型配置與初步權限設置。', type: 'progress' },
+            { date: '2025-08-10', title: '資料治理流程導入', description: '建立數據創建、修改、審批的端到端治理流程。', type: 'progress' },
+            { date: '2025-10-25', title: '生產環境同步測試', description: '與舊系統進行全量數據同步測試 (Dry Run 1)。', type: 'current' },
+            { date: '2026-01-30', title: 'UAT 階段 MDM 數據準備', description: '準備 UAT 所需的真實、乾淨的主數據集。', type: 'upcoming' },
+            { date: '2026-04-01', title: 'MDM 正式上線', description: '切換 MDM 系統作為唯一的主數據源。', type: 'go-live' },
+        ];
+
+        const techSpecs = [
+            { item: '核心 ERP 平台', spec: 'SAP S/4HANA (Cloud Private Edition)', owner: '林經理 (PM)' },
+            { item: '開發語言/框架', spec: 'ABAP for HANA, Fiori/UI5', owner: '王工程師 (Dev Lead)' },
+            { item: '數據庫系統', spec: 'SAP HANA 2.0', owner: '張架構師 (Architect)' },
+            { item: '整合中介層 (Middleware)', spec: 'SAP CPI (Cloud Platform Integration)', owner: '李介面專家 (Integration)' },
+            { item: '主數據工具', spec: 'SAP MDG (Master Data Governance)', owner: '趙數據主管 (Data Mgmt)' },
+            { item: '資料湖/分析', spec: 'GCP BigQuery / Looker', owner: '陳分析師 (BI)' },
+            { item: '前端應用 (非Fiori)', spec: 'React/TypeScript', owner: '黃前端工程師 (Frontend)' },
+        ];
+
+        // 風險與問題數據
+        const riskIssuesData = [
+            { id: 1, type: '風險', module: 'SD (銷售)', priority: '高', status: '開啟', owner: '李顧問', description: '客戶訂單流程客製化需求超出現有架構承載能力。', mitigation: '啟動方案 B 討論，評估 CPI 介面彈性。', date: '2025-09-01' },
+            { id: 2, type: '問題', module: 'MM (物料)', priority: '中', status: '解決中', owner: '王工程師', description: '物料主檔批次更新工具 (LSMW) 執行失敗，影響資料轉換。', mitigation: '手動修正批次數據並重跑工具，分析失敗日誌。', date: '2025-10-15' },
+            { id: 3, type: '風險', module: 'FI/CO (財務)', priority: '中', status: '開啟', owner: '趙數據主管', description: '舊系統財務歷史數據格式不一致，可能延遲資料遷徙。', mitigation: '與財務團隊確認最小必要遷移數據範圍，調整清洗腳本。', date: '2025-10-20' },
+            { id: 4, type: '問題', module: '技術介面', priority: '高', status: '解決中', owner: '張架構師', description: 'CPI 測試環境與生產環境連線配置差異導致延遲。', mitigation: '介面團隊週末加班完成配置對齊，準備重新部署。', date: '2025-10-22' },
+            { id: 5, type: '風險', module: 'PP (生產)', priority: '低', status: '已關閉', owner: '林經理', description: '生產排程系統與 ERP 介面資料頻率不匹配。', mitigation: '已確認資料頻率調整至每日批次，風險解除。', date: '2025-08-01' },
+        ];
+
+
+        // =========================================================
+        // 渲染功能 (Rendering Functions)
+        // =========================================================
+
+        function getStatusClass(status) {
+            if (status.includes('已完成')) return 'bg-green-600';
+            if (status.includes('準備上線')) return 'bg-violet-600'; 
+            if (status.includes('進行中')) return 'bg-violet-600';
+            if (status.includes('待開始') || status.includes('規劃中')) return 'bg-gray-600';
+            return 'bg-gray-600';
+        }
+
+        function getStatusIcon(status) {
+            if (status.includes('已完成')) return 'check-circle';
+            if (status.includes('準備上線')) return 'zap'; 
+            if (status.includes('進行中')) return 'loader-2';
+            if (status.includes('待開始') || status.includes('規劃中')) return 'clock';
+            return 'clock';
+        }
+
+        /** 渲染 KPI 卡片顏色與樣式 */
+        function getRiskIssueBadge(text, type) {
+            let color = 'bg-gray-500';
+            if (type === 'priority') {
+                if (text === '高') color = 'bg-red-600';
+                else if (text === '中') color = 'bg-orange-500';
+                else if (text === '低') color = 'bg-green-500';
+            } else if (type === 'type') {
+                color = text === '風險' ? 'bg-yellow-600' : 'bg-blue-600';
+            } else if (type === 'status') {
+                if (text === '開啟') color = 'bg-red-700';
+                else if (text === '解決中') color = 'bg-violet-700';
+                else if (text === '已關閉') color = 'bg-green-700';
+            }
+            return `<span class="inline-block text-xs font-semibold px-2 py-0.5 rounded ${color} text-white">${text}</span>`;
+        }
+
+
+        /** 渲染儀表板的 KPI 卡片 */
+        function renderKPIs() {
+            const container = document.getElementById('kpi-cards');
+            container.innerHTML = dashboardData.kpis.map(kpi => `
+                <!-- 調整陰影和邊框顏色 -->
+                <div class="bg-card p-6 rounded-xl shadow-2xl border-l-4 border-neon-violet hover:shadow-violet-600/50 transition duration-300 transform hover:scale-[1.02]">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-400">${kpi.title}</span>
+                        <i data-lucide="${kpi.icon}" class="w-6 h-6 ${kpi.color}"></i>
+                    </div>
+                    <!-- 強化數值字體 -->
+                    <p class="text-3xl kpi-value mt-2 text-white">${kpi.value}</p>
+                    <div class="text-xs mt-3">
+                        <span class="font-semibold ${kpi.color}">${kpi.indicator}</span>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        /** 渲染模組進度條 */
+        function renderModuleProgress() {
+            const container = document.getElementById('module-progress');
+            container.innerHTML = dashboardData.modules.map(module => `
+                <div class="bg-card p-4 rounded-lg shadow-lg">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-sm font-semibold text-gray-300">${module.name}</span>
+                        <span class="text-sm font-bold text-white">${module.progress}% (${module.status})</span>
+                    </div>
+                    <div class="w-full bg-divider rounded-full h-2.5">
+                        <div class="progress-bar-fill h-2.5 rounded-full ${module.color}" style="width: ${module.progress}%"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        /** 渲染階段狀態摘要 */
+        function renderStatusSummary() {
+            const container = document.getElementById('status-summary');
+            container.innerHTML = dashboardData.statusSummary.map(item => `
+                <div class="bg-card p-6 rounded-xl shadow-lg flex flex-col h-full ${item.status.includes('已完成') ? 'opacity-90' : ''}">
+                    <div class="flex items-center mb-3">
+                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full ${getStatusClass(item.status)} mr-3">
+                            <i data-lucide="${getStatusIcon(item.status)}" class="w-4 h-4 text-white"></i>
+                        </span>
+                        <h3 class="text-lg font-extrabold text-white">${item.stage}</h3>
+                    </div>
+                    <p class="text-sm font-medium text-gray-400 mb-2">${item.date}</p>
+                    <p class="text-gray-300 flex-grow">${item.description}</p>
+                    <span class="mt-4 inline-block text-xs font-semibold px-3 py-1 rounded-full ${getStatusClass(item.status)} text-white">
+                        ${item.status}
+                    </span>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        /** 渲染完整的儀表板內容 */
+        function renderDashboard() {
+            renderKPIs();
+            renderModuleProgress();
+            renderStatusSummary();
+        }
+
+        /** 渲染 MDM 時間軸 */
+        function renderMDMTimeline() {
+            const container = document.getElementById('mdm-timeline');
+
+            const getCircleClass = (type) => {
+                switch (type) {
+                    case 'start': return 'bg-violet-500 ring-4 ring-violet-900';
+                    case 'milestone': return 'bg-yellow-500 ring-4 ring-yellow-900';
+                    case 'progress': return 'bg-gray-500 ring-4 ring-gray-900';
+                    case 'current': return 'bg-green-500 ring-4 ring-green-900 animate-pulse';
+                    case 'upcoming': return 'bg-gray-600 ring-4 ring-gray-800';
+                    case 'go-live': return 'bg-red-500 ring-4 ring-red-900';
+                    default: return 'bg-gray-500 ring-4 ring-gray-900';
+                }
+            };
+
+            container.innerHTML += mdmTimelineData.map(item => `
+                <div class="relative mb-8">
+                    <!-- 時間軸圓點 -->
+                    <div class="absolute -left-1.5 sm:left-2.5 top-0 flex items-center justify-center h-8 w-8 rounded-full ${getCircleClass(item.type)} z-10">
+                        <i data-lucide="${item.type === 'current' ? 'zap' : (item.type === 'milestone' ? 'flag' : 'calendar')}" class="w-4 h-4 text-white"></i>
+                    </div>
+
+                    <!-- 內容卡片 -->
+                    <div class="ml-8 sm:ml-16 bg-card p-4 rounded-lg shadow-xl border-t-2 ${item.type === 'current' ? 'border-neon-violet' : 'border-divider'}">
+                        <time class="block mb-1 text-xs font-semibold text-gray-400 uppercase">${item.date}</time>
+                        <h3 class="text-lg font-extrabold text-white mb-1">${item.title}</h3>
+                        <p class="text-sm text-gray-300">${item.description}</p>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        /** 渲染風險與問題表格 */
+        function renderRiskIssues() {
+            const tbody = document.getElementById('risk-issues-table-body');
+            tbody.innerHTML = riskIssuesData.map((item, index) => `
+                <tr class="${index % 2 === 0 ? 'bg-card' : 'bg-gray-900'} hover:bg-gray-700 transition duration-150">
+                    <td class="px-3 py-4 text-sm font-mono text-gray-400">${item.id}</td>
+                    <td class="px-3 py-4 text-sm">${getRiskIssueBadge(item.type, 'type')}</td>
+                    <td class="px-3 py-4 text-sm text-neon-violet">${item.module}</td>
+                    <td class="px-3 py-4 text-sm">${getRiskIssueBadge(item.priority, 'priority')}</td>
+                    <td class="px-3 py-4 text-sm text-gray-300 max-w-xs">${item.description}</td>
+                    <td class="px-3 py-4 text-sm text-gray-400 max-w-xs">${item.mitigation}</td>
+                    <td class="px-3 py-4 text-sm">${getRiskIssueBadge(item.status, 'status')}</td>
+                    <td class="px-3 py-4 text-sm text-white">${item.owner}</td>
+                    <td class="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">${item.date}</td>
+                </tr>
+            `).join('');
+        }
+
+        /** 渲染技術規格表格 */
+        function renderTechSpecs() {
+            const tbody = document.getElementById('tech-specs-table').querySelector('tbody');
+            tbody.innerHTML = techSpecs.map((spec, index) => `
+                <tr class="${index % 2 === 0 ? 'bg-card' : 'bg-gray-900'} hover:bg-gray-700 transition duration-150">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-white">${spec.item}</td>
+                    <td class="px-6 py-4 whitespace-normal text-sm text-gray-300">${spec.spec}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">${spec.owner}</td>
+                </tr>
+            `).join('');
+        }
+
+        // =========================================================
+        // 互動功能 (Interaction Functions)
+        // =========================================================
+
+        let currentTab = 'dashboard';
+
+        /** 切換標籤頁 */
+        function switchTab(tabId) {
+            currentTab = tabId;
+
+            // 隱藏所有內容面板
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.add('hidden');
+            });
+
+            // 移除所有按鈕的激活樣式，並添加非激活樣式
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('border-neon-violet', 'text-neon-violet', 'hover:border-violet-300', 'hover:text-violet-300');
+                button.classList.add('border-transparent', 'text-gray-400', 'hover:text-gray-200', 'hover:border-gray-500');
+            });
+
+            // 顯示當前選中的內容面板
+            const activePane = document.getElementById(`${tabId}-content`);
+            if (activePane) {
+                activePane.classList.remove('hidden');
+            }
+
+            // 設置當前選中按鈕的激活樣式
+            const activeButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
+            if (activeButton) {
+                activeButton.classList.remove('border-transparent', 'text-gray-400', 'hover:text-gray-200', 'hover:border-gray-500');
+                activeButton.classList.add('border-neon-violet', 'text-neon-violet', 'hover:text-violet-300', 'hover:border-violet-300');
+            }
+
+            // 確保圖標在切換後重新渲染
+            lucide.createIcons();
+        }
+
+        // 頁面加載完成後，默認選擇儀表板
+        window.onload = () => {
+            switchTab(currentTab);
+        };
+
+    </script>
+</body>
+</html>

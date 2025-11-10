@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>待辦清單</title>
+    <!-- 載入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 設定字體為 Inter */
+        html { font-family: 'Inter', sans-serif; }
+        /* 自定義滾動條樣式，讓列表看起來更美觀 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1; /* slate-300 */
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background-color: #f1f5f9; /* slate-100 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-start justify-center p-4 sm:p-8">
+
+    <div id="app-container" class="w-full max-w-xl bg-white shadow-2xl rounded-3xl p-6 md:p-8 transition-all duration-300">
+        <h1 class="text-3xl font-extrabold text-sky-700 mb-2 text-center">
+            💾 本地任務追蹤清單
+        </h1>
+        <p class="text-xs text-center text-red-500 mb-6">
+            ✅ 無需網路連線。資料僅儲存在您的瀏覽器中。
+        </p>
+
+        <!-- 任務輸入區塊 -->
+        <div class="flex space-x-3 mb-8">
+            <input type="text" id="new-task-input"
+                   class="flex-grow p-3 border-2 border-gray-300 rounded-xl focus:border-sky-500 focus:ring-sky-500 transition duration-200"
+                   placeholder="新增待辦事項...">
+            <button id="add-task-button"
+                    class="flex-shrink-0 bg-sky-600 text-white p-3 rounded-xl font-semibold hover:bg-sky-700 transition duration-200 shadow-md">
+                新增
+            </button>
+        </div>
+
+        <!-- 任務列表 -->
+        <div id="todos-list-container" class="max-h-[60vh] overflow-y-auto custom-scrollbar">
+            <ul id="todos-list" class="space-y-3">
+                <!-- 任務將由 JavaScript 填充 -->
+            </ul>
+            <!-- 載入與無任務提示 -->
+            <p id="empty-list-message" class="text-center text-gray-500 mt-4 hidden p-8 bg-gray-50 rounded-xl">
+                太棒了！目前沒有待辦事項。
+            </p>
+        </div>
+
+        <!-- 自定義確認彈窗 (取代 alert/confirm) -->
+        <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all">
+                <h3 class="text-xl font-bold text-gray-900 mb-4" id="modal-title">訊息</h3>
+                <p class="text-gray-700 mb-6" id="modal-message">訊息內容。</p>
+                <div class="flex justify-end space-x-3">
+                    <button id="modal-cancel" class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition hidden">取消</button>
+                    <button id="modal-confirm" class="px-4 py-2 text-white bg-sky-600 rounded-lg hover:bg-sky-700 transition">確定</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        // --- 設定與本地儲存核心 ---
+        const STORAGE_KEY = 'local_todo_list_tasks_v1';
+
+        /**
+         * 從 Local Storage 讀取任務列表
+         * @returns {Array<Object>} 任務陣列
+         */
+        function getTasks() {
+            try {
+                const json = localStorage.getItem(STORAGE_KEY);
+                // 嘗試解析，如果解析失敗則返回空陣列
+                return json ? JSON.parse(json) : [];
+            } catch (e) {
+                console.error("讀取本地儲存失敗:", e);
+                return [];
+            }
+        }
+
+        /**
+         * 將任務列表寫入 Local Storage
+         * @param {Array<Object>} tasks 任務陣列
+         */
+        function saveTasks(tasks) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+                // 每次儲存後自動重新渲染，確保介面同步
+                renderAndCheckEmpty(tasks);
+            } catch (e) {
+                console.error("寫入本地儲存失敗:", e);
+                alertUser('儲存任務失敗', '瀏覽器可能已滿或禁止儲存。', '確定');
+            }
+        }
+
+        // --- DOM 元素快取 ---
+        const elements = {
+            list: document.getElementById('todos-list'),
+            input: document.getElementById('new-task-input'),
+            addButton: document.getElementById('add-task-button'),
+            emptyMessage: document.getElementById('empty-list-message'),
+            modal: document.getElementById('delete-modal'),
+            modalConfirm: document.getElementById('modal-confirm'),
+            modalCancel: document.getElementById('modal-cancel'),
+            modalMessage: document.getElementById('modal-message'),
+            modalTitle: document.getElementById('modal-title'),
+        };
+
+        // --- 核心操作函式 ---
+
+        /**
+         * 處理新增任務的邏輯
+         */
+        function addTask() {
+            const text = elements.input.value.trim();
+            if (text === "") return;
+
+            const tasks = getTasks();
+
+            // 產生一個簡單的唯一 ID (使用時間戳 + 隨機數)
+            const newId = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+
+            const newTask = {
+                id: newId,
+                text: text,
+                completed: false,
+                createdAt: Date.now(), // 用於排序
+            };
+
+            tasks.push(newTask);
+            saveTasks(tasks);
+
+            elements.input.value = ''; // 清空輸入框
+        }
+
+        /**
+         * 切換任務的完成狀態
+         * @param {string} id 任務 ID
+         */
+        function toggleTask(id) {
+            const tasks = getTasks();
+            const taskIndex = tasks.findIndex(t => t.id === id);
+
+            if (taskIndex > -1) {
+                // 創建新的物件以確保響應性（雖然在這裡不是 React，但這是良好的實踐）
+                tasks[taskIndex] = { ...tasks[taskIndex], completed: !tasks[taskIndex].completed };
+                saveTasks(tasks);
+            }
+        }
+
+        /**
+         * 刪除任務 (實際執行刪除操作)
+         * @param {string} id 任務 ID
+         */
+        function deleteTask(id) {
+            const tasks = getTasks();
+            const updatedTasks = tasks.filter(t => t.id !== id);
+            saveTasks(updatedTasks);
+        }
+
+        /**
+         * 處理刪除前的確認彈窗
+         * @param {string} id 任務 ID
+         */
+        function deleteTaskWithConfirmation(id) {
+            // 設置模態框為確認刪除模式
+            elements.modalTitle.textContent = '確認刪除';
+            elements.modalMessage.textContent = '您確定要刪除此任務嗎？此操作無法復原。';
+            elements.modalConfirm.textContent = '刪除';
+            elements.modalConfirm.classList.remove('bg-sky-600');
+            elements.modalConfirm.classList.add('bg-red-600');
+            elements.modalCancel.classList.remove('hidden');
+
+            // 顯示自定義彈窗
+            elements.modal.classList.remove('hidden');
+            elements.modal.classList.add('flex');
+
+            // 設置確認事件監聽器 (一次性)
+            const confirmHandler = () => {
+                elements.modal.classList.add('hidden');
+                elements.modal.classList.remove('flex');
+                deleteTask(id); // 執行刪除
+
+                // 移除監聽器並還原樣式
+                cleanupModalListeners(confirmHandler, cancelHandler);
+            };
+
+            const cancelHandler = () => {
+                elements.modal.classList.add('hidden');
+                elements.modal.classList.remove('flex');
+                cleanupModalListeners(confirmHandler, cancelHandler);
+            };
+
+            // 附加一次性監聽器
+            elements.modalConfirm.addEventListener('click', confirmHandler, { once: true });
+            elements.modalCancel.addEventListener('click', cancelHandler, { once: true });
+        }
+
+        /**
+         * 清理模態框事件監聽器並重置按鈕樣式
+         */
+        function cleanupModalListeners(confirmHandler, cancelHandler) {
+            elements.modalConfirm.removeEventListener('click', confirmHandler);
+            elements.modalCancel.removeEventListener('click', cancelHandler);
+
+            // 重置為預設（警報）狀態
+            elements.modalTitle.textContent = '訊息';
+            elements.modalConfirm.textContent = '確定';
+            elements.modalConfirm.classList.remove('bg-red-600');
+            elements.modalConfirm.classList.add('bg-sky-600');
+            elements.modalCancel.classList.add('hidden');
+        }
+
+        /**
+         * 用於取代瀏覽器原生 alert 的自定義彈窗
+         * @param {string} title 標題
+         * @param {string} message 顯示的訊息
+         * @param {string} confirmText 確認按鈕文字
+         */
+        function alertUser(title, message, confirmText) {
+            elements.modalTitle.textContent = title;
+            elements.modalMessage.textContent = message;
+            elements.modalConfirm.textContent = confirmText;
+            elements.modalCancel.classList.add('hidden');
+
+            elements.modal.classList.remove('hidden');
+            elements.modal.classList.add('flex');
+
+            const dismissHandler = () => {
+                elements.modal.classList.add('hidden');
+                elements.modal.classList.remove('flex');
+                elements.modalConfirm.removeEventListener('click', dismissHandler);
+                // 恢復彈窗預設狀態
+                cleanupModalListeners(dismissHandler, () => {});
+            };
+
+            elements.modalConfirm.addEventListener('click', dismissHandler, { once: true });
+        }
+
+
+        // --- 渲染與初始化 ---
+
+        /**
+         * 渲染任務列表並檢查是否為空
+         * @param {Array<Object>} tasks 任務陣列
+         */
+        function renderAndCheckEmpty(tasks) {
+            // 1. 在內存中排序 (使用 createdAt 實現新增的任務在最下方)
+            tasks.sort((a, b) => a.createdAt - b.createdAt);
+
+            // 2. 渲染列表
+            elements.list.innerHTML = '';
+
+            if (tasks.length === 0) {
+                elements.emptyMessage.classList.remove('hidden');
+                return;
+            } else {
+                elements.emptyMessage.classList.add('hidden');
+            }
+
+            tasks.forEach(todo => {
+                const listItem = document.createElement('li');
+                // 確保從 localStorage 讀取的 completed 是布林值
+                const isCompleted = !!todo.completed;
+
+                listItem.className = `flex items-center p-4 rounded-xl shadow-sm transition duration-300 transform hover:scale-[1.01] ${isCompleted ? 'bg-green-50 border-l-4 border-green-400' : 'bg-white border-l-4 border-sky-400'}`;
+                listItem.dataset.id = todo.id;
+
+                // 任務內容
+                const textClass = isCompleted ? 'line-through text-gray-500 italic' : 'text-gray-800 font-medium';
+                const todoText = `<span class="flex-grow text-base ${textClass}">${todo.text}</span>`;
+
+                // 動作按鈕容器
+                const actions = `
+                    <div class="flex items-center space-x-3 ml-4">
+                        <!-- 完成/未完成按鈕 -->
+                        <button data-action="toggle" data-completed="${isCompleted}" class="p-2 rounded-full transition duration-150 ${isCompleted ? 'text-green-600 hover:bg-green-100' : 'text-gray-400 hover:text-sky-600 hover:bg-sky-100'}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </button>
+                        <!-- 刪除按鈕 -->
+                        <button data-action="delete" class="p-2 text-red-400 rounded-full hover:bg-red-100 hover:text-red-600 transition duration-150">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                                <path d="M3 6h18"></path>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+
+                listItem.innerHTML = todoText + actions;
+                elements.list.appendChild(listItem);
+            });
+        }
+
+        /**
+         * 應用程式初始化
+         */
+        function initializeApp() {
+            // 從本地儲存載入並渲染初始列表
+            const initialTasks = getTasks();
+            renderAndCheckEmpty(initialTasks);
+
+            // --- 事件監聽器 ---
+
+            // 1. 新增任務按鈕點擊
+            elements.addButton.addEventListener('click', addTask);
+
+            // 2. 輸入框按 Enter 鍵
+            elements.input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    addTask();
+                }
+            });
+
+            // 3. 列表動作 (Toggle/Delete) - 使用事件委派
+            elements.list.addEventListener('click', (e) => {
+                const listItem = e.target.closest('li');
+                if (!listItem) return;
+
+                const taskId = listItem.dataset.id;
+                const actionButton = e.target.closest('button');
+
+                if (actionButton) {
+                    const action = actionButton.dataset.action;
+
+                    if (action === 'toggle') {
+                        toggleTask(taskId);
+                    } else if (action === 'delete') {
+                        deleteTaskWithConfirmation(taskId);
+                    }
+                }
+            });
+        }
+
+        // 啟動應用程式
+        initializeApp();
+
+    </script>
+</body>
+</html>

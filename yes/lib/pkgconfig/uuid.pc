@@ -1,0 +1,11 @@
+prefix=/home/iven/igb-design-center/yes
+exec_prefix=/home/iven/igb-design-center/yes
+libdir=/home/iven/igb-design-center/yes/lib
+includedir=/home/iven/igb-design-center/yes/include
+
+Name: uuid
+Description: Universally unique id library
+Version: 2.32.1
+Requires:
+Cflags: -I${includedir}/uuid
+Libs: -L${libdir} -luuid

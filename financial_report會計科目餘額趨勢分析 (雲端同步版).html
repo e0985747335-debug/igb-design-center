@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>科目餘額趨勢分析 (雲端同步)</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Chart.js for charting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <!-- 引入 Inter 字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* 自定義樣式 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* 深色背景 */
+            color: #e5e7eb; /* 淺灰文本 */
+            padding: 20px;
+        }
+
+        /* 容器樣式 */
+        .report-container {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: #161b22; /* 卡片背景 */
+            border: 1px solid #30363d;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Chart.js 的容器，確保響應式 */
+        .chart-wrapper {
+            position: relative;
+            height: 400px; /* 固定高度以保持圖表視覺穩定性 */
+            width: 100%;
+        }
+
+        /* 表格樣式 */
+        .data-table th, .data-table td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #2d333b;
+        }
+
+        .data-table th:first-child, .data-table td:first-child {
+            text-align: left;
+        }
+
+        .data-table th {
+            background-color: #1f252c;
+            color: #9ca3af;
+        }
+
+        /* 表單控制項樣式 - 調整背景色以增加對比 */
+        .input-control {
+            background-color: #1f252c; /* 略微提亮背景色，與周圍區域做區隔 */
+            border: 1px solid #30363d;
+            color: #e5e7eb;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        /* 增加 Hover 效果 */
+        .input-control:hover {
+            border-color: #4b5563;
+        }
+        /* 增加 Focus 效果 */
+        .input-control:focus {
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* 醒目的藍色光暈 */
+        }
+
+        /* 自定義 Select 下拉箭頭 */
+        select.input-control {
+            appearance: none; /* 移除瀏覽器預設樣式 */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            /* 使用白色的 SVG 箭頭 (fill='%23ffffff')，確保在深色背景上可見 */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23ffffff'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 10.99l3.71-3.76a.75.75 0 111.08 1.04l-4.25 4.38a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z' clip-rule='evenodd' /%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem; /* 為箭頭留出足夠的空間 */
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(22, 27, 34, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            color: #3b82f6;
+            border-radius: 0.5rem;
+            z-index: 10;
+        }
+
+        /* Spinner 樣式 */
+        .spinner {
+            border: 4px solid #3b82f6;
+            border-top: 4px solid #1f252c;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="report-container rounded-lg p-4 sm:p-8 relative">
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="flex flex-col items-center">
+                <div class="spinner mb-3"></div>
+                載入中... (正在同步雲端數據)
+            </div>
+        </div>
+
+        <header class="mb-8 border-b pb-4 border-gray-700">
+            <h1 class="text-3xl font-bold text-blue-400">會計科目餘額趨勢分析 (雲端同步版)</h1>
+            <p class="text-sm text-gray-500 mt-1">數據由 Firebase Firestore 雲端儲存庫提供，結構已為未來 API 串連備用</p>
+        </header>
+
+        <!-- 分析條件設定區塊 -->
+        <section class="mb-10 p-4 border border-gray-700 rounded-lg bg-[#0d1117]">
+            <h2 class="text-xl font-semibold mb-4 text-white">分析條件設定</h2>
+
+            <!-- 選項區塊 -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-end">
+
+                <!-- 會計科目 選擇 -->
+                <div class="flex flex-col md:col-span-1">
+                    <label for="account-select" class="text-sm font-medium mb-1 text-gray-400">會計科目選擇</label>
+                    <select id="account-select" class="input-control">
+                        <option value="" disabled selected>請選擇一個會計科目</option>
+
+                        <!-- I. 資產科目 (Asset) - 1XXX 開頭 -->
+                        <optgroup label="I. 資產科目 (Asset)">
+                            <option value="1101 - 現金">1101 - 現金</option>
+                            <option value="1210 - 應收帳款">1210 - 應收帳款</option>
+                            <option value="1503 - 存貨">1503 - 存貨</option>
+                        </optgroup>
+
+                        <!-- II. 負債科目 (Liability) - 2XXX 開頭 -->
+                        <optgroup label="II. 負債科目 (Liability)">
+                            <option value="2101 - 應付帳款">2101 - 應付帳款</option>
+                            <option value="2201 - 短期借款">2201 - 短期借款</option>
+                            <option value="2401 - 預收貨款">2401 - 預收貨款</option>
+                        </optgroup>
+
+                        <!-- III. 股東權益科目 (Equity) - 3XXX 開頭 -->
+                        <optgroup label="III. 股東權益科目 (Equity)">
+                            <option value="3101 - 普通股股本">3101 - 普通股股本</option>
+                        </optgroup>
+
+                        <!-- IV. 收入/收益科目 (Revenue/Income) - 4XXX 開頭 -->
+                        <optgroup label="IV. 收入/收益科目 (Revenue/Income)">
+                            <option value="4101 - 銷貨收入">4101 - 銷貨收入 (主要業務)</option>
+                            <option value="4201 - 勞務收入">4201 - 勞務收入 (服務類)</option>
+                            <option value="4301 - 利息收入">4301 - 利息收入 (非營業)</option>
+                        </optgroup>
+
+                        <!-- V. 成本/費用科目 (Cost/Expense) - 5XXX/6XXX/7XXX 開頭 (恢復支出科目) -->
+                        <optgroup label="V. 成本/費用科目 (Cost/Expense)">
+                            <option value="5101 - 銷貨成本">5101 - 銷貨成本</option>
+                            <option value="6101 - 薪資費用">6101 - 薪資費用 (營運)</option>
+                            <option value="6201 - 租金費用">6201 - 租金費用 (營運)</option>
+                            <option value="7101 - 利息費用">7101 - 利息費用 (營業外)</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- 起始月份 -->
+                <div class="flex flex-col">
+                    <label for="start-month" class="text-sm font-medium mb-1 text-gray-400">起始月份</label>
+                    <input type="month" id="start-month" value="2025-04" min="2025-01" max="2025-12" class="input-control">
+                </div>
+
+                <!-- 結束月份 -->
+                <div class="flex flex-col">
+                    <label for="end-month" class="text-sm font-medium mb-1 text-gray-400">結束月份</label>
+                    <input type="month" id="end-month" value="2025-09" min="2025-01" max="2025-12" class="input-control">
+                </div>
+            </div>
+
+            <!-- 執行按鈕獨立一行 -->
+            <div class="mt-4 flex justify-end md:col-span-3">
+                <button id="analyze-button" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-200">
+                    載入並分析數據
+                </button>
+            </div>
+        </section>
+
+        <!-- 數據摘要區塊 (新加入) -->
+        <section id="summary-section" class="mb-10 p-4 border border-gray-700 rounded-lg bg-[#0d1117] hidden">
+            <h2 class="text-xl font-semibold mb-4 text-white">分析摘要</h2>
+            <div id="summary-cards" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <!-- 摘要卡片將由 JavaScript 渲染 -->
+            </div>
+        </section>
+
+        <!-- 圖表區塊 -->
+        <section class="mb-10 p-4 border border-gray-700 rounded-lg bg-[#0d1117] relative">
+            <h2 id="chart-title" class="text-xl font-semibold mb-4 text-white">請選擇一個科目進行分析</h2>
+            <div class="chart-wrapper">
+                <canvas id="balanceChart"></canvas>
+            </div>
+        </section>
+
+        <!-- 明細表格區塊 -->
+        <section class="p-4 border border-gray-700 rounded-lg bg-[#0d1117]">
+            <h2 id="table-title" class="text-xl font-semibold mb-4 text-white">餘額變動明細</h2>
+            <div class="overflow-x-auto">
+                <table id="detail-table" class="data-table min-w-full text-sm text-gray-300 rounded-lg">
+                    <thead>
+                        <tr>
+                            <th>月份</th>
+                            <th>期末餘額 (單位:元)</th>
+                            <th>月變動額</th>
+                            <th>月變動率</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 表格內容將由 JavaScript 載入 -->
+                        <tr><td colspan="4" class="text-center py-8 text-gray-500">請選擇科目並點擊「載入並分析數據」</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, query, where, getDocs, setDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 全局變量用於儲存 Chart 實例, Firebase 實例和用戶ID
+        let balanceChartInstance = null;
+        let db, auth, userId;
+
+        // 從 Canvas 環境中獲取全局變量
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        /**
+         * 顯示或隱藏載入遮罩
+         * @param {boolean} isLoading
+         */
+        function setLoading(isLoading) {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.classList.toggle('hidden', !isLoading);
+            }
+        }
+
+        /**
+         * 初始化 Firebase 應用、認證和 Firestore
+         */
+        async function initializeFirebase() {
+            if (!Object.keys(firebaseConfig).length) {
+                console.error('Firebase configuration is missing.');
+                return;
+            }
+
+            // setLogLevel('Debug'); // 開啟 Firestore 偵錯日誌
+
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                userId = auth.currentUser.uid;
+                console.log("Firebase initialized. User ID:", userId);
+
+                // 確保預設數據存在（如果這是用戶第一次使用）
+                await seedInitialData();
+
+            } catch (error) {
+                console.error("Firebase Auth or Init error:", error);
+                // 即使初始化失敗，也給予一個匿名的 userId 以避免應用程式中斷
+                userId = 'anonymous_' + crypto.randomUUID();
+            }
+        }
+
+        // 定義完整的預設數據集，用於 Firestore 播種
+        const SEED_DATA = [
+            // Revenue (4101) - 銷貨收入
+            { accountId: '4101 - 銷貨收入', month: '2025-04', balance: 880000 },
+            { accountId: '4101 - 銷貨收入', month: '2025-05', balance: 950000 },
+            { accountId: '4101 - 銷貨收入', month: '2025-06', balance: 1100000 },
+            { accountId: '4101 - 銷貨收入', month: '2025-07', balance: 1050000 },
+            { accountId: '4101 - 銷貨收入', month: '2025-08', balance: 1200000 },
+            { accountId: '4101 - 銷貨收入', month: '2025-09', balance: 1400000 },
+
+            // Expense (5101) - 銷貨成本
+            { accountId: '5101 - 銷貨成本', month: '2025-04', balance: 150000 },
+            { accountId: '5101 - 銷貨成本', month: '2025-05', balance: 180000 },
+            { accountId: '5101 - 銷貨成本', month: '2025-06', balance: 165000 },
+            { accountId: '5101 - 銷貨成本', month: '2025-07', balance: 200000 },
+            { accountId: '5101 - 銷貨成本', month: '2025-08', balance: 190000 },
+            { accountId: '5101 - 銷貨成本', month: '2025-09', balance: 250000 },
+
+            // Asset (1101) - 現金
+            { accountId: '1101 - 現金', month: '2025-04', balance: 500000 },
+            { accountId: '1101 - 現金', month: '2025-05', balance: 550000 },
+            { accountId: '1101 - 現金', month: '2025-06', balance: 480000 },
+            { accountId: '1101 - 現金', month: '2025-07', balance: 600000 },
+            { accountId: '1101 - 現金', month: '2025-08', balance: 580000 },
+            { accountId: '1101 - 現金', month: '2025-09', balance: 650000 },
+
+            // Liability (2101) - 應付帳款
+            { accountId: '2101 - 應付帳款', month: '2025-04', balance: 200000 },
+            { accountId: '2101 - 應付帳款', month: '2025-05', balance: 250000 },
+            { accountId: '2101 - 應付帳款', month: '2025-06', balance: 220000 },
+            { accountId: '2101 - 應付帳款', month: '2025-07', balance: 300000 },
+            { accountId: '2101 - 應付帳款', month: '2025-08', balance: 280000 },
+            { accountId: '2101 - 應付帳款', month: '2025-09', balance: 320000 },
+        ];
+
+        /**
+         * 檢查 Firestore 是否有數據，如果沒有則寫入預設數據
+         */
+        async function seedInitialData() {
+            if (!db || !userId) return;
+
+            const collectionPath = `/artifacts/${appId}/users/${userId}/financial_entries`;
+
+            // 查詢是否有任何數據存在
+            const q = query(collection(db, collectionPath));
+            const snapshot = await getDocs(q);
+
+            if (snapshot.empty) {
+                console.log("No existing data found. Seeding initial data...");
+                for (const item of SEED_DATA) {
+                    // 使用 accountId-month 作為文檔ID
+                    const docId = `${item.accountId.split(' - ')[0]}-${item.month}`;
+                    try {
+                        await setDoc(doc(db, collectionPath, docId), item);
+                    } catch (e) {
+                        console.error("Error seeding document:", e);
+                    }
+                }
+                console.log("Seeding complete.");
+            } else {
+                console.log(`Found ${snapshot.size} existing records. Skipping seeding.`);
+            }
+        }
+
+
+        /**
+         * 根據科目代碼判斷科目類型
+         * @param {string} accountId - 科目代碼，例如 "4101 - 銷貨收入"
+         * @returns {'Asset'|'Liability'|'Equity'|'Revenue'|'Expense'}
+         */
+        function getAccountType(accountId) {
+            if (!accountId || accountId.length < 1) return null;
+            const prefix = accountId.charAt(0);
+            if (prefix === '1') return 'Asset';
+            if (prefix === '2') return 'Liability';
+            if (prefix === '3') return 'Equity';
+            if (prefix === '4') return 'Revenue';
+            // 5XXX (成本), 6XXX (營運費用), 7XXX (營業外費用) 均視為 Expense 類型
+            if (prefix === '5' || prefix === '6' || prefix === '7') return 'Expense';
+            return null;
+        }
+
+
+        /**
+         * 從 Firestore 獲取數據。此時只根據 accountId 獲取，避免索引錯誤。
+         * @param {string} accountId - 科目 ID
+         * @returns {Promise<Array>} 包含該科目所有月份的原始數據陣列
+         */
+        async function fetchFromFirestore(accountId) {
+            if (!db || !userId) {
+                console.error('Firestore not initialized or user not authenticated.');
+                return [];
+            }
+
+            const collectionPath = `/artifacts/${appId}/users/${userId}/financial_entries`;
+
+            // 簡化查詢：只使用 equality filter (accountId) 避免複合索引錯誤
+            const q = query(
+                collection(db, collectionPath),
+                where('accountId', '==', accountId)
+            );
+
+            try {
+                const snapshot = await getDocs(q);
+                const rawData = [];
+                snapshot.forEach(doc => {
+                    rawData.push(doc.data());
+                });
+
+                // 返回所有月份的數據，由 DataService 負責過濾和排序
+                return rawData;
+            } catch(e) {
+                console.error("Firestore 查詢失敗 (可能為連接或權限問題):", e);
+                throw new Error("Firestore 查詢失敗");
+            }
+        }
+
+        // --- 核心數據服務抽象層 (DataService) ---
+        const DataService = {
+            /**
+             * [未來串連備用] 抽象層方法：從外部 API 獲取數據
+             */
+            async fetchFromExternalAPI(accountId, startMonth, endMonth) {
+                console.warn("Using placeholder for External API. Data fetching remains on Firestore.");
+               return [];
+            },
+
+            /**
+             * 獲取數據的主方法。目前預設從 Firestore 獲取。
+             * 在客戶端進行月份範圍過濾和排序。
+             * @param {string} accountId
+             * @param {string} startMonth
+             * @param {string} endMonth
+             * @returns {Promise<Array>} 包含 balance, changeAmount, changeRate 的數據陣列
+             */
+            async fetchData(accountId, startMonth, endMonth) {
+                // 1. 獲取原始數據 (只根據 accountId 過濾)
+                const rawData = await fetchFromFirestore(accountId);
+
+                // 2. 客戶端過濾月份範圍
+                const filteredData = rawData.filter(item => {
+                    return item.month >= startMonth && item.month <= endMonth;
+                });
+
+                // 3. 客戶端排序 (確保數據按月份升序排列)
+                filteredData.sort((a, b) => a.month.localeCompare(b.month));
+
+                // 4. 數據處理以計算變動額和變動率 (核心趨勢分析邏輯)
+                const processedData = filteredData.map((current, index, arr) => {
+                    let changeAmount = 0;
+                    let changeRate = null;
+
+                    if (index > 0) {
+                        const previousBalance = arr[index - 1].balance;
+                        changeAmount = current.balance - previousBalance;
+                        // 計算變動率，避免除以零
+                        changeRate = previousBalance !== 0 ? changeAmount / previousBalance : (changeAmount !== 0 ? 1 : 0);
+                    }
+
+                    return {
+                        month: current.month,
+                        balance: current.balance,
+                        changeAmount: changeAmount,
+                        changeRate: changeRate
+                    };
+                });
+
+                return processedData;
+            }
+        };
+        // --- End of DataService ---
+
+
+        // 格式化數字為貨幣格式 (帶逗號)
+        function formatCurrency(number, unit = '') {
+            if (number === null || number === undefined) return '-';
+            const sign = number < 0 ? '-' : '';
+            const absoluteNumber = Math.abs(number);
+            // 這裡使用 toLocaleString 處理千位分隔符
+            return sign + absoluteNumber.toLocaleString('en-US') + unit;
+        }
+
+        // 格式化百分比
+        function formatPercentage(rate) {
+            if (rate === null || rate === undefined) return '-';
+            return (rate * 100).toFixed(2) + '%';
+        }
+
+        /**
+         * 渲染數據摘要卡片 (新功能)
+         */
+        function renderSummaryCard(reportData, balanceColumnTitle) {
+            const summarySection = document.getElementById('summary-section');
+            const summaryCards = document.getElementById('summary-cards');
+            summaryCards.innerHTML = '';
+
+            if (reportData.length === 0) {
+                summarySection.classList.add('hidden');
+                return;
+            }
+
+            summarySection.classList.remove('hidden');
+
+            const initialBalance = reportData[0].balance;
+            const finalBalance = reportData[reportData.length - 1].balance;
+            const totalChange = finalBalance - initialBalance;
+
+            // 找出最大月成長率 (從第二個月開始計算變動率)
+            const changeRates = reportData.slice(1).map(item => item.changeRate).filter(rate => rate !== null && rate !== undefined);
+            const maxRate = changeRates.length > 0 ? Math.max(...changeRates) : 0;
+
+            // 找出最小月成長率 (最大衰退率)
+            const minRate = changeRates.length > 0 ? Math.min(...changeRates) : 0;
+
+            // 為了簡潔性，我們只展示總變動額和最大成長率
+            const cardsData = [
+                {
+                    title: `起始${balanceColumnTitle.slice(2)}`, // e.g. "期末餘額" -> "餘額"
+                    value: formatCurrency(initialBalance, ' NTD'),
+                    color: 'text-blue-300',
+                },
+                {
+                    title: `總變動額 (${reportData.length}個月)`,
+                    value: formatCurrency(totalChange, ' NTD'),
+                    color: totalChange >= 0 ? 'text-green-400' : 'text-red-400',
+                },
+                {
+                    title: `最大月變動率`,
+                    value: formatPercentage(maxRate > Math.abs(minRate) ? maxRate : minRate), // 顯示絕對值最大的變動率
+                    color: maxRate > 0 ? 'text-green-400' : 'text-red-400',
+                    subtitle: `(正成長: ${formatPercentage(maxRate)} / 衰退: ${formatPercentage(minRate)})`
+                },
+            ];
+
+            cardsData.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'p-4 bg-[#1f252c] rounded-lg border border-gray-700 shadow-lg';
+                cardElement.innerHTML = `
+                    <div class="text-sm font-medium text-gray-400 mb-1">${card.title}</div>
+                    <div class="text-2xl font-extrabold ${card.color}">${card.value}</div>
+                    ${card.subtitle ? `<div class="text-xs text-gray-500 mt-1">${card.subtitle}</div>` : ''}
+                `;
+                summaryCards.appendChild(cardElement);
+            });
+        }
+
+        /**
+         * 渲染明細表格
+         */
+        function renderTable(reportData, balanceColumnTitle, accountType) {
+            const tbody = document.getElementById('detail-table').querySelector('tbody');
+            tbody.innerHTML = '';
+
+            const balanceHeader = document.querySelector('#detail-table thead tr th:nth-child(2)');
+            if (balanceHeader) {
+                balanceHeader.textContent = `${balanceColumnTitle} (單位:元)`;
+            }
+
+            if (reportData.length === 0) {
+                 tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">此期間無數據。請檢查月份範圍或雲端數據。</td></tr>';
+                 return;
+            }
+
+            reportData.forEach(item => {
+                const changeRateText = formatPercentage(item.changeRate);
+
+                let changeColorClass;
+                let balanceColorClass = 'text-gray-400';
+
+                // 損益類科目 (收入/費用/成本) 的變動顏色邏輯
+                if (accountType === 'Revenue' || accountType === 'Asset') {
+                    // 收入和資產: 增加是綠色 (正面)
+                    changeColorClass = item.changeAmount > 0 ? 'text-green-400' : (item.changeAmount < 0 ? 'text-red-400' : 'text-gray-400');
+                    balanceColorClass = item.balance >= 0 ? 'text-green-400' : 'text-red-400';
+                } else if (accountType === 'Expense') {
+                    // 費用和成本: 增加是紅色 (負面)
+                    changeColorClass = item.changeAmount > 0 ? 'text-red-400' : (item.changeAmount < 0 ? 'text-green-400' : 'text-gray-400');
+                    balanceColorClass = item.balance >= 0 ? 'text-red-400' : 'text-green-400';
+                } else {
+                    // 資產/負債/權益: 中性顏色
+                    changeColorClass = item.changeAmount > 0 ? 'text-blue-400' : (item.changeAmount < 0 ? 'text-yellow-400' : 'text-gray-400');
+                    balanceColorClass = item.balance >= 0 ? 'text-white' : 'text-yellow-400';
+                }
+
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-[#1f252c] transition';
+                row.innerHTML = `
+                    <td class="text-left">${item.month}</td>
+                    <td class="${balanceColorClass}">${formatCurrency(item.balance, '')}</td>
+                    <td class="${changeColorClass}">${formatCurrency(item.changeAmount, '')}</td>
+                    <td class="${changeColorClass}">${changeRateText}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        /**
+         * 渲染圖表 (雙軸圖表)
+         */
+        function renderChart(reportData, balanceColumnTitle, accountType) {
+            if (balanceChartInstance) {
+                balanceChartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('balanceChart').getContext('2d');
+
+            Chart.defaults.color = '#9ca3af';
+            Chart.defaults.font.family = 'Inter, sans-serif';
+
+            const changeAmounts = reportData.map(item => item.changeAmount);
+            // 處理第一個月份變動額為 null 的情況 (設為 0)
+            if (changeAmounts.length > 0 && (changeAmounts[0] === null || changeAmounts[0] === undefined)) {
+                changeAmounts[0] = 0;
+            }
+
+            let primaryColor = '#3b82f6';
+            let changePositiveColor = '#22c55e';
+            let changeNegativeColor = '#ef4444';
+
+            if (accountType === 'Expense') {
+                primaryColor = '#ef4444';
+                changePositiveColor = '#ef4444';
+                changeNegativeColor = '#22c55e';
+            } else if (accountType === 'Liability' || accountType === 'Equity') {
+                primaryColor = '#eab308';
+            }
+
+
+            balanceChartInstance = new Chart(ctx, {
+                data: {
+                    labels: reportData.map(item => item.month),
+                    datasets: [
+                        {
+                            label: balanceColumnTitle,
+                            data: reportData.map(item => item.balance),
+                            type: 'line',
+                            yAxisID: 'yBalance',
+                            borderColor: primaryColor,
+                            backgroundColor: `${primaryColor.replace('#', 'rgba(') + ', 0.2)'}`,
+                            tension: 0.3,
+                            pointRadius: 6,
+                            pointBackgroundColor: primaryColor,
+                            fill: true,
+                            order: 1
+                        },
+                        {
+                            label: '月變動額',
+                            data: changeAmounts,
+                            type: 'bar',
+                            yAxisID: 'yChange',
+                            backgroundColor: changeAmounts.map(amount => {
+                                // 費用類科目變動額的顏色邏輯反轉
+                                if (accountType === 'Expense') {
+                                    return amount > 0 ? changePositiveColor.replace('#', 'rgba(') + ', 0.6)' : changeNegativeColor.replace('#', 'rgba(') + ', 0.6)';
+                                }
+                                // 收入/資產類科目的顏色邏輯 (預設)
+                                return amount > 0 ? changePositiveColor.replace('#', 'rgba(') + ', 0.6)' : changeNegativeColor.replace('#', 'rgba(') + ', 0.6)';
+                            }),
+                            borderColor: changeAmounts.map(amount => {
+                                if (accountType === 'Expense') {
+                                    return amount > 0 ? changePositiveColor : changeNegativeColor;
+                                }
+                                return amount > 0 ? changePositiveColor : changeNegativeColor;
+                            }),
+                            borderWidth: 1,
+                            order: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                usePointStyle: true,
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += formatCurrency(context.parsed.y, ' NTD');
+                                    }
+                                    return label;
+                                }
+                            },
+                            backgroundColor: '#161b22',
+                            borderColor: '#30363d',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '月份',
+                                color: '#9ca3af'
+                            },
+                            grid: {
+                                color: '#2d333b',
+                                borderColor: '#30363d'
+                            }
+                        },
+                        yBalance: {
+                            type: 'linear',
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: balanceColumnTitle + ' (單位: 元)',
+                                color: primaryColor
+                            },
+                            beginAtZero: false,
+                            grid: {
+                                color: '#2d333b',
+                                borderColor: '#30363d'
+                            },
+                            ticks: {
+                                callback: function(value, index, ticks) {
+                                    return formatCurrency(value, '');
+                                }
+                            }
+                        },
+                        yChange: {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: '月變動額 (單位: 元)',
+                                color: '#9ca3af'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                                borderColor: '#30363d'
+                            },
+                            ticks: {
+                                callback: function(value, index, ticks) {
+                                    return formatCurrency(value, '');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 載入數據和更新報表的主要函式
+        async function loadReportData() {
+            if (!db || !userId) {
+                console.warn('Firebase 尚未初始化完成，請稍候再試。');
+                return;
+            }
+
+            setLoading(true);
+
+            const accountSelect = document.getElementById('account-select');
+            const startMonth = document.getElementById('start-month').value;
+            const endMonth = document.getElementById('end-month').value;
+
+            let selectedAccountText = "";
+            let accountId = "";
+
+            if (accountSelect.value !== "") {
+                selectedAccountText = accountSelect.options[accountSelect.selectedIndex].text;
+                accountId = accountSelect.value;
+            } else {
+                document.getElementById('chart-title').textContent = `請選擇一個科目進行分析`;
+                document.getElementById('table-title').textContent = `餘額變動明細`;
+                // 清空摘要、圖表和表格
+                document.getElementById('summary-section').classList.add('hidden');
+                if (balanceChartInstance) { balanceChartInstance.destroy(); balanceChartInstance = null; }
+                renderTable([], '期末餘額', null);
+                setLoading(false);
+                console.warn('請先選擇一個科目進行分析。');
+                return;
+            }
+
+            const accountType = getAccountType(accountId);
+            let balanceColumnTitle = '期末餘額';
+
+            // 根據科目類型設定餘額標題
+            if (accountType === 'Revenue') {
+                balanceColumnTitle = '當期累積收入';
+            } else if (accountType === 'Expense') {
+                balanceColumnTitle = '當期累積費用';
+            } else if (accountType === 'Asset') {
+                 balanceColumnTitle = '期末資產餘額';
+            } else if (accountType === 'Liability') {
+                 balanceColumnTitle = '期末負債餘額';
+            }
+
+
+            // 1. 更新標題
+            const titleSuffix = ` (${startMonth} ~ ${endMonth})`;
+            document.getElementById('chart-title').textContent = `${selectedAccountText} 餘額趨勢圖 ${titleSuffix}`;
+            document.getElementById('table-title').textContent = `${selectedAccountText} 餘額變動明細 ${titleSuffix}`;
+
+            // 2. 獲取數據 (通過 DataService 抽象層)
+            try {
+                // 這裡調用 DataService，它決定從哪裡獲取數據 (目前是 Firestore)
+                const fetchedData = await DataService.fetchData(accountId, startMonth, endMonth);
+
+                // 3. 渲染報表
+                renderSummaryCard(fetchedData, balanceColumnTitle); // 新增摘要卡片渲染
+                renderTable(fetchedData, balanceColumnTitle, accountType);
+                renderChart(fetchedData, balanceColumnTitle, accountType);
+
+                console.log('報表已更新，數據來自 DataService 抽象層 (當前為 Firestore)。');
+
+            } catch (error) {
+                // 捕獲並顯示錯誤信息
+                console.error('載入數據失敗:', error);
+                document.getElementById('chart-title').textContent = `載入數據失敗：${error.message || '請檢查雲端連接或數據'}。`;
+                // 清空摘要、圖表和表格
+                document.getElementById('summary-section').classList.add('hidden');
+                if (balanceChartInstance) { balanceChartInstance.destroy(); balanceChartInstance = null; }
+                renderTable([], balanceColumnTitle, accountType);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // 頁面載入時執行
+        window.onload = () => {
+            document.getElementById('chart-title').textContent = `正在初始化雲端連接...`;
+            document.getElementById('table-title').textContent = `餘額變動明細`;
+            const balanceHeader = document.querySelector('#detail-table thead tr th:nth-child(2)');
+            if (balanceHeader) {
+                balanceHeader.textContent = `期末餘額 (單位:元)`;
+            }
+            // 確保摘要區塊在初始化時是隱藏的
+            document.getElementById('summary-section').classList.add('hidden');
+
+            // 初始化 Firebase 後再綁定按鈕事件
+            initializeFirebase().then(() => {
+                document.getElementById('analyze-button').onclick = loadReportData;
+                document.getElementById('chart-title').textContent = `請選擇一個科目進行分析`;
+            });
+        };
+    </script>
+</body>
+</html>

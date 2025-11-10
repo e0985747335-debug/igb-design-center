@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企業協作審批系統 (經理審批版)</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 使用 Inter 作為主要字體，確保在各種設備上的一致性和可讀性 */
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        /* 隱藏預設的捲軸，但允許內容捲動 */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* 載入動畫 */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #4f46e5; /* indigo-600 */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- 應用程式載入中介畫面 -->
+    <div id="app-loading-spinner" class="fixed inset-0 flex flex-col items-center justify-center bg-gray-50 z-[100] transition-opacity duration-300">
+        <div class="spinner mb-4"></div>
+        <p id="loading-status-text" class="text-indigo-600 font-medium">正在啟動系統並驗證身份...</p>
+    </div>
+
+    <!-- 主內容區域 (初始隱藏，待 Firebase 準備就緒後顯示) -->
+    <div id="main-content" class="hidden p-4 md:p-8 max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+
+        <!-- 左側：提交表單 (Form) -->
+        <div class="lg:w-1/3">
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 sticky top-8">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-3">💡 提交新審批請求</h2>
+
+                <!-- 用戶ID和經理ID顯示 -->
+                <div class="mb-4 p-3 bg-indigo-50 rounded-xl text-sm text-indigo-800 border-l-4 border-indigo-600">
+                    <p class="font-semibold mb-1 flex items-center">
+                        您的用戶 ID (Requester ID):
+                        <span id="config-warning" class="hidden ml-2 px-2 py-0.5 text-xs font-bold bg-red-200 text-red-800 rounded-full">
+                            ⚠️ 模擬模式
+                        </span>
+                    </p>
+                    <p id="current-user-id" class="break-all font-mono text-xs bg-indigo-100 p-1 rounded-md">
+                        載入中...
+                    </p>
+                    <p class="font-semibold mt-3 mb-1">
+                        目標審批經理 ID (Manager ID):
+                    </p>
+                    <p id="manager-id-display" class="break-all font-mono text-xs bg-purple-100 p-1 rounded-md text-purple-800">
+                        <!-- MANAGER_ID 將由 JS 填充 -->
+                    </p>
+                </div>
+
+                <form id="request-form">
+                    <div class="mb-4">
+                        <label for="title" class="block text-sm font-medium text-gray-700 mb-1">請求標題 (Title)</label>
+                        <input type="text" id="title" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150" placeholder="例如：購買新的辦公設備">
+                    </div>
+                    <div class="mb-4">
+                        <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">金額/預算 (Amount)</label>
+                        <input type="number" id="amount" required min="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150" placeholder="例如：12000">
+                    </div>
+                    <div class="mb-6">
+                        <label for="details" class="block text-sm font-medium text-gray-700 mb-1">詳細說明 (Details)</label>
+                        <textarea id="details" rows="4" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150" placeholder="請詳細描述請求的原因和目的..."></textarea>
+                    </div>
+
+                    <button type="submit" id="submit-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition duration-300 transform hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                        提交審批請求
+                    </button>
+                    <p id="submission-message" class="mt-3 text-center text-sm hidden"></p>
+                </form>
+            </div>
+        </div>
+
+        <!-- 右側：審批列表 (List) -->
+        <div class="lg:w-2/3">
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                <h2 class="text-2xl font-bold mb-4 text-gray-800">✅ 審批狀態總覽</h2>
+
+                <!-- 標籤導航 -->
+                <div class="flex border-b border-gray-200 mb-4">
+                    <button id="tab-pending-my-approval" data-filter="pendingMyApproval" class="tab-button px-4 py-2 text-sm font-medium text-center text-indigo-600 border-b-2 border-indigo-600 hover:text-indigo-700 transition duration-150">
+                        待我審批
+                    </button>
+                    <button id="tab-my-requests" data-filter="myRequests" class="tab-button px-4 py-2 text-sm font-medium text-center text-gray-500 hover:text-gray-700 transition duration-150">
+                        我的請求
+                    </button>
+                    <button id="tab-approved-rejected" data-filter="approvedOrRejected" class="tab-button px-4 py-2 text-sm font-medium text-center text-gray-500 hover:text-gray-700 transition duration-150">
+                        已處理
+                    </button>
+                    <span class="flex-grow"></span>
+                    <!-- 這是數據載入指示器，初始隱藏 -->
+                    <div id="data-loading-indicator" class="flex items-center text-sm text-indigo-600 hidden">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        更新中...
+                    </div>
+                </div>
+
+                <!-- 列表容器 -->
+                <div id="requests-list" class="space-y-4 hide-scrollbar min-h-[200px]">
+                    <!-- 初始狀態訊息 -->
+                    <div id="empty-state-message" class="text-center p-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 mx-auto mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p class="text-lg font-medium">暫無審批請求</p>
+                        <p>提交新的請求或等待同事發起審批。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模態框容器 (用於審批操作) -->
+    <div id="modal-container" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+        <div id="approval-modal" class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100 opacity-100">
+            <h3 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">審批請求</h3>
+            <p class="text-sm text-gray-600 mb-4">您正在審批編號為 <span id="modal-doc-id" class="font-mono text-indigo-600"></span> 的請求。</p>
+
+            <div id="modal-content" class="mb-4 text-gray-700 space-y-1 text-sm">
+                <!-- 請求詳細內容將動態載入這裡 -->
+            </div>
+
+            <label for="comment" class="block text-sm font-medium text-gray-700 mb-1">審批意見 (選填)</label>
+            <textarea id="comment" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 mb-6" placeholder="輸入您的審批評論..."></textarea>
+
+            <div class="flex justify-end space-x-3">
+                <button id="modal-close" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition duration-150">取消</button>
+                <button id="modal-reject" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition duration-150">拒絕</button>
+                <button id="modal-approve" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition duration-150">批准</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // ====================================================================
+        // Firebase Configuration and Initialization
+        // ====================================================================
+        import {
+            initializeApp
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+
+        import {
+            getAuth,
+            signInAnonymously,
+            signInWithCustomToken,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        import {
+            getFirestore,
+            collection,
+            addDoc,
+            onSnapshot,
+            query,
+            doc,
+            updateDoc,
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- 核心變數定義 ---
+
+        // 🚨 優化 1: 定義一個固定的經理 ID。只有用戶 ID 與此匹配時，才能審批請求。
+        const MANAGER_ID = 'Approver_Manager_ID_001';
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let firebaseConfig = null;
+        let useFallbackConfig = false;
+
+        try {
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                firebaseConfig = JSON.parse(__firebase_config);
+            }
+        } catch (e) {
+            console.error("解析 Firebase 配置時發生錯誤 (JSON.parse 失敗):", e);
+        }
+
+        if (!firebaseConfig) {
+            console.warn("⚠️ 找不到 __firebase_config。進入模擬模式 (數據無法持久保存)。");
+            firebaseConfig = {
+                apiKey: "dummy-api-key",
+                authDomain: "dummy.firebaseapp.com",
+                projectId: "dummy-project-id",
+                storageBucket: "dummy-app-bucket.com",
+                messagingSenderId: "1234567890",
+                appId: "1:1234567890:web:1234567890",
+            };
+            useFallbackConfig = true;
+        }
+
+
+        // --- Global App State and Instances ---
+        let app;
+        let db;
+        let auth;
+        let userId = null; // 當前登入用戶的 ID
+        let allRequests = []; // 儲存所有從 Firestore 載入的請求
+        let currentFilter = 'pendingMyApproval'; // 當前選中的篩選器
+        let requestCounter = 0; // 用於模擬模式下的 ID 計數器
+
+        // --- Global DOM Cache ---
+        const DOM = {};
+
+        /**
+         * 啟動系統時，顯示主內容並隱藏載入畫面。
+         * @param {string} statusMsg 顯示在 ID 區塊的狀態訊息。
+         */
+        function initializeUI(statusMsg) {
+            DOM.appLoadingSpinner.classList.add('opacity-0');
+            setTimeout(() => {
+                DOM.appLoadingSpinner.classList.add('hidden');
+                DOM.mainContent.classList.remove('hidden');
+                DOM.currentUserIdSpan.textContent = statusMsg;
+                // 顯示經理 ID
+                DOM.managerIdDisplay.textContent = MANAGER_ID;
+            }, 300);
+        }
+
+        /**
+         * 初始化 Firebase 應用程式、身份驗證並設置即時監聽。
+         */
+        async function initFirebase() {
+            DOM.loadingStatusText.textContent = '正在啟動 Firebase 服務...';
+
+            // --- 模擬模式: 直接寫入假 ID 並渲染 UI ---
+            if (useFallbackConfig) {
+                DOM.configWarning.classList.remove('hidden');
+                userId = 'DUMMY-USER-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                console.log("Firebase 模擬模式啟用。");
+                initializeUI(userId);
+                renderRequests(currentFilter); // 立即渲染 UI
+                return;
+            }
+
+            // --- 正常 Firebase 初始化流程 (如果配置存在) ---
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                DOM.loadingStatusText.textContent = '正在進行用戶身份驗證...';
+
+                // 1. 嘗試登入
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                    console.log("Firebase 認證: 使用 Custom Token 登入成功。");
+                } else {
+                    await signInAnonymously(auth);
+                    console.warn("Firebase 認證: Custom Token 不可用，使用匿名登入。");
+                }
+
+                // 2. 登入成功後，立即設置用戶ID並開始載入數據
+                const user = auth.currentUser;
+                if (user) {
+                    userId = user.uid;
+                    initializeUI(userId);
+                    loadRequests(); // Start data loading
+                } else {
+                    console.error("認證失敗: 用戶未登入。");
+                    initializeUI("N/A - Auth Failed");
+                    renderRequests(currentFilter); // Render empty UI
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (!user) {
+                        console.error("認證狀態變更: 用戶登出或會話過期。");
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase 初始化失敗:", error);
+                const errorMsg = `初始化錯誤: ${error.code || error.message}`;
+                DOM.loadingStatusText.textContent = '❌ 初始化失敗';
+                initializeUI(errorMsg);
+                renderRequests(currentFilter);
+            }
+        }
+
+        // ====================================================================
+        // Firestore CRUD Operations and Real-Time Listener
+        // ====================================================================
+
+        /**
+         * 獲取 Firestore 集合的路徑
+         * @returns {string} 集合路徑
+         */
+        function getCollectionPath() {
+            // 由於審批數據是當前用戶提交的，我們仍然使用提交人的私有路徑
+            const safeUserId = userId || 'temp_user';
+            return `/artifacts/${appId}/users/${safeUserId}/approval_requests`;
+        }
+
+        /**
+         * 提交新的審批請求到 Firestore (或模擬提交)
+         */
+        async function createRequest(e) {
+            e.preventDefault();
+
+            if (!userId) {
+                DOM.submissionMessage.textContent = '❌ 系統尚未準備好 (用戶 ID 未載入)。';
+                DOM.submissionMessage.classList.remove('hidden', 'text-green-600');
+                DOM.submissionMessage.classList.add('text-red-600');
+                setTimeout(() => DOM.submissionMessage.classList.add('hidden'), 3000);
+                return;
+            }
+
+            const title = DOM.titleInput.value.trim();
+            const amount = parseFloat(DOM.amountInput.value);
+            const details = DOM.detailsTextarea.value.trim();
+
+            if (!title || isNaN(amount) || amount <= 0 || !details) {
+                DOM.submissionMessage.textContent = '請填寫所有有效的請求欄位！';
+                DOM.submissionMessage.classList.remove('hidden', 'text-green-600');
+                DOM.submissionMessage.classList.add('text-red-600');
+                setTimeout(() => DOM.submissionMessage.classList.add('hidden'), 3000);
+                return;
+            }
+
+            DOM.submitButton.disabled = true;
+            DOM.submitButton.textContent = '提交中...';
+            DOM.submissionMessage.classList.add('hidden');
+            requestCounter++;
+
+            const newRequest = {
+                title: title,
+                amount: amount,
+                details: details,
+                // metadata
+                id: useFallbackConfig ? `sim-req-${requestCounter}` : null,
+                requesterId: userId,
+                // 🚨 優化 2: 固定指向 MANAGER_ID，實現經理審批
+                approverId: MANAGER_ID,
+                status: 'Pending',
+                createdAt: useFallbackConfig ? { toDate: () => new Date() } : serverTimestamp(),
+            };
+
+            if (useFallbackConfig) {
+                allRequests.push(newRequest);
+                DOM.requestForm.reset();
+                DOM.submissionMessage.textContent = '✅ 請求已成功提交 (本地模擬)！';
+                DOM.submissionMessage.classList.remove('hidden', 'text-red-600');
+                DOM.submissionMessage.classList.add('text-green-600');
+                renderRequests(currentFilter);
+            } else {
+                try {
+                    const colRef = collection(db, getCollectionPath());
+                    await addDoc(colRef, newRequest);
+
+                    DOM.requestForm.reset();
+                    DOM.submissionMessage.textContent = '✅ 請求已成功提交！';
+                    DOM.submissionMessage.classList.remove('hidden', 'text-red-600');
+                    DOM.submissionMessage.classList.add('text-green-600');
+                } catch (error) {
+                    console.error("[Submission Debug] ❌ 提交請求失敗:", error);
+                    DOM.submissionMessage.textContent = `❌ 提交失敗: ${error.message}`;
+                    DOM.submissionMessage.classList.remove('hidden', 'text-green-600');
+                    DOM.submissionMessage.classList.add('text-red-600');
+                }
+            }
+
+            DOM.submitButton.disabled = false;
+            DOM.submitButton.textContent = '提交審批請求';
+            setTimeout(() => DOM.submissionMessage.classList.add('hidden'), 3000);
+        }
+
+        /**
+         * 設置對 Firestore 集合的即時監聽 (onSnapshot) 或在模擬模式下跳過。
+         */
+        function loadRequests() {
+            if (useFallbackConfig || !db || !userId) {
+                DOM.dataLoadingIndicator.classList.add('hidden');
+                return;
+            }
+
+            const colRef = collection(db, getCollectionPath());
+            const q = query(colRef);
+
+            DOM.dataLoadingIndicator.classList.remove('hidden');
+
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                allRequests = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    allRequests.push({ id: doc.id, ...data });
+                });
+
+                renderRequests(currentFilter);
+
+                DOM.dataLoadingIndicator.classList.add('hidden');
+                console.log(`[Real-Time Data] 🔄 成功載入 ${allRequests.length} 條請求。`);
+
+            }, (error) => {
+                console.error("即時監聽失敗 (onSnapshot Error):", error);
+                DOM.dataLoadingIndicator.innerHTML = '❌ 載入失敗';
+                DOM.dataLoadingIndicator.classList.remove('hidden');
+            });
+        }
+
+        /**
+         * 審批或拒絕請求 (或模擬審批)
+         */
+        async function handleApprovalAction(docId, newStatus, comment) {
+            if (!userId) {
+                console.error("錯誤: 用戶未登入。");
+                return;
+            }
+
+            if (useFallbackConfig) {
+                const requestIndex = allRequests.findIndex(r => r.id === docId);
+                if (requestIndex !== -1) {
+                    allRequests[requestIndex].status = newStatus;
+                    allRequests[requestIndex].approvalComment = comment;
+                    allRequests[requestIndex].approvedBy = userId;
+                    renderRequests(currentFilter);
+                    closeModal();
+                }
+                return;
+            }
+
+            const docRef = doc(db, getCollectionPath(), docId);
+
+            try {
+                await updateDoc(docRef, {
+                    status: newStatus,
+                    approvalComment: comment,
+                    approvedBy: userId,
+                    approvedAt: serverTimestamp(),
+                });
+
+                closeModal();
+
+            } catch (error) {
+                console.error(`[Approval Debug] ❌ 更新請求 ${docId} 失敗:`, error);
+            }
+        }
+
+        // ====================================================================
+        // Client-Side Rendering, Filtering, and Helpers
+        // ====================================================================
+
+        /**
+         * 格式化 Firestore Timestamp 或 Date 物件為本地日期字串。
+         */
+        function formatDate(timestamp) {
+            if (!timestamp) return 'N/A';
+            const date = timestamp.toDate ? timestamp.toDate() : (timestamp instanceof Date ? timestamp : new Date(timestamp));
+
+            if (isNaN(date.getTime())) return 'N/A';
+
+            return date.toLocaleDateString('zh-TW', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        }
+
+
+        /**
+         * 根據當前選中的篩選器過濾請求列表。
+         */
+        function clientFilterFn(filterName) {
+            const targetUserId = userId;
+            let filteredList = allRequests.filter(request => {
+                const requesterIdStr = request.requesterId ? String(request.requesterId) : null;
+                const approverIdStr = request.approverId ? String(request.approverId) : null;
+
+                switch (filterName) {
+                    case 'pendingMyApproval':
+                        // 🚨 優化 3: 待我審批 = 狀態是 Pending 且我就是指定的審批經理 (approverId)
+                        return request.status === 'Pending' && approverIdStr === targetUserId;
+
+                    case 'myRequests':
+                        // 我的請求: 請求人是我
+                        return requesterIdStr === targetUserId;
+
+                    case 'approvedOrRejected':
+                        // 已處理: 狀態不是 Pending
+                        return request.status !== 'Pending';
+
+                    default:
+                        return true;
+                }
+            });
+
+            // 進行排序：按創建時間 (createdAt) 降序排列 (最新的在前)
+            filteredList.sort((a, b) => {
+                const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+                const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+                return timeB - timeA;
+            });
+
+            return filteredList;
+        }
+
+        /**
+         * 根據篩選結果渲染列表到 DOM。
+         */
+        function renderRequests(filterName) {
+            currentFilter = filterName;
+            const requests = clientFilterFn(filterName);
+
+            DOM.requestsList.innerHTML = '';
+
+            if (requests.length === 0) {
+                DOM.emptyStateMessage.classList.remove('hidden');
+
+                const titleElement = DOM.emptyStateMessage.querySelector('p:nth-of-type(1)');
+                const descriptionElement = DOM.emptyStateMessage.querySelector('p:nth-of-type(2)');
+
+                if (filterName === 'pendingMyApproval') {
+                    titleElement.textContent = '目前沒有待您審批的請求';
+                    descriptionElement.textContent = `只有當您的用戶 ID 匹配經理 ID (${MANAGER_ID}) 時，才能審批請求。`;
+                } else if (filterName === 'myRequests') {
+                    titleElement.textContent = '您尚未提交任何請求';
+                    descriptionElement.textContent = '請使用左側表單提交一個新的審批請求。';
+                } else {
+                    titleElement.textContent = '暫無已處理的請求';
+                    descriptionElement.textContent = '等待請求被批准或拒絕。';
+                }
+                return;
+            }
+            DOM.emptyStateMessage.classList.add('hidden');
+
+
+            requests.forEach(request => {
+                // 🚨 優化 4: 判斷是否需要審批的條件改為：狀態是 Pending 且我就是指定的審批經理 (approverId)
+                const isMyApproval = request.status === 'Pending' && request.approverId === userId;
+
+                const statusClasses = {
+                    'Pending': 'bg-yellow-100 text-yellow-800 ring-yellow-500/10',
+                    'Approved': 'bg-green-100 text-green-800 ring-green-500/10',
+                    'Rejected': 'bg-red-100 text-red-800 ring-red-500/10'
+                };
+
+                const date = formatDate(request.createdAt);
+
+                let secondaryInfo = '';
+                // 始終顯示目標審批人 ID
+                secondaryInfo = `審批人ID: <span class="font-mono text-xs">${request.approverId || 'N/A'}</span>`;
+
+                const displayId = request.id || (useFallbackConfig ? 'Simulated' : 'N/A');
+
+                const requestItem = document.createElement('div');
+                requestItem.className = 'bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition duration-200 border border-gray-100 flex justify-between items-center';
+
+                requestItem.innerHTML = `
+                    <div class="flex-grow min-w-0">
+                        <div class="flex items-center space-x-3 mb-1">
+                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full ring-1 ring-inset ${statusClasses[request.status] || 'bg-gray-100 text-gray-800 ring-gray-500/10'}">
+                                ${request.status === 'Pending' ? '待審批' : request.status === 'Approved' ? '已批准' : '已拒絕'}
+                            </span>
+                            <span class="text-xs text-gray-500">${date}</span>
+                        </div>
+                        <p class="text-lg font-semibold text-gray-800 truncate">${request.title}</p>
+                        <p class="text-sm text-gray-600">金額: <span class="font-bold text-indigo-600">$${request.amount.toLocaleString()}</span></p>
+                        <p class="text-xs text-gray-500 mt-1 truncate">請求人ID: <span class="font-mono text-xs">${request.requesterId}</span> | ${secondaryInfo}</p>
+                    </div>
+                    ${isMyApproval ? `
+                        <button data-id="${request.id}" class="approve-button ml-4 flex-shrink-0 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-md transition duration-150 transform hover:scale-[1.05] active:scale-[0.98]">
+                            審批
+                        </button>
+                    ` : ''}
+                `;
+
+                DOM.requestsList.appendChild(requestItem);
+
+                if (isMyApproval) {
+                    requestItem.querySelector('.approve-button').addEventListener('click', () => openModal(request));
+                }
+            });
+        }
+
+        // ====================================================================
+        // UI Interaction Handlers (Tabs, Modal)
+        // ====================================================================
+
+        function handleTabClick(e) {
+            const filterName = e.currentTarget.dataset.filter;
+            if (!filterName) return;
+
+            // 1. 更新按鈕樣式
+            DOM.tabButtons.forEach(btn => {
+                btn.classList.remove('text-indigo-600', 'border-indigo-600');
+                btn.classList.add('text-gray-500');
+                btn.style.borderBottomWidth = '0px';
+            });
+
+            e.currentTarget.classList.remove('text-gray-500');
+            e.currentTarget.classList.add('text-indigo-600', 'border-indigo-600');
+            e.currentTarget.style.borderBottomWidth = '2px';
+
+            // 2. 渲染新列表
+            renderRequests(filterName);
+        }
+
+        let currentDocId = null;
+
+        function openModal(request) {
+            currentDocId = request.id;
+
+            DOM.modalDocId.textContent = request.id;
+            DOM.modalContent.innerHTML = `
+                <p><strong>標題:</strong> ${request.title}</p>
+                <p><strong>金額:</strong> $${request.amount.toLocaleString()}</p>
+                <p><strong>請求人:</strong> ${request.requesterId}</p>
+                <p class="mt-2"><strong>詳情:</strong></p>
+                <p class="p-2 bg-gray-100 rounded-lg whitespace-pre-wrap">${request.details}</p>
+                ${request.approvalComment ? `<p class="mt-2 text-gray-700"><strong>審批歷史意見:</strong> ${request.approvalComment}</p>` : ''}
+            `;
+            DOM.commentTextarea.value = '';
+
+            DOM.modalContainer.classList.remove('hidden');
+            DOM.modalContainer.classList.add('flex');
+
+            setTimeout(() => DOM.commentTextarea.focus(), 100);
+        }
+
+        function closeModal() {
+            DOM.modalContainer.classList.add('hidden');
+            DOM.modalContainer.classList.remove('flex');
+            currentDocId = null;
+        }
+
+
+        // ====================================================================
+        // Main Initialization
+        // ====================================================================
+
+        function setupEventListeners() {
+            // 1. 快取 DOM 元素
+            DOM.mainContent = document.getElementById('main-content');
+            DOM.appLoadingSpinner = document.getElementById('app-loading-spinner');
+            DOM.loadingStatusText = document.getElementById('loading-status-text');
+
+            DOM.requestForm = document.getElementById('request-form');
+            DOM.titleInput = document.getElementById('title');
+            DOM.amountInput = document.getElementById('amount');
+            DOM.detailsTextarea = document.getElementById('details');
+            DOM.submitButton = document.getElementById('submit-button');
+            DOM.submissionMessage = document.getElementById('submission-message');
+
+            DOM.currentUserIdSpan = document.getElementById('current-user-id');
+            // 🚨 優化 5: 快取新的經理 ID 顯示元素
+            DOM.managerIdDisplay = document.getElementById('manager-id-display');
+            DOM.configWarning = document.getElementById('config-warning');
+            DOM.requestsList = document.getElementById('requests-list');
+            DOM.emptyStateMessage = document.getElementById('empty-state-message');
+            DOM.dataLoadingIndicator = document.getElementById('data-loading-indicator');
+
+            DOM.tabButtons = document.querySelectorAll('.tab-button');
+
+            DOM.modalContainer = document.getElementById('modal-container');
+            DOM.modalDocId = document.getElementById('modal-doc-id');
+            DOM.modalContent = document.getElementById('modal-content');
+            DOM.commentTextarea = document.getElementById('comment');
+            DOM.modalCloseButton = document.getElementById('modal-close');
+            DOM.modalRejectButton = document.getElementById('modal-reject');
+            DOM.modalApproveButton = document.getElementById('modal-approve');
+
+            // 2. 綁定主要事件
+            DOM.requestForm.addEventListener('submit', createRequest);
+            DOM.tabButtons.forEach(button => button.addEventListener('click', handleTabClick));
+
+            // 3. 綁定模態框事件
+            DOM.modalCloseButton.addEventListener('click', closeModal);
+            DOM.modalContainer.addEventListener('click', (e) => {
+                if (e.target === DOM.modalContainer) closeModal();
+            });
+
+            DOM.modalRejectButton.addEventListener('click', () => {
+                if (currentDocId) {
+                    const comment = DOM.commentTextarea.value.trim();
+                    handleApprovalAction(currentDocId, 'Rejected', comment);
+                }
+            });
+
+            DOM.modalApproveButton.addEventListener('click', () => {
+                if (currentDocId) {
+                    const comment = DOM.commentTextarea.value.trim();
+                    handleApprovalAction(currentDocId, 'Approved', comment);
+                }
+            });
+
+            // 4. 初始化顯示第一個篩選器 (待我審批) 樣式
+            document.getElementById('tab-pending-my-approval').style.borderBottomWidth = '2px';
+        }
+
+        // --- 應用程式入口點 (立即執行) ---
+        setupEventListeners();
+        initFirebase(); // 立即開始 Firebase 初始化
+
+    </script>
+</body>
+</html>

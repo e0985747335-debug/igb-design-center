@@ -1,0 +1,154 @@
+# --- sitelink_service.py ---
+
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from pydantic import BaseModel
+from typing import List, Literal
+import httpx # 用於異步 API 請求，模擬服務間通信
+import asyncio # 用於模擬延遲
+
+app = FastAPI(
+    title="IGB SiteLink-Service (Micro-Logistics)",
+    description="負責管理所有 SiteLink 節點、在地大使、正向配送與逆向 RMA 取件任務。"
+)
+
+# --- 模擬的 HTTP 客戶端 ---
+# 在生產環境中, 應使用更健壯的服務發現機制
+FINANCE_SERVICE_URL = "http://localhost:8001" # 假設 Finance-Service 運行在 8001
+RMA_SERVICE_URL = "http://localhost:8002"     # 假設 RMA-Service 運行在 8002
+
+# --- 1. 數據模型 (Pydantic) ---
+
+class TaskStatus(BaseModel):
+    status: Literal["Success", "Failed"]
+    message: str
+
+class NewDeliveryTask(BaseModel):
+    """
+    模型：WMS 交付包裹，創建一個新的正向配送任務
+    """
+    order_id: str
+    customer_name: str
+    customer_address: str
+    customer_phone: str
+    sitelink_node_id: str # D2 維度
+    requires_cold_chain: bool = False
+
+class NewRmaPickupTask(BaseModel):
+    """
+    模型：RMA-Service 觸發，創建一個新的逆向取件任務
+    """
+    rma_id: str
+    order_id: str
+    customer_name: str
+    customer_address: str
+    item_description: str # 應取回的商品描述
+    reason: str # 客戶回報的原因
+
+# --- 2. 模擬的服務間通信 (通知財務部) ---
+
+async def notify_finance_delivery_completed(order_id: str, node_id: str, fee: float):
+    """
+    (異步背景任務)
+    在配送完成後，調用 Finance-Service 生成物流成本傳票。
+    (對應 步驟 D - 觸發 3)
+    """
+    event_data = {
+        "event_type": "SITELINK_COMPLETED",
+        "order_id": order_id,
+        "sitelink_node_id": node_id,
+        "service_fee": fee,
+        "timestamp": "2025-10-28T11:45:00"
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(f"{FINANCE_SERVICE_URL}/api/v1/finance/events/sitelink-completed", json=event_data)
+            response.raise_for_status() # 如果失敗則拋出異常
+            print(f"成功通知 Finance-Service (Order: {order_id})，已生成傳票: {response.json()['voucher_id']}")
+    except httpx.RequestError as e:
+        print(f"錯誤：無法通知 Finance-Service (Order: {order_id}): {e}")
+        # 在生產環境中，這裡應加入重試機制 (e.g., RabbitMQ, Celery)
+
+async def notify_rma_pickup_completed(rma_id: str):
+    """
+    (異步背景任務)
+    在取件完成後，調用 RMA-Service 更新狀態。
+    (對應 RMA 步驟 2 - 觸發 1)
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            # 假設 RMA-Service 有一個端點用於更新狀態
+            response = await client.post(f"{RMA_SERVICE_URL}/api/v1/rma/{rma_id}/pickup-complete", json={"status": "In Transit"})
+            response.raise_for_status()
+            print(f"成功通知 RMA-Service (RMA: {rma_id}) 狀態已更新為 In Transit。")
+    except httpx.RequestError as e:
+        print(f"錯誤：無法通知 RMA-Service (RMA: {rma_id}): {e}")
+
+# --- 3. SiteLink 核心 API 端點 ---
+
+@app.post("/api/v1/sitelink/tasks/delivery", response_model=TaskStatus)
+async def create_delivery_task(task: NewDeliveryTask):
+    """
+    (供 WMS-Service 調用)
+    當主倉轉運出貨時，為指定節點創建一個配送任務。
+    (對應 步驟 C - 觸發 9)
+    """
+    print(f"收到新配送任務 (正向): 訂單 {task.order_id} -> 節點 {task.sitelink_node_id}")
+    # (此處應將任務存入節點大使的任務列表)
+    return TaskStatus(status="Success", message=f"任務 {task.order_id} 已指派給節點 {task.sitelink_node_id}")
+
+@app.post("/api/v1/sitelink/tasks/rma-pickup", response_model=TaskStatus)
+async def create_rma_pickup_task(task: NewRmaPickupTask):
+    """
+    (供 RMA-Service 調用)
+    當客戶申請 RMA 時，為指定節點創建一個逆向取件任務。
+    (對應 RMA 步驟 1 - 觸發 3)
+    """
+    print(f"收到新取件任務 (逆向): RMA {task.rma_id} (來自 {task.customer_address})")
+    # (此處應將任務指派給最近的在地大使)
+    return TaskStatus(status="Success", message=f"RMA 任務 {task.rma_id} 已指派。")
+
+
+# --- 4. 模擬在地大使 App 的操作 API ---
+
+@app.post("/api/v1/sitelink/ambassador/complete-delivery/{order_id}", response_model=TaskStatus)
+async def ambassador_complete_delivery(order_id: str, background_tasks: BackgroundTasks):
+    """
+    (供在地大使 App 調用)
+    大使點擊「確認配送完成」。
+    (對應 步驟 D - 觸發 5)
+    """
+    print(f"大使回報：訂單 {order_id} 已簽收。")
+
+    # 模擬計算服務費 (這在實際中應由後端根據規則計算)
+    # 假設我們從訂單數據中查到 node_id 和 fee
+    mock_node_id = "D2-A01"
+    mock_service_fee = 25.0
+
+    # ★★★ 觸發財務傳票生成 ★★★
+    # 使用 BackgroundTasks 確保 API 立即回應該大使，並在背景執行通知
+    background_tasks.add_task(
+        notify_finance_delivery_completed,
+        order_id,
+        mock_node_id,
+        mock_service_fee
+    )
+
+    # (此處還應通知 Order-Service 更新訂單狀態為 "Completed")
+
+    return TaskStatus(status="Success", message=f"訂單 {order_id} 已標記為完成。正在觸發結算...")
+
+@app.post("/api/v1/sitelink/ambassador/complete-pickup/{rma_id}", response_model=TaskStatus)
+async def ambassador_complete_pickup(rma_id: str, background_tasks: BackgroundTasks):
+    """
+    (供在地大使 App 調用)
+    大使點擊「確認已取件」。
+    (對應 RMA 步驟 2 - 觸發 7)
+    """
+    print(f"大使回報：RMA {rma_id} 已取件。")
+
+    # ★★★ 觸發 RMA 狀態更新 ★★★
+    background_tasks.add_task(notify_rma_pickup_completed, rma_id)
+
+    # (此處還應通知 WMS-Service 準備收貨)
+
+    return TaskStatus(status="Success", message=f"RMA {rma_id} 已取件。正在通知主倉...")

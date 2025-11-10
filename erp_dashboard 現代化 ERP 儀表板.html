@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>現代化 ERP 儀表板</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 使用 Inter 字體 -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f9;
+        }
+        .sidebar-item-active {
+            background-color: #3b82f6;
+            color: white;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#3b82f6',
+                        'secondary': '#10b981',
+                        'alert': '#f59e0b',
+                        'danger': '#ef4444',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <!-- 側邊導航欄 (Sidebar) -->
+    <div id="sidebar" class="hidden md:flex flex-col w-64 bg-gray-800 text-white p-4 shadow-xl">
+        <div class="text-2xl font-bold mb-8 text-primary">ERP 儀表板</div>
+        <nav class="flex-1 space-y-2">
+            <a href="#" class="sidebar-item-active group flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors hover:bg-gray-700">
+                <!-- Icon: Home -->
+                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-10v10a1 1 0 001 1h3M14 10l-2-2m0 0l-2 2m2-2v8"></path></svg>
+                儀表板
+            </a>
+            <a href="#" class="group flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors hover:bg-gray-700">
+                <!-- Icon: Shopping Cart -->
+                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                銷售管理
+            </a>
+            <a href="#" class="group flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors hover:bg-gray-700">
+                <!-- Icon: Box -->
+                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m-8-4v10l8 4m8-10v10l-8 4m0-10v10"></path></svg>
+                庫存管理
+            </a>
+            <a href="#" class="group flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors hover:bg-gray-700">
+                <!-- Icon: Clipboard Check -->
+                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2m-9 0V3h4m-4 2h4m-4 0a1 1 0 00-1 1v1m10-2v1m-1 0h-4m2 2l-2 2m0 0l-2-2m2 2v4m-2 4h4"></path></svg>
+                採購跟進
+            </a>
+            <a href="#" class="group flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors hover:bg-gray-700">
+                <!-- Icon: Chart -->
+                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+                報告中心
+            </a>
+        </nav>
+    </div>
+
+    <!-- 主要內容區 -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- 頂部欄 -->
+        <header class="flex justify-between items-center p-4 bg-white shadow-md">
+            <h1 class="text-2xl font-semibold text-gray-800">現代化營運概覽</h1>
+            <div class="flex items-center space-x-4">
+                <button id="menu-button" class="md:hidden p-2 text-gray-600 hover:text-gray-800 focus:outline-none">
+                    <!-- Icon: Menu -->
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+                <div class="text-sm text-gray-500">歡迎, 使用者 ID: <span id="user-id" class="font-medium text-gray-700">loading...</span></div>
+                <button class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition duration-150">設定</button>
+            </div>
+        </header>
+
+        <!-- 內容滾動區 -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 space-y-6">
+
+            <!-- I. 關鍵績效指標 (KPIs) 區塊 -->
+            <div id="kpi-section" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- KPI Card 1: 總銷售額 -->
+                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-primary transition duration-300 hover:shadow-xl">
+                    <p class="text-sm font-medium text-gray-500">當月總銷售額 (TWD)</p>
+                    <p id="kpi-sales" class="text-3xl font-bold text-gray-900 mt-1">--</p>
+                    <div id="kpi-sales-change" class="text-sm mt-2 flex items-center">
+                        <!-- Dynamic Change Text -->
+                    </div>
+                </div>
+
+                <!-- KPI Card 2: 庫存總價值 -->
+                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-secondary transition duration-300 hover:shadow-xl">
+                    <p class="text-sm font-medium text-gray-500">現有庫存總價值 (TWD)</p>
+                    <p id="kpi-inventory-value" class="text-3xl font-bold text-gray-900 mt-1">--</p>
+                    <p class="text-sm mt-2 text-gray-400">基於最近一次盤點</p>
+                </div>
+
+                <!-- KPI Card 3: 待處理 POs -->
+                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-alert transition duration-300 hover:shadow-xl">
+                    <p class="text-sm font-medium text-gray-500">待處理採購訂單 (POs)</p>
+                    <p id="kpi-po-count" class="text-3xl font-bold text-alert mt-1">--</p>
+                    <p class="text-sm mt-2 text-gray-400">需要批准/跟進</p>
+                </div>
+
+                <!-- KPI Card 4: 客戶滿意度 -->
+                <div class="bg-white p-5 rounded-xl shadow-lg border-l-4 border-gray-400 transition duration-300 hover:shadow-xl">
+                    <p class="text-sm font-medium text-gray-500">客戶滿意度 (CSAT)</p>
+                    <p id="kpi-csat" class="text-3xl font-bold text-gray-900 mt-1">--</p>
+                    <p class="text-sm mt-2 text-gray-400">最近 30 天數據</p>
+                </div>
+            </div>
+
+            <!-- II. 圖表與視覺化區塊 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Chart 1: 月度收入趨勢 -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">月度收入趨勢 (TWD)</h2>
+                    <div id="revenue-chart" class="h-80 w-full flex items-end justify-between p-2">
+                        <!-- Chart Bars will be rendered here by JS -->
+                        <div class="text-center text-gray-500 w-full h-full flex items-center justify-center">載入中...</div>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500 pt-2 border-t mt-4" id="revenue-labels">
+                        <!-- Month Labels will be rendered here -->
+                    </div>
+                </div>
+
+                <!-- Chart 2: 庫存健康狀態 -->
+                <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">關鍵庫存健康狀態</h2>
+                    <div id="inventory-status" class="space-y-4">
+                        <!-- Progress Bars will be rendered here by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- III. 行動與警報中心 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                <!-- Action Center: 緊急採購任務 -->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800">🚨 緊急採購任務 (Action Center)</h2>
+                        <span id="urgent-count" class="px-3 py-1 text-sm font-medium rounded-full bg-danger text-white">0 項</span>
+                    </div>
+                    <ul id="urgent-tasks" class="space-y-3 max-h-64 overflow-y-auto">
+                        <!-- Urgent tasks will be listed here -->
+                    </ul>
+                </div>
+
+                <!-- Activity Log: 最新活動日誌 -->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">最新活動日誌</h2>
+                    <ul id="activity-log" class="space-y-3 text-sm text-gray-600 max-h-64 overflow-y-auto">
+                        <li class="border-b pb-2">**[09:15]** 銷售訂單 #54782 已成功發貨。</li>
+                        <li class="border-b pb-2">**[10:30]** 庫存批次 A-901 低於安全閾值。</li>
+                        <li class="border-b pb-2">**[11:40]** 供應商 XYZ Tech 的採購訂單已確認。</li>
+                        <li class="border-b pb-2">**[13:05]** 系統備份完成，運行狀態正常。</li>
+                        <li>**[13:58]** 客戶服務案例 #1901 已結案。</li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Firebase 初始化與 JS 邏輯 -->
+    <script type="module">
+        // 確保全局變數存在，用於初始化 Firebase
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, onSnapshot, collection, query, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 設定 Firebase 日誌級別
+        setLogLevel('Debug');
+
+        // 初始化 Firebase App, Firestore, Auth
+        let app, db, auth;
+        let currentUserId = 'anonymous';
+
+        if (Object.keys(firebaseConfig).length > 0) {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+        } else {
+            // Placeholder initialization if config is missing (for local testing)
+            console.warn("Firebase configuration is missing. Using mock data only.");
+        }
+
+
+        // 模擬數據
+        const MOCK_DATA = {
+            kpis: {
+                totalSales: 4850000,
+                salesChange: 12.5, // 12.5% 增長
+                inventoryValue: 12500000,
+                poCount: 5,
+                csat: 4.7
+            },
+            revenueTrend: [
+                { month: '4月', amount: 3200000 },
+                { month: '5月', amount: 3500000 },
+                { month: '6月', amount: 3800000 },
+                { month: '7月', amount: 4500000 },
+                { month: '8月', amount: 4200000 },
+                { month: '9月', amount: 4850000 }
+            ],
+            inventoryHealth: [
+                { name: '高速模塊 A', level: 0.9, color: 'secondary' }, // High (90%)
+                { name: '處理器晶片', level: 0.55, color: 'alert' }, // Medium (55%)
+                { name: '傳感器陣列 C', level: 0.25, color: 'danger' }, // Low (25%)
+            ],
+            // 根據上次的採購清單模擬的緊急任務
+            urgentProcurementTasks: [
+                { id: 1, item: 'DDR5 32GB 高速記憶體模組', urgency: '急迫', amount: '125,000 TWD' },
+                { id: 2, item: 'ARM Cortex-A78 處理器晶片', urgency: '緊急', amount: '150,000 TWD' },
+                { id: 3, item: '高速無線通訊模塊 A', urgency: '高', amount: '25,000 TWD' },
+            ]
+        };
+
+        // =========================================================================
+        // 渲染函數
+        // =========================================================================
+
+        function formatCurrency(amount) {
+            return amount.toLocaleString('en-US'); // 使用逗號分隔符
+        }
+
+        function renderKPIs() {
+            const { totalSales, salesChange, inventoryValue, poCount, csat } = MOCK_DATA.kpis;
+
+            // 總銷售額
+            document.getElementById('kpi-sales').textContent = formatCurrency(totalSales);
+            const changeElement = document.getElementById('kpi-sales-change');
+            const isPositive = salesChange >= 0;
+            const changeClass = isPositive ? 'text-secondary' : 'text-danger';
+            const arrowIcon = isPositive ?
+                '<svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>' :
+                '<svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 112 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>';
+
+            changeElement.className = `text-sm mt-2 flex items-center ${changeClass}`;
+            changeElement.innerHTML = `${arrowIcon} <span class="font-bold">${Math.abs(salesChange)}%</span> (較上月)`;
+
+            // 其他 KPI
+            document.getElementById('kpi-inventory-value').textContent = formatCurrency(inventoryValue);
+            document.getElementById('kpi-po-count').textContent = poCount;
+            document.getElementById('kpi-csat').textContent = csat.toFixed(1);
+        }
+
+        function renderRevenueChart() {
+            const chartEl = document.getElementById('revenue-chart');
+            const labelsEl = document.getElementById('revenue-labels');
+            chartEl.innerHTML = ''; // 清空
+            labelsEl.innerHTML = ''; // 清空
+
+            const maxAmount = Math.max(...MOCK_DATA.revenueTrend.map(d => d.amount));
+            const baseHeight = 250; // 基礎高度 (px)
+
+            MOCK_DATA.revenueTrend.forEach(data => {
+                const heightPercentage = (data.amount / maxAmount) * 100;
+                const barHeight = (data.amount / maxAmount) * baseHeight; // 根據比例計算實際高度 (max 250px)
+
+                const barDiv = document.createElement('div');
+                barDiv.className = 'flex flex-col items-center w-1/6 h-full justify-end';
+                barDiv.innerHTML = `
+                    <div class="text-xs mb-1 font-medium text-gray-700">${formatCurrency(data.amount)}</div>
+                    <div class="w-3/5 bg-primary rounded-t-lg transition-all duration-700 hover:bg-blue-600 cursor-pointer"
+                         style="height: ${barHeight}px;"
+                         title="${data.month}: ${formatCurrency(data.amount)} TWD">
+                    </div>
+                `;
+                chartEl.appendChild(barDiv);
+
+                // 渲染月份標籤
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'text-center w-1/6';
+                labelDiv.textContent = data.month;
+                labelsEl.appendChild(labelDiv);
+            });
+        }
+
+        function renderInventoryStatus() {
+            const container = document.getElementById('inventory-status');
+            container.innerHTML = ''; // 清空
+
+            MOCK_DATA.inventoryHealth.forEach(item => {
+                const percentage = (item.level * 100).toFixed(0);
+                let barColor, statusText;
+
+                if (item.level >= 0.75) {
+                    barColor = 'bg-secondary';
+                    statusText = '充足';
+                } else if (item.level >= 0.4) {
+                    barColor = 'bg-alert';
+                    statusText = '中等';
+                } else {
+                    barColor = 'bg-danger';
+                    statusText = '低風險';
+                }
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'p-3 bg-gray-50 rounded-lg shadow-sm';
+                itemDiv.innerHTML = `
+                    <div class="flex justify-between items-center text-sm font-medium">
+                        <span>${item.name}</span>
+                        <span class="text-gray-500">${percentage}% - ${statusText}</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                        <div class="h-2 rounded-full ${barColor}" style="width: ${percentage}%;"></div>
+                    </div>
+                `;
+                container.appendChild(itemDiv);
+            });
+        }
+
+        function renderUrgentTasks() {
+            const container = document.getElementById('urgent-tasks');
+            container.innerHTML = ''; // 清空
+
+            const urgentTasks = MOCK_DATA.urgentProcurementTasks;
+            document.getElementById('urgent-count').textContent = `${urgentTasks.length} 項`;
+
+            if (urgentTasks.length === 0) {
+                 container.innerHTML = `<li class="text-center text-gray-500 py-4">目前沒有緊急採購任務。</li>`;
+                 return;
+            }
+
+            urgentTasks.forEach(task => {
+                let urgencyColor;
+                if (task.urgency === '緊急') {
+                    urgencyColor = 'bg-danger text-white';
+                } else if (task.urgency === '急迫' || task.urgency === '高') {
+                    urgencyColor = 'bg-alert text-gray-900';
+                } else {
+                    urgencyColor = 'bg-gray-200 text-gray-800';
+                }
+
+                const taskLi = document.createElement('li');
+                taskLi.className = 'flex justify-between items-center p-3 rounded-lg border-l-4 border-danger bg-red-50 hover:bg-red-100 transition duration-150';
+                taskLi.innerHTML = `
+                    <div>
+                        <p class="font-bold text-gray-800">${task.item}</p>
+                        <p class="text-xs text-gray-500">${task.amount}</p>
+                    </div>
+                    <span class="px-2 py-0.5 text-xs font-semibold rounded ${urgencyColor}">
+                        ${task.urgency}
+                    </span>
+                `;
+                container.appendChild(taskLi);
+            });
+        }
+
+        // =========================================================================
+        // Firebase Auth & Firestore Setup (使用模擬的公共數據路徑)
+        // =========================================================================
+
+        function setupFirestoreListener() {
+            if (!db) return;
+
+            // 範例：設置一個監聽器，監聽公共數據中的待辦清單 (假設我們有一個公共的任務清單)
+            // 路徑: /artifacts/{appId}/public/data/procurement_tasks
+            const q = query(collection(db, `artifacts/${appId}/public/data/procurement_tasks`));
+
+            // 注意：這裡只是一個示範如何使用 onSnapshot 監聽數據
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    console.log("Firestore 採購任務更新:", change.type, change.doc.data());
+                    // 實際應用中，您會在這裡更新 MOCK_DATA.urgentProcurementTasks
+                });
+                // 由於我們使用靜態模擬數據，這裡不更新 UI
+            }, (error) => {
+                console.error("Firestore 監聽錯誤:", error);
+            });
+
+            // 由於這是單頁應用，我們不會手動調用 unsubscribe
+            console.log("Firestore 監聽已啟動 (procurement_tasks)");
+        }
+
+        // 驗證並獲取使用者 ID
+        async function authenticateUser() {
+            if (!auth) {
+                document.getElementById('user-id').textContent = 'MockUser';
+                return;
+            }
+
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Firebase 認證失敗:", error.message);
+                // 即使失敗也允許 UI 載入，使用預設 ID
+            }
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUserId = user.uid;
+                    document.getElementById('user-id').textContent = currentUserId.substring(0, 8) + '...';
+                    console.log("用戶已登入，UID:", currentUserId);
+                    setupFirestoreListener();
+                } else {
+                    currentUserId = crypto.randomUUID();
+                    document.getElementById('user-id').textContent = 'Anon-' + currentUserId.substring(0, 4);
+                    console.log("用戶匿名登入，使用 UUID:", currentUserId);
+                }
+            });
+        }
+
+        // =========================================================================
+        // 主應用程式啟動
+        // =========================================================================
+        window.onload = function() {
+            // 1. 渲染儀表板數據
+            renderKPIs();
+            renderRevenueChart();
+            renderInventoryStatus();
+            renderUrgentTasks();
+
+            // 2. 處理 Firebase 認證和數據
+            if (Object.keys(firebaseConfig).length > 0) {
+                authenticateUser();
+            } else {
+                document.getElementById('user-id').textContent = 'Offline/Mock';
+            }
+
+            // 3. 響應式佈局：側邊欄切換邏輯
+            const sidebar = document.getElementById('sidebar');
+            const menuButton = document.getElementById('menu-button');
+            let isSidebarOpen = false;
+
+            menuButton.addEventListener('click', () => {
+                isSidebarOpen = !isSidebarOpen;
+                if (isSidebarOpen) {
+                    sidebar.classList.remove('hidden');
+                    sidebar.classList.add('absolute', 'inset-y-0', 'left-0', 'z-20');
+                } else {
+                    sidebar.classList.add('hidden');
+                    sidebar.classList.remove('absolute', 'inset-y-0', 'left-0', 'z-20');
+                }
+            });
+
+            // 處理視窗大小改變，確保桌面顯示
+            window.addEventListener('resize', () => {
+                if (window.innerWidth >= 768) { // md breakpoint
+                    sidebar.classList.remove('hidden', 'absolute', 'inset-y-0', 'left-0', 'z-20');
+                    sidebar.classList.add('flex');
+                    isSidebarOpen = false;
+                }
+            });
+        }
+    </script>
+</body>
+</html>

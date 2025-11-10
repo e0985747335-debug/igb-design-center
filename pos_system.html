@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB SiteLink POS 系統 (功能增強介面)</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        :root {
+            font-family: 'Inter', sans-serif;
+        }
+        .pos-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            height: 100vh;
+        }
+        @media (max-width: 1024px) {
+            .pos-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr; /* 讓左側內容自適應，右側佔滿剩餘空間 */
+                height: auto;
+            }
+        }
+        /* Custom scrollbar for transaction log */
+        .transaction-log::-webkit-scrollbar {
+            width: 6px;
+        }
+        .transaction-log::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 3px;
+        }
+        .transaction-log::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .payment-btn.selected {
+            @apply bg-green-500 text-white border-green-700 shadow-md;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div id="app" class="pos-grid min-h-screen">
+
+        <!-- 左側：商品列表與日誌 -->
+        <div class="p-4 overflow-y-auto lg:h-screen" id="product-list-container">
+            <h1 class="text-3xl font-bold mb-6 text-indigo-700">IGB SiteLink POS 結算 (功能增強)</h1>
+            <div id="user-info" class="mb-4 p-3 bg-white shadow rounded-lg text-sm">
+                <p><strong>節點操作員 ID (審計模擬):</strong> <span id="display-user-id" class="font-mono text-xs text-green-600">N/A</span></p>
+                <p class="text-xs text-red-500 mt-1">※ 警告：此版本無雲端數據持久化功能！</p>
+            </div>
+            
+            <!-- 新增：快速商品搜索 -->
+            <div class="bg-gray-100 p-3 rounded-xl shadow-sm mb-6">
+                <h2 class="text-xl font-semibold mb-2 text-gray-700">快速商品搜索</h2>
+                <input type="text" id="product-search-filter" placeholder="輸入名稱或 SKU 進行過濾..." class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+
+            <!-- 模擬掃描輸入區 -->
+            <div class="bg-indigo-100 p-4 rounded-xl shadow-md mb-6">
+                <h2 class="text-xl font-semibold mb-2 text-indigo-700">模擬條碼掃描</h2>
+                <div class="flex space-x-2">
+                    <input type="text" id="scan-input" placeholder="請輸入商品 SKU (例如: IGB001)" class="flex-grow p-2 border border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="IGB001">
+                    <button id="scan-button" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-150 transform hover:scale-[1.02]">
+                        掃描 (加一)
+                    </button>
+                </div>
+            </div>
+            <!-- 結束：模擬掃描輸入區 -->
+
+            <h2 class="text-xl font-semibold mb-3 text-gray-600">SiteLink 推廣商品</h2>
+            <div id="product-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <!-- 產品卡片將由 JS 渲染 -->
+            </div>
+
+            <h2 class="text-xl font-semibold mt-8 mb-3 text-gray-600">交易日誌 (當前會話)</h2>
+            <div id="transaction-log" class="transaction-log h-64 bg-white p-3 rounded-lg shadow-inner overflow-y-auto border border-gray-200">
+                <!-- 交易日誌將由 JS 渲染 -->
+                <p class="text-gray-500 italic">正在初始化日誌...</p>
+            </div>
+        </div>
+
+        <!-- 右側：購物車與結帳 (增強介面) -->
+        <div class="p-4 bg-white lg:h-screen flex flex-col shadow-lg">
+            <h2 class="text-2xl font-bold mb-4 border-b pb-2 text-indigo-600">購物車與結算</h2>
+            
+            <!-- 1. 客戶/會員管理區 -->
+            <div id="customer-info-section" class="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-300 shadow-sm">
+                <h3 class="font-semibold text-blue-700 mb-2">客戶/會員資訊</h3>
+                <div class="flex space-x-2">
+                    <input type="text" id="customer-search-input" placeholder="掃描會員卡或輸入電話/ID (模擬: CUST001)" class="flex-grow p-2 border rounded-lg text-sm" value="CUST001">
+                    <button id="select-customer-btn" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition duration-150">選定</button>
+                </div>
+                <p id="current-customer" class="mt-2 text-sm text-blue-800 font-medium">
+                    當前客戶: <span class="text-gray-600" id="customer-name-display">未選定訪客</span>
+                </p>
+            </div>
+            
+            <!-- 購物車列表 -->
+            <div id="cart-items" class="flex-grow overflow-y-auto mb-4 border rounded-lg p-3 bg-gray-50">
+                <p class="text-gray-500 italic text-center py-4">購物車中沒有商品。</p>
+            </div>
+
+            <div id="summary" class="pt-4 border-t-2 border-indigo-200">
+                 <!-- 2. 折扣與優惠券 -->
+                <div class="mb-4 p-3 bg-yellow-50 rounded-xl border border-yellow-300 shadow-sm">
+                    <h3 class="font-semibold text-yellow-700 mb-2">折扣/優惠券</h3>
+                    <div class="flex space-x-2">
+                        <input type="text" id="coupon-input" placeholder="輸入優惠碼 (模擬: DISC10)" class="flex-grow p-2 border rounded-lg text-sm">
+                        <button id="apply-coupon-btn" class="bg-yellow-500 text-white p-2 rounded-lg hover:bg-yellow-600 transition duration-150">應用</button>
+                    </div>
+                    <p id="discount-display" class="mt-2 text-sm text-yellow-800 font-medium">
+                        應用折扣: <span id="discount-amount-display" class="text-yellow-900 font-bold">$ 0.00</span>
+                    </p>
+                </div>
+
+                <!-- 結算明細 -->
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-lg font-medium">商品總單位數:</span>
+                    <span id="item-count" class="text-lg font-medium">0</span>
+                </div>
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-lg font-medium">小計 (Subtotal):</span>
+                    <span id="subtotal" class="text-lg font-medium">$ 0.00</span>
+                </div>
+                 <div class="flex justify-between items-center mb-4">
+                    <span class="text-lg font-bold text-red-600">折扣總計:</span>
+                    <span id="total-discount" class="text-lg font-bold text-red-600">$ 0.00</span>
+                </div>
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-xl font-bold text-gray-700">應付總額 (Total):</span>
+                    <span id="total" class="text-2xl font-extrabold text-indigo-700">$ 0.00</span>
+                </div>
+
+                <!-- 3. 支付方式選擇 -->
+                <div class="mt-4 mb-4">
+                    <h3 class="font-semibold text-gray-700 mb-2">選擇支付方式</h3>
+                    <div id="payment-methods" class="grid grid-cols-3 gap-2">
+                        <button data-payment="CASH" class="payment-btn bg-gray-200 text-gray-700 p-3 rounded-xl hover:bg-green-100 border-2 border-transparent hover:border-green-500 transition duration-150">現金</button>
+                        <button data-payment="CREDIT" class="payment-btn bg-gray-200 text-gray-700 p-3 rounded-xl hover:bg-green-100 border-2 border-transparent hover:border-green-500 transition duration-150 selected">信用卡</button>
+                        <button data-payment="MOBILE" class="payment-btn bg-gray-200 text-gray-700 p-3 rounded-xl hover:bg-green-100 border-2 border-transparent hover:border-green-500 transition duration-150">移動支付</button>
+                    </div>
+                    <input type="hidden" id="selected-payment-method" value="CREDIT">
+                </div>
+                
+                <button id="checkout-button" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition duration-150 transform hover:scale-[1.01] disabled:bg-gray-400">
+                    結帳 (當前: 信用卡)
+                </button>
+            </div>
+            
+            <!-- 訊息框 -->
+            <div id="message-box" class="mt-4 p-3 hidden rounded-lg transition duration-300 shadow-md" role="alert"></div>
+        </div>
+    </div>
+
+    <!-- 客戶端 JavaScript 腳本 -->
+    <script>
+        // --- 全域變數和狀態 (移除 Firebase) ---
+        
+        let currentUserId = 'OPERATOR-SIM-123456'; // 模擬操作員 ID
+        const cart = {}; // 購物車結構: { sku: { item: product, quantity: N } }
+        const transactionLog = []; // 用於存儲當前會話的交易記錄
+        let currentDiscount = 0.00; // 新增：當前應用的折扣金額
+        let currentCustomer = 'Guest'; // 新增：當前客戶 ID
+        let selectedPaymentMethod = 'CREDIT'; // 新增：選定的支付方式
+
+        const PRODUCTS = [
+            { sku: 'IGB001', name: 'Micro-USB 快充線', price: 29.99, stock: 100, is_collateralized: true },
+            { sku: 'IGB002', name: 'PD 30W 車載充電器', price: 49.99, stock: 50, is_collateralized: true },
+            { sku: 'IGB003', name: 'SiteLink 專屬帆布袋', price: 9.99, stock: 200, is_collateralized: false },
+            { sku: 'IGB004', name: '藍芽耳機升級套件', price: 119.50, stock: 30, is_collateralized: true },
+            { sku: 'IGB005', name: '節點電源轉接頭', price: 19.99, stock: 150, is_collateralized: false },
+            { sku: 'IGB006', name: '高性能網路線 (5M)', price: 39.00, stock: 80, is_collateralized: false },
+        ];
+        
+        // DOM 元素引用
+        const CART_ITEMS_ELEMENT = document.getElementById('cart-items');
+        const TOTAL_ELEMENT = document.getElementById('total');
+        const SUB_TOTAL_ELEMENT = document.getElementById('subtotal');
+        const ITEM_COUNT_ELEMENT = document.getElementById('item-count');
+        const TOTAL_DISCOUNT_ELEMENT = document.getElementById('total-discount'); // 新增
+        const CHECKOUT_BUTTON = document.getElementById('checkout-button');
+        const MESSAGE_BOX = document.getElementById('message-box');
+        const PRODUCT_LIST_ELEMENT = document.getElementById('product-list');
+        const DISPLAY_USER_ID = document.getElementById('display-user-id');
+        const TRANSACTION_LOG_ELEMENT = document.getElementById('transaction-log');
+        const SCAN_INPUT_ELEMENT = document.getElementById('scan-input');
+        const SCAN_BUTTON_ELEMENT = document.getElementById('scan-button');
+        const PRODUCT_SEARCH_FILTER = document.getElementById('product-search-filter'); // 新增
+        const CUSTOMER_SEARCH_INPUT = document.getElementById('customer-search-input'); // 新增
+        const SELECT_CUSTOMER_BTN = document.getElementById('select-customer-btn'); // 新增
+        const CUSTOMER_NAME_DISPLAY = document.getElementById('customer-name-display'); // 新增
+        const COUPON_INPUT = document.getElementById('coupon-input'); // 新增
+        const APPLY_COUPON_BTN = document.getElementById('apply-coupon-btn'); // 新增
+        const DISCOUNT_AMOUNT_DISPLAY = document.getElementById('discount-amount-display'); // 新增
+        const PAYMENT_METHODS_CONTAINER = document.getElementById('payment-methods'); // 新增
+
+        const SITE_LINK_NODE_ID = 'D2-PingTung'; // 模擬 SiteLink 節點 ID
+
+        // --- 輔助函數 ---
+
+        /** 顯示訊息給使用者，取代 alert() */
+        function showMessage(message, type = 'info') {
+            MESSAGE_BOX.textContent = message;
+            MESSAGE_BOX.className = 'mt-4 p-3 rounded-xl transition duration-300 shadow-md';
+            MESSAGE_BOX.classList.remove('hidden');
+
+            switch (type) {
+                case 'success':
+                    MESSAGE_BOX.classList.add('bg-green-100', 'text-green-800', 'border', 'border-green-300');
+                    break;
+                case 'error':
+                    MESSAGE_BOX.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-300');
+                    break;
+                case 'info':
+                default:
+                    MESSAGE_BOX.classList.add('bg-blue-100', 'text-blue-800', 'border', 'border-blue-300');
+                    break;
+            }
+
+            setTimeout(() => {
+                MESSAGE_BOX.classList.add('hidden');
+            }, 5000);
+        }
+
+        /** 計算購物車總計 (包含折扣) */
+        function calculateTotal() {
+            let subtotal = 0;
+            let totalItemCount = 0;
+            
+            for (const sku in cart) {
+                const lineTotal = cart[sku].item.price * cart[sku].quantity;
+                subtotal += lineTotal;
+                totalItemCount += cart[sku].quantity;
+            }
+            
+            // 淨總額 (Subtotal - Discount)
+            const total = Math.max(0, subtotal - currentDiscount);
+
+            // 更新 UI
+            ITEM_COUNT_ELEMENT.textContent = totalItemCount;
+            SUB_TOTAL_ELEMENT.textContent = `$ ${subtotal.toFixed(2)}`;
+            TOTAL_DISCOUNT_ELEMENT.textContent = `$ ${currentDiscount.toFixed(2)}`;
+            TOTAL_ELEMENT.textContent = `$ ${total.toFixed(2)}`;
+
+            // 結帳按鈕啟用/禁用
+            CHECKOUT_BUTTON.disabled = subtotal === 0;
+            CHECKOUT_BUTTON.textContent = `結帳 (當前: ${getPaymentMethodName(selectedPaymentMethod)})`;
+        }
+
+        /** 根據 Code 獲取支付方式名稱 */
+        function getPaymentMethodName(code) {
+            switch (code) {
+                case 'CASH': return '現金';
+                case 'CREDIT': return '信用卡';
+                case 'MOBILE': return '移動支付';
+                default: return '未選定';
+            }
+        }
+
+
+        /** 渲染購物車內容 */
+        function renderCart() {
+            const keys = Object.keys(cart);
+            if (keys.length === 0) {
+                CART_ITEMS_ELEMENT.innerHTML = '<p class="text-gray-500 italic text-center py-4">購物車中沒有商品。</p>';
+                CHECKOUT_BUTTON.disabled = true;
+                return;
+            }
+
+            CART_ITEMS_ELEMENT.innerHTML = keys.map(sku => {
+                const item = cart[sku].item;
+                const quantity = cart[sku].quantity;
+                
+                return `
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                        <div class="flex-grow">
+                            <p class="font-medium text-gray-700">${item.name} <span class="text-xs text-indigo-500">${item.is_collateralized ? '(擔保品)' : ''}</span></p>
+                            <p class="text-sm text-gray-500">單價: $ ${item.price.toFixed(2)}</p>
+                        </div>
+                        <div class="flex items-center space-x-3 min-w-[200px] justify-end">
+                            <!-- 數量控制區 -->
+                            <div class="flex items-center space-x-1">
+                                <button data-sku="${sku}" data-action="decrease" class="text-white bg-indigo-400 hover:bg-indigo-500 w-6 h-6 rounded-full font-bold text-sm transition">-</button>
+                                <span class="font-bold text-base w-6 text-center">${quantity}</span>
+                                <button data-sku="${sku}" data-action="increase" class="text-white bg-indigo-400 hover:bg-indigo-500 w-6 h-6 rounded-full font-bold text-sm transition">+</button>
+                            </div>
+                            <!-- 行總計 -->
+                            <span class="font-bold text-lg w-20 text-right text-indigo-700">$ ${(item.price * quantity).toFixed(2)}</span>
+                            <!-- 移除按鈕 (移除整個品項) -->
+                            <button data-sku="${sku}" data-action="remove-line" class="text-red-500 hover:text-red-700 text-xl ml-2 leading-none">
+                                &times;
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            calculateTotal();
+        }
+
+        /** 渲染交易日誌 (客戶端模擬) */
+        function renderTransactionLog() {
+            if (transactionLog.length === 0) {
+                TRANSACTION_LOG_ELEMENT.innerHTML = '<p class="text-gray-500 italic">目前無交易記錄，請開始結帳。</p>';
+                return;
+            }
+
+            const latestLogs = [...transactionLog].reverse().slice(0, 10);
+
+            const logsHTML = latestLogs.map(data => {
+                const date = new Date(data.transactionTimestamp).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const collateralStatus = data.isCollateralSale ? '✅ 擔保品' : ' 一般';
+                const payment = getPaymentMethodName(data.paymentMethod);
+                return `
+                    <div class="text-xs py-1 border-b border-gray-100 last:border-b-0">
+                        <span class="text-gray-500">${date}</span> | 
+                        <span class="font-bold text-indigo-700">$${data.totalAmount.toFixed(2)}</span> | 
+                        <span class="text-green-600">${collateralStatus}</span> | ${payment}
+                        <br>
+                        <span class="font-mono text-gray-400">ID: ${data.transactionId.substring(0, 16)}...</span>
+                    </div>
+                `;
+            }).join('');
+
+            TRANSACTION_LOG_ELEMENT.innerHTML = logsHTML;
+            TRANSACTION_LOG_ELEMENT.scrollTop = TRANSACTION_LOG_ELEMENT.scrollHeight;
+        }
+        
+        // --- 核心業務邏輯與增強功能處理 ---
+
+        /** 處理模擬條碼掃描輸入 */
+        function handleScan() {
+            const sku = SCAN_INPUT_ELEMENT.value.trim().toUpperCase();
+            if (sku) {
+                const product = PRODUCTS.find(p => p.sku === sku);
+                if (product) {
+                    addToCart(sku);
+                    SCAN_INPUT_ELEMENT.value = ''; 
+                    SCAN_INPUT_ELEMENT.focus(); 
+                } else {
+                    showMessage(`錯誤：找不到商品 SKU "${sku}"。`, 'error');
+                }
+            } else {
+                showMessage('請輸入一個有效的 SKU 進行掃描。', 'error');
+            }
+        }
+        SCAN_BUTTON_ELEMENT.addEventListener('click', handleScan);
+        SCAN_INPUT_ELEMENT.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault(); 
+                handleScan();
+            }
+        });
+
+        /** 將商品添加到購物車 */
+        function addToCart(sku) {
+            const product = PRODUCTS.find(p => p.sku === sku);
+            if (cart[sku]) {
+                cart[sku].quantity += 1;
+            } else {
+                cart[sku] = { item: product, quantity: 1 };
+            }
+            renderCart();
+            showMessage(`[掃描成功] ${product.name} (x1) 已加入/數量增加。`, 'info');
+        }
+
+        /** 處理購物車數量控制和移除 */
+        CART_ITEMS_ELEMENT.addEventListener('click', (e) => {
+            const target = e.target;
+            const sku = target.dataset.sku;
+            const action = target.dataset.action;
+
+            if (!sku || !action || !cart[sku]) return;
+
+            switch (action) {
+                case 'increase':
+                    cart[sku].quantity += 1;
+                    showMessage(`已增加 ${cart[sku].item.name} 的數量。`, 'info');
+                    break;
+                case 'decrease':
+                    if (cart[sku].quantity > 1) {
+                        cart[sku].quantity -= 1;
+                        showMessage(`已減少 ${cart[sku].item.name} 的數量。`, 'info');
+                    } else {
+                        delete cart[sku];
+                        showMessage(`${cart[sku].item.name} 品項已移除。`, 'info');
+                    }
+                    break;
+                case 'remove-line':
+                    const name = cart[sku]?.item?.name;
+                    delete cart[sku];
+                    showMessage(`${name} 品項已移除。`, 'info');
+                    break;
+                default:
+                    return;
+            }
+            
+            renderCart();
+            applyDiscount(COUPON_INPUT.value); // 重新計算折扣 (防止折扣邏輯影響)
+        });
+
+        // --- 增強介面功能邏輯 ---
+
+        /** 1. 處理客戶選定/搜索 (模擬功能) */
+        function selectCustomer() {
+            const customerId = CUSTOMER_SEARCH_INPUT.value.trim();
+            if (customerId) {
+                currentCustomer = customerId;
+                CUSTOMER_NAME_DISPLAY.textContent = `[會員] ${customerId}`;
+                showMessage(`已選定客戶 ID: ${customerId}，可應用會員優惠。`, 'success');
+            } else {
+                currentCustomer = 'Guest';
+                CUSTOMER_NAME_DISPLAY.textContent = `未選定訪客`;
+                showMessage('已重設為訪客模式。', 'info');
+            }
+        }
+        SELECT_CUSTOMER_BTN.addEventListener('click', selectCustomer);
+
+        /** 2. 應用折扣/優惠券 (模擬功能) */
+        function applyDiscount(couponCode) {
+            let discount = 0.00;
+            const subtotal = Object.values(cart).reduce((sum, item) => sum + (item.item.price * item.quantity), 0);
+
+            if (couponCode.toUpperCase() === 'DISC10') {
+                // 模擬固定金額折扣 $10
+                discount = 10.00;
+                showMessage(`優惠券 [${couponCode}] 成功應用，折扣 $10.00。`, 'success');
+            } else if (couponCode.toUpperCase() === 'SAVE5') {
+                 // 模擬百分比折扣 5% (上限 $20)
+                discount = Math.min(20.00, subtotal * 0.05);
+                showMessage(`優惠券 [${couponCode}] 成功應用，折扣 ${discount.toFixed(2)} (5%)。`, 'success');
+            } else if (couponCode) {
+                 // 模擬無效折扣
+                showMessage(`錯誤：無效的優惠碼 [${couponCode}]。`, 'error');
+            } else {
+                // 清空折扣
+                showMessage('折扣已清空。', 'info');
+            }
+            
+            currentDiscount = discount;
+            DISCOUNT_AMOUNT_DISPLAY.textContent = `$ ${currentDiscount.toFixed(2)}`;
+            calculateTotal();
+        }
+        APPLY_COUPON_BTN.addEventListener('click', () => applyDiscount(COUPON_INPUT.value.trim()));
+
+        /** 3. 產品列表過濾 */
+        function filterProducts() {
+            const filterText = PRODUCT_SEARCH_FILTER.value.trim().toLowerCase();
+            const filteredProducts = PRODUCTS.filter(p => 
+                p.name.toLowerCase().includes(filterText) || 
+                p.sku.toLowerCase().includes(filterText)
+            );
+            renderProducts(filteredProducts);
+        }
+        PRODUCT_SEARCH_FILTER.addEventListener('input', filterProducts);
+        
+        /** 4. 支付方式選擇 */
+        function selectPaymentMethod(e) {
+            const target = e.target.closest('.payment-btn');
+            if (target) {
+                selectedPaymentMethod = target.dataset.payment;
+                
+                // 更新 UI 樣式
+                document.querySelectorAll('.payment-btn').forEach(btn => btn.classList.remove('selected'));
+                target.classList.add('selected');
+
+                calculateTotal(); // 更新結帳按鈕文字
+                showMessage(`已選定支付方式: ${getPaymentMethodName(selectedPaymentMethod)}`, 'info');
+            }
+        }
+        PAYMENT_METHODS_CONTAINER.addEventListener('click', selectPaymentMethod);
+
+
+        /** * 交易完成，寫入客戶端模擬日誌 */
+        function logTransaction(transactionData) {
+            
+            const transactionRecord = {
+                transactionId: `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+                userId: currentUserId,
+                siteLinkNodeId: SITE_LINK_NODE_ID, 
+                customer: currentCustomer, // 記錄客戶 ID
+                items: transactionData.items,
+                totalAmount: transactionData.totalAmount,
+                discountAmount: transactionData.discountAmount, // 記錄折扣
+                paymentMethod: transactionData.paymentMethod,
+                transactionTimestamp: new Date().getTime(), 
+                status: 'Completed',
+                isCollateralSale: transactionData.isCollateralSale,
+                auditHash: crypto.randomUUID(), 
+            };
+
+            transactionLog.push(transactionRecord);
+            renderTransactionLog(); 
+            
+            return transactionRecord;
+        }
+        
+        /**
+         * 模擬庫存擔保品釋放 (Collateral Release)
+         */
+        async function mockCollateralRelease(items) {
+            const collateralItemsCount = items.filter(item => item.is_collateralized)
+                                              .reduce((sum, item) => sum + item.quantity, 0);
+
+            if (collateralItemsCount === 0) return true;
+
+            console.log(`[MC Core Mock] 觸發擔保品釋放事務，總單位數: ${collateralItemsCount}`);
+            showMessage(`已觸發 ${collateralItemsCount} 個擔保品庫存的價值釋放事務。`, 'info');
+            
+            await new Promise(resolve => setTimeout(resolve, 500)); 
+            return true;
+        }
+
+        /** 結帳流程 */
+        async function checkoutTransaction() {
+            if (Object.keys(cart).length === 0) {
+                showMessage('購物車是空的，無法結帳。', 'error');
+                return;
+            }
+
+            CHECKOUT_BUTTON.disabled = true;
+            CHECKOUT_BUTTON.textContent = '處理中... 請稍候';
+            
+            const subtotal = Object.values(cart).reduce((sum, item) => sum + (item.item.price * item.quantity), 0);
+            const finalTotal = Math.max(0, subtotal - currentDiscount);
+            
+            // 轉換購物車數據為日誌所需的格式 (帶有 quantity)
+            const cartItemsForLog = Object.values(cart).map(c => ({
+                sku: c.item.sku,
+                name: c.item.name,
+                unitPrice: c.item.price,
+                quantity: c.quantity,
+                is_collateralized: c.item.is_collateralized, 
+            }));
+            
+            const isCollateralSale = cartItemsForLog.some(item => item.is_collateralized);
+
+            const transactionData = {
+                items: cartItemsForLog,
+                totalAmount: finalTotal,
+                discountAmount: currentDiscount,
+                paymentMethod: selectedPaymentMethod, 
+                isCollateralSale: isCollateralSale,
+            };
+
+            // 1. 寫入客戶端模擬日誌
+            const transactionRecord = logTransaction(transactionData);
+
+            if (transactionRecord) {
+                // 2. 模擬觸發擔保品釋放事務
+                await mockCollateralRelease(cartItemsForLog);
+
+                showMessage(`交易成功！總計 $${finalTotal.toFixed(2)} (支付方式: ${getPaymentMethodName(selectedPaymentMethod)})。交易 ID: ${transactionRecord.transactionId}`, 'success');
+                
+                // 3. 清空狀態
+                for (const sku in cart) {
+                    delete cart[sku];
+                }
+                currentDiscount = 0.00; // 重設折扣
+                COUPON_INPUT.value = '';
+                currentCustomer = 'Guest';
+                CUSTOMER_NAME_DISPLAY.textContent = `未選定訪客`;
+                
+                renderCart();
+                applyDiscount(''); // 重設 UI 上的折扣顯示
+            } else {
+                showMessage('結帳失敗：交易日誌建立失敗。', 'error');
+            }
+
+            CHECKOUT_BUTTON.textContent = `結帳 (當前: ${getPaymentMethodName(selectedPaymentMethod)})`;
+            calculateTotal(); 
+        }
+
+        CHECKOUT_BUTTON.addEventListener('click', checkoutTransaction);
+        
+        // --- 初始化與模擬數據 ---
+        
+        /** 渲染產品列表 */
+        function renderProducts(productsToRender = PRODUCTS) {
+            if (productsToRender.length === 0) {
+                PRODUCT_LIST_ELEMENT.innerHTML = '<p class="text-gray-500 italic text-center py-4 col-span-full">找不到匹配的商品。</p>';
+                return;
+            }
+
+            PRODUCT_LIST_ELEMENT.innerHTML = productsToRender.map(p => `
+                <div class="bg-white p-4 rounded-xl shadow-lg hover:shadow-xl transition duration-300 flex flex-col justify-between border-2 ${p.is_collateralized ? 'border-indigo-300' : 'border-gray-200'}">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-500 mb-1">SKU: ${p.sku}</p>
+                        <h3 class="text-xl font-bold text-gray-800">${p.name}</h3>
+                        <p class="text-xs text-red-500 italic mt-1">${p.is_collateralized ? '【擔保資產】' : '非擔保品'}</p>
+                    </div>
+                    <div class="mt-3 flex justify-between items-center">
+                        <span class="text-2xl font-extrabold text-indigo-600">$ ${p.price.toFixed(2)}</span>
+                        <button data-sku="${p.sku}" class="add-to-cart bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 transform hover:scale-105">
+                            加入 (加一)
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            document.querySelectorAll('.add-to-cart').forEach(button => {
+                button.addEventListener('click', (e) => addToCart(e.target.dataset.sku));
+            });
+        }
+
+        /** 填充模擬交易數據 (僅用於初始顯示) */
+        function populateMockTransactions() {
+            const mockData = [
+                {
+                    items: [{ sku: 'IGB001', name: 'Micro-USB 快充線', quantity: 1, unitPrice: 29.99, is_collateralized: true }],
+                    totalAmount: 29.99,
+                    discountAmount: 0,
+                    isCollateralSale: true,
+                    paymentMethod: 'CASH'
+                },
+                {
+                    items: [{ sku: 'IGB003', name: 'SiteLink 專屬帆布袋', quantity: 2, unitPrice: 9.99, is_collateralized: false }],
+                    totalAmount: 14.98,
+                    discountAmount: 5.00,
+                    isCollateralSale: false,
+                    paymentMethod: 'CREDIT'
+                },
+            ];
+
+            mockData.forEach(data => {
+                const transactionRecord = {
+                    transactionId: `MOCK-${new Date().getTime()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+                    userId: currentUserId,
+                    siteLinkNodeId: SITE_LINK_NODE_ID,
+                    customer: 'MOCK-CUST-999',
+                    items: data.items,
+                    totalAmount: data.totalAmount,
+                    discountAmount: data.discountAmount,
+                    paymentMethod: data.paymentMethod,
+                    transactionTimestamp: new Date().getTime() - Math.floor(Math.random() * 100000), 
+                    status: 'Completed',
+                    isCollateralSale: data.isCollateralSale,
+                    auditHash: crypto.randomUUID(),
+                };
+                transactionLog.push(transactionRecord);
+            });
+        }
+
+        /** 系統初始化 */
+        function initSystem() {
+            DISPLAY_USER_ID.textContent = currentUserId; 
+            renderProducts();
+            
+            // 初始化支付方式按鈕狀態
+            document.querySelector(`[data-payment="${selectedPaymentMethod}"]`).classList.add('selected');
+
+            calculateTotal();
+            
+            // 載入模擬歷史日誌
+            populateMockTransactions();
+            renderTransactionLog();
+            
+            showMessage('系統初始化完成。請使用右側增強介面進行客戶/折扣/支付管理。', 'success');
+
+            // 讓掃描輸入框在載入後獲得焦點
+            if (SCAN_INPUT_ELEMENT) {
+                SCAN_INPUT_ELEMENT.focus();
+            }
+        }
+        
+        // 系統啟動
+        window.onload = initSystem;
+
+    </script>
+
+</body>
+</html>

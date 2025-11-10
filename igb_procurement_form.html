@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 採購管理</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* 設置 Inter 字體 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* 整體深色背景 */
+            color: #e2e8f0; /* 淺色文字 */
+        }
+
+        /* IGB Logo 色系定義 */
+        :root {
+            --logo-blue: #00A3FF; /* 亮藍色 (主色) */
+            --logo-red: #E5001A;  /* 鮮紅色 (強調/警示色) */
+            --dark-panel: #2d3748; /* 內嵌深色面板 */
+            --darker-bg: #1f2937; /* 更深的背景 */
+        }
+        .bg-logo-blue { background-color: var(--logo-blue); }
+        .text-logo-blue { color: var(--logo-blue); }
+        .border-logo-blue { border-color: var(--logo-blue); }
+        .bg-dark-panel { background-color: var(--dark-panel); }
+        .bg-darker-bg { background-color: var(--darker-bg); }
+
+        /* 頂部導航條的樣式 */
+        .top-nav {
+            background-color: #2d3748;
+            border-bottom: 1px solid #4a5568;
+        }
+
+        /* 左側功能導航樣式 */
+        .side-nav-item {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .side-nav-item:hover {
+            background-color: #3b4554;
+        }
+        .side-nav-active {
+            background-color: var(--logo-blue);
+            color: white;
+            font-weight: 600;
+            border-radius: 0 8px 8px 0;
+            position: relative;
+        }
+
+        /* 採購列表表格樣式 */
+        .procurement-table th {
+            background-color: #3b4554;
+            color: #cbd5e0;
+            padding: 12px 16px;
+            font-weight: 700;
+        }
+        .procurement-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #4a5568;
+            color: #e2e8f0;
+            cursor: pointer;
+        }
+        .procurement-table tr:hover {
+            background-color: #3b4554;
+        }
+        .procurement-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .row-selected {
+            background-color: #4a5568 !important;
+            border-left: 4px solid var(--logo-blue);
+            font-weight: 600;
+        }
+
+        /* 右側詳情面板樣式 */
+        .detail-panel-section {
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 輸入框樣式 */
+        input[type="text"] {
+            background-color: #4a5568;
+            border: 1px solid #6b7280;
+            color: #e2e8f0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            width: 100%;
+        }
+
+        /* 按鈕樣式 */
+        .btn-primary {
+            background-color: var(--logo-blue);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #0087D8;
+        }
+        .btn-secondary {
+            background-color: #4a5568;
+            color: #e2e8f0;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn-secondary:hover {
+            background-color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="min-h-screen">
+        <!-- 頂部導覽列 (Top Navigation) -->
+        <header class="top-nav px-8 py-3 flex justify-between items-center sticky top-0 z-10">
+            <div class="flex items-center space-x-6">
+                <div class="text-2xl font-extrabold text-logo-blue flex items-center">
+                    <span class="mr-1">•</span> IGB ERP
+                </div>
+                <!-- 主要模組導航 -->
+                <nav class="flex space-x-4 text-sm font-medium">
+                    <a href="#" class="text-gray-400 hover:text-white transition duration-150">會計</a>
+                    <a href="#" class="text-white border-b-2 border-logo-blue pb-1">採購管理</a>
+                    <a href="#" class="text-gray-400 hover:text-white transition duration-150">商品維護</a>
+                    <a href="#" class="text-gray-400 hover:text-white transition duration-150">業務資訊</a>
+                    <a href="#" class="text-gray-400 hover:text-white transition duration-150">人事管理</a>
+                    <a href="#" class="text-gray-400 hover:text-white transition duration-150">ERP 伺服器</a>
+                    <a href="#" class="text-gray-400 hover:text-white transition duration-150">ERP 雲端</a>
+                    <a href="#" class="text-gray-400 hover:text-white transition duration-150">數據中心</a>
+                </nav>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-400">當前用戶: 蕭士杰</span>
+                <span class="text-sm text-gray-400">日期: 2024/03/28</span>
+                <button class="bg-darker-bg p-2 rounded-full hover:bg-gray-600 transition">
+                    <!-- 通知圖標 (Notification Icon) -->
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.168 6.444 6 8.243 6 10.341V14.16a2.032 2.032 0 01-.595 1.405L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- 主要內容區域 (Main Content Layout) -->
+        <main class="flex h-[calc(100vh-60px)]">
+            
+            <!-- 左側功能導航 (Side Navigation) -->
+            <nav class="w-64 bg-darker-bg shadow-xl flex-shrink-0 pt-6">
+                <div class="side-nav-active border-l-4 border-logo-blue">
+                    採購管理
+                </div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-gray-400 px-6 pt-6 pb-2">
+                    採購業務
+                </div>
+                <div class="side-nav-item border-l-4 border-transparent hover:border-logo-blue transition duration-150">
+                    採購單管理
+                </div>
+                <div class="side-nav-item side-nav-active border-l-4 border-logo-blue">
+                    採購處理
+                </div>
+                <div class="side-nav-item border-l-4 border-transparent hover:border-logo-blue transition duration-150">
+                    製作採購單
+                </div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-gray-400 px-6 pt-6 pb-2">
+                    報表與查詢
+                </div>
+                <div class="side-nav-item border-l-4 border-transparent hover:border-logo-blue transition duration-150">
+                    驗收清單
+                </div>
+                <div class="side-nav-item border-l-4 border-transparent hover:border-logo-blue transition duration-150">
+                    歷史採購查詢
+                </div>
+            </nav>
+
+            <!-- 中心內容區塊 (Center Content) -->
+            <div class="flex-grow p-6 flex space-x-6 overflow-hidden">
+                
+                <!-- 採購單列表 (Purchase Order List) -->
+                <div class="w-1/2 bg-darker-bg rounded-xl shadow-2xl p-6 flex flex-col">
+                    <h2 class="text-2xl font-bold text-white mb-4">採購單列表</h2>
+                    <div class="mb-4 flex space-x-2">
+                        <input type="text" placeholder="搜尋採購單、廠商或品名..." class="flex-grow">
+                        <button class="bg-gray-600 p-2 rounded-lg hover:bg-gray-700 transition">
+                            <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </button>
+                    </div>
+
+                    <!-- 表格 -->
+                    <div class="overflow-y-auto flex-grow rounded-lg border border-gray-600">
+                        <table class="min-w-full divide-y divide-gray-700 procurement-table">
+                            <thead>
+                                <tr>
+                                    <th class="sticky top-0 z-10">單號</th>
+                                    <th class="sticky top-0 z-10">採購單號碼</th>
+                                    <th class="sticky top-0 z-10">廠商名稱</th>
+                                    <th class="sticky top-0 z-10">採購人員</th>
+                                </tr>
+                            </thead>
+                            <tbody id="procurement-list">
+                                <!-- 數據行將由 JavaScript 填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-4 text-sm text-gray-400">總計 <span id="total-count">14</span> 筆採購單</div>
+                </div>
+
+                <!-- 採購單詳情與商品清單 (Purchase Order Details & Items) -->
+                <div class="w-1/2 flex flex-col space-y-4 overflow-y-auto">
+                    
+                    <!-- 採購單資料面板 -->
+                    <div class="detail-panel-section bg-logo-red text-white">
+                        <h2 class="text-2xl font-bold mb-4">採購單資料 <span id="detail-po-number">1234567</span></h2>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <label class="block font-medium mb-1">採購單號</label>
+                                <input type="text" value="1234567" readonly>
+                            </div>
+                            <div>
+                                <label class="block font-medium mb-1">採購日期</label>
+                                <input type="text" value="2024/01/01" readonly>
+                            </div>
+                            <div>
+                                <label class="block font-medium mb-1">廠商編號</label>
+                                <div class="flex space-x-2">
+                                    <input type="text" value="A001" readonly>
+                                    <button class="bg-gray-700 text-white px-3 rounded-lg text-xs hover:bg-gray-800">查詢</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block font-medium mb-1">廠商名稱</label>
+                                <input type="text" value="愛美服飾" readonly>
+                            </div>
+                            <div>
+                                <label class="block font-medium mb-1">採購人員</label>
+                                <input type="text" value="IBM (假名)" readonly>
+                            </div>
+                            <div>
+                                <label class="block font-medium mb-1">付款方式</label>
+                                <input type="text" value="月結 30 天" readonly>
+                            </div>
+                            <div class="col-span-2">
+                                <label class="block font-medium mb-1">備註</label>
+                                <input type="text" value="統一發票開立請註明商品明細。" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 採購商品清單面板 -->
+                    <div class="detail-panel-section bg-darker-bg flex-grow">
+                        <h2 class="text-2xl font-bold text-white mb-4">採購商品清單</h2>
+                        
+                        <!-- 商品表格 -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-700">
+                                <thead>
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">項次</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">商品編號/名稱</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">數量</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">單價</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">總額</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="item-list" class="divide-y divide-gray-700">
+                                    <tr class="hover:bg-gray-700">
+                                        <td class="px-3 py-3 text-sm text-gray-300">1</td>
+                                        <td class="px-3 py-3 text-sm text-gray-300">A1001/T 恤 (黑色, XL)</td>
+                                        <td class="px-3 py-3 text-sm text-gray-300">100</td>
+                                        <td class="px-3 py-3 text-sm text-gray-300">50</td>
+                                        <td class="px-3 py-3 text-sm text-gray-300">5,000</td>
+                                        <td class="px-3 py-3 text-sm text-logo-red cursor-pointer hover:underline">刪除</td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-700">
+                                        <td class="px-3 py-3 text-sm text-gray-300">2</td>
+                                        <td class="px-3 py-3 text-sm text-gray-300">A3102/牛仔褲 (藍色, L)</td>
+                                        <td class="px-3 py-3 text-sm text-gray-300">50</td>
+                                        <td class="px-3 py-3 text-sm text-gray-300">550</td>
+                                        <td class="px-3 py-3 text-sm text-gray-300">27,500</td>
+                                        <td class="px-3 py-3 text-sm text-logo-red cursor-pointer hover:underline">刪除</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-4 flex justify-end">
+                            <button class="btn-secondary text-sm">新增商品</button>
+                        </div>
+
+                        <!-- 總計區 -->
+                        <div class="mt-6 p-4 bg-gray-700 rounded-lg text-right">
+                            <p class="text-xl font-bold text-white">採購總金額 (未稅): <span class="text-logo-blue ml-2" id="total-amount">32,500</span></p>
+                        </div>
+                    </div>
+
+                    <!-- 底部操作按鈕 -->
+                    <div class="flex justify-end space-x-4">
+                        <button class="btn-secondary">列印採購單</button>
+                        <button class="btn-secondary">作廢</button>
+                        <button class="px-6 py-3 bg-logo-red text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition duration-150">
+                            🚨 確認採購
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // 模擬採購單數據
+        const mockData = [
+            { id: 1, po_num: "01.01.1234567", vendor: "愛美服飾", buyer: "IBM" },
+            { id: 2, po_num: "01.02.2345670", vendor: "電子元件商", buyer: "Rob" },
+            { id: 3, po_num: "01.03.3456789", vendor: "台電", buyer: "Bob" },
+            { id: 4, po_num: "01.04.4567890", vendor: "髮飾配件", buyer: "David" },
+            { id: 5, po_num: "01.05.5678901", vendor: "愛倫服飾", buyer: "Charlie" },
+            { id: 6, po_num: "01.06.6789012", vendor: "光電複合", buyer: "Frank" },
+            { id: 7, po_num: "01.07.7890123", vendor: "水電批發", buyer: "Eva" },
+            { id: 8, po_num: "01.08.8901234", vendor: "牙刷批發", buyer: "Grace" },
+            { id: 9, po_num: "01.09.9012345", vendor: "日用品社", buyer: "Monica" },
+            { id: 10, po_num: "01.10.0123456", vendor: "電腦設備", buyer: "Jody" },
+            { id: 11, po_num: "01.11.1234577", vendor: "醫療器材", buyer: "Ivan" },
+            { id: 12, po_num: "01.12.1234588", vendor: "家電批發", buyer: "Kevin" },
+            { id: 13, po_num: "01.13.1234599", vendor: "建材行", buyer: "Linda" },
+            { id: 14, po_num: "01.14.1478900", vendor: "鞋類批發", buyer: "Mike" },
+        ];
+        
+        // 元素選取
+        const procurementList = document.getElementById('procurement-list');
+        const totalCount = document.getElementById('total-count');
+
+        // 當前選中的行 ID
+        let selectedRowId = 1;
+
+        /**
+         * 渲染採購單列表
+         */
+        function renderProcurementList() {
+            procurementList.innerHTML = '';
+            mockData.forEach(item => {
+                const isSelected = item.id === selectedRowId;
+                const row = document.createElement('tr');
+                row.className = isSelected ? 'row-selected' : '';
+                row.dataset.id = item.id;
+                row.innerHTML = `
+                    <td class="px-3 py-3 text-sm">${item.id}</td>
+                    <td class="px-3 py-3 text-sm">${item.po_num}</td>
+                    <td class="px-3 py-3 text-sm">${item.vendor}</td>
+                    <td class="px-3 py-3 text-sm">${item.buyer}</td>
+                `;
+                row.addEventListener('click', () => selectRow(item.id));
+                procurementList.appendChild(row);
+            });
+            totalCount.textContent = mockData.length;
+        }
+
+        /**
+         * 選中採購單行
+         * @param {number} id - 被選中行的 ID
+         */
+        function selectRow(id) {
+            // 移除舊的選中樣式
+            const previousSelected = procurementList.querySelector('.row-selected');
+            if (previousSelected) {
+                previousSelected.classList.remove('row-selected');
+                previousSelected.style.borderLeft = 'none';
+            }
+
+            // 設置新的選中狀態
+            const newSelected = procurementList.querySelector(`[data-id="${id}"]`);
+            if (newSelected) {
+                newSelected.classList.add('row-selected');
+                newSelected.style.borderLeft = '4px solid var(--logo-blue)';
+                selectedRowId = id;
+                // 在實際應用中，這裡會調用函數來更新右側詳情面板
+                // updateDetailsPanel(id);
+                
+                // 模擬更新右側單號
+                document.getElementById('detail-po-number').textContent = mockData.find(d => d.id === id).po_num;
+            }
+        }
+        
+        // 初始化時渲染列表
+        window.onload = function() {
+            renderProcurementList();
+        }
+    </script>
+</body>
+</html>

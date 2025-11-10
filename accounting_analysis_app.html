@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>會計科目報表分析應用</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 使用 Inter 字體 -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        /* 自定義樣式來美化圖表容器 */
+        .chart-container {
+            width: 100%;
+            /* 設置高度為固定值，讓圖表有足夠的空間，並確保響應式調整 */
+            height: 400px; 
+            margin-top: 1.5rem;
+            background-color: #ffffff;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+        }
+        /* 確保 Canvas 元素能填滿其父容器 */
+        #analysis-chart {
+            display: block;
+            width: 100%;
+            height: calc(100% - 30px); /* 減去標題高度 */
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl p-6 sm:p-10">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-3">會計系統科目報表分析</h1>
+
+        <!-- 控制面板 -->
+        <div class="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200 mb-8">
+            <h2 class="text-xl font-semibold text-blue-700">分析條件設定</h2>
+
+            <!-- 科目選擇與期間選擇 -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                <div>
+                    <label for="account-select" class="block text-sm font-medium text-gray-700 mb-1">選擇科目：</label>
+                    <select id="account-select" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <!-- 選項將由 JS 填充 -->
+                    </select>
+                </div>
+
+                <!-- 期間選擇 (起始) -->
+                <div>
+                    <label for="start-month" class="block text-sm font-medium text-gray-700 mb-1">起始月份：</label>
+                    <input type="month" id="start-month" value="2025-04" min="2025-04" max="2025-09" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- 期間選擇 (結束) -->
+                <div>
+                    <label for="end-month" class="block text-sm font-medium text-gray-700 mb-1">結束月份：</label>
+                    <input type="month" id="end-month" value="2025-09" min="2025-04" max="2025-09" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+
+            <!-- 生成報表按鈕 (新增 loading 狀態) -->
+            <div class="pt-4">
+                <button id="generate-button" class="flex items-center justify-center w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 transition duration-150 ease-in-out transform hover:scale-[1.01]">
+                    <svg id="loading-spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span id="button-text">生成分析報表</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 報表與分析結果區 -->
+        <div id="results-area" class="space-y-8 hidden">
+            <h2 class="text-2xl font-semibold text-gray-800">科目餘額趨勢分析</h2>
+
+            <!-- 圖表容器 (使用 Canvas 繪製趨勢圖) -->
+            <div class="chart-container">
+                <h3 class="text-lg font-medium text-gray-700 mb-3" id="chart-title"></h3>
+                <canvas id="analysis-chart"></canvas>
+            </div>
+
+            <!-- 詳細報表表格 -->
+            <div>
+                <h3 class="text-lg font-medium text-gray-700 mb-3" id="table-title"></h3>
+                <div class="overflow-x-auto rounded-lg shadow-md border border-gray-200">
+                    <table id="report-table" class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">月份</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">期末餘額 (新台幣)</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">月變化額</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">月變化率</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-body" class="bg-white divide-y divide-gray-200">
+                            <!-- 報表行將由 JS 填充 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 錯誤或提示訊息 -->
+        <div id="message-box" class="mt-8 p-4 text-sm text-red-700 bg-red-100 rounded-lg hidden" role="alert"></div>
+
+    </div>
+
+    <script type="text/javascript">
+        // 模擬會計科目資料 (2025年4月到9月)
+        const accountingData = [
+            { id: '1001', name: '現金', type: '資產', balances: { '2025-04': 500000, '2025-05': 550000, '2025-06': 600000, '2025-07': 580000, '2025-08': 620000, '2025-09': 700000 } },
+            { id: '1201', name: '應收帳款', type: '資產', balances: { '2025-04': 300000, '2025-05': 280000, '2025-06': 350000, '2025-07': 320000, '2025-08': 400000, '2025-09': 380000 } },
+            { id: '4001', name: '銷貨收入', type: '收益', balances: { '2025-04': 800000, '2025-05': 950000, '2025-06': 1100000, '2025-07': 1050000, '2025-08': 1200000, '2025-09': 1400000 } },
+            { id: '5001', name: '廣告費用', type: '費用', balances: { '2025-04': 50000, '2025-05': 75000, '2025-06': 60000, '2025-07': 100000, '2025-08': 80000, '2025-09': 120000 } },
+            { id: '5002', name: '租金費用', type: '費用', balances: { '2025-04': 80000, '2025-05': 80000, '2025-06': 80000, '2025-07': 80000, '2025-08': 80000, '2025-09': 80000 } },
+        ];
+
+        // 取得 DOM 元素
+        const accountSelect = document.getElementById('account-select');
+        const generateButton = document.getElementById('generate-button');
+        const resultsArea = document.getElementById('results-area');
+        const reportBody = document.getElementById('report-body');
+        const tableTitle = document.getElementById('table-title');
+        const chartTitle = document.getElementById('chart-title');
+        const startMonthInput = document.getElementById('start-month');
+        const endMonthInput = document.getElementById('end-month');
+        const messageBox = document.getElementById('message-box');
+        const analysisChart = document.getElementById('analysis-chart');
+
+        // 初始化：填充科目選項
+        function initializeAccountOptions() {
+            accountingData.forEach(account => {
+                const option = document.createElement('option');
+                option.value = account.id;
+                option.textContent = `${account.id} - ${account.name} (${account.type})`;
+                accountSelect.appendChild(option);
+            });
+            // 預設選中銷貨收入 (4001)
+            accountSelect.value = '4001';
+        }
+
+        /**
+         * 格式化數字為千位分隔符 (無貨幣符號, 用於圖表軸標籤)
+         * @param {number} number 要格式化的數字
+         * @returns {string} 格式化後的字串
+         */
+        function formatCurrency(number) {
+            if (number === null || number === undefined) return '';
+            return new Intl.NumberFormat('zh-TW', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
+        }
+        
+        /**
+         * 格式化數字為帶貨幣符號 (用於表格)
+         * @param {number} number 要格式化的數字
+         * @returns {string} 格式化後的字串
+         */
+        function formatTableCurrency(number) {
+            if (number === null || number === undefined) return '';
+            return new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', minimumFractionDigits: 0 }).format(number);
+        }
+
+        /**
+         * 顯示訊息 (替代 alert)
+         */
+        function showMessage(message, isError = false) {
+            messageBox.textContent = message;
+            messageBox.className = `mt-8 p-4 text-sm rounded-lg ${isError ? 'text-red-700 bg-red-100 border border-red-300' : 'text-green-700 bg-green-100 border border-green-300'}`;
+            messageBox.classList.remove('hidden');
+        }
+
+        /**
+         * 控制生成按鈕的載入狀態
+         * @param {boolean} isLoading 是否處於載入中
+         */
+        function setLoading(isLoading) {
+            const button = document.getElementById('generate-button');
+            const buttonText = document.getElementById('button-text');
+            const spinner = document.getElementById('loading-spinner');
+
+            if (isLoading) {
+                button.disabled = true;
+                button.classList.add('opacity-75', 'cursor-not-allowed');
+                spinner.classList.remove('hidden');
+                buttonText.textContent = '生成中...';
+            } else {
+                button.disabled = false;
+                button.classList.remove('opacity-75', 'cursor-not-allowed');
+                spinner.classList.add('hidden');
+                buttonText.textContent = '生成分析報表';
+            }
+        }
+
+
+        // 取得介於起始月份和結束月份之間的所有月份 (YYYY-MM 格式)
+        function getMonthsBetween(start, end) {
+            const startDate = new Date(start + '-01');
+            const endDate = new Date(end + '-01');
+            const months = [];
+
+            let currentDate = new Date(startDate);
+            while (currentDate <= endDate) {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth() + 1;
+                // 格式化為 YYYY-MM
+                months.push(`${year}-${String(month).padStart(2, '0')}`);
+                // 移動到下一個月
+                currentDate.setMonth(currentDate.getMonth() + 1);
+            }
+            return months;
+        }
+
+        // 繪製簡化趨勢圖 (使用 Canvas)
+        function drawChart(labels, data, name) {
+            const canvas = analysisChart;
+            const ctx = canvas.getContext('2d');
+            
+            // 每次繪圖前，根據容器寬高重新設定 Canvas 實際的像素寬高
+            const parent = canvas.parentElement;
+            canvas.width = parent.clientWidth - 48; // 減去 padding
+            canvas.height = parent.clientHeight - 80; // 減去標題和 padding
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (data.length === 0) {
+                 ctx.textAlign = 'center';
+                 ctx.fillStyle = '#9ca3af';
+                 ctx.font = '16px Inter, sans-serif';
+                 ctx.fillText('無資料可繪製圖表', canvas.width / 2, canvas.height / 2);
+                 return;
+            }
+
+            const padding = 50; // 圖表邊界間距
+            const chartWidth = canvas.width - 2 * padding;
+            const chartHeight = canvas.height - 2 * padding;
+            const numPoints = data.length;
+            
+            const maxValue = Math.max(...data);
+            const minValue = Math.min(...data);
+            
+            // 計算 Y 軸範圍: 確保圖表起點為 0，除非有負值
+            const yMin = (minValue > 0 || maxValue === 0) ? 0 : minValue * 1.1; 
+            const yRange = maxValue - yMin;
+            
+            // 繪製網格和標籤設定
+            ctx.strokeStyle = '#e5e7eb'; // 淺灰色
+            ctx.fillStyle = '#6b7280'; // 深灰色字體
+            ctx.font = '12px Inter, sans-serif';
+
+            // Y 軸標籤和網格 (簡化為 5 條)
+            const numYLabels = 5;
+            for (let i = 0; i <= numYLabels; i++) {
+                // Y 軸位置 (從上到下: 0 -> chartHeight)
+                const y = padding + chartHeight * (1 - i / numYLabels);
+                // 對應的數值
+                const value = yMin + yRange * (i / numYLabels);
+                
+                // 繪製網格線
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(canvas.width - padding, y);
+                ctx.stroke();
+
+                // 繪製 Y 軸數值標籤
+                ctx.textAlign = 'right';
+                ctx.fillText(formatCurrency(value), padding - 5, y + 4);
+            }
+            
+            // X 軸標籤
+            const xStep = chartWidth / (numPoints - 1 || 1); 
+            labels.forEach((label, i) => {
+                const x = padding + i * xStep;
+                ctx.textAlign = 'center';
+                // 調整月份標籤位置
+                ctx.fillText(label, x, canvas.height - padding + 20); 
+            });
+
+            // 繪製數據線
+            ctx.beginPath();
+            ctx.strokeStyle = '#2563eb'; // 藍色線條
+            ctx.lineWidth = 3;
+
+            data.forEach((value, i) => {
+                const x = padding + i * xStep;
+                // 將數值轉換為 Canvas 座標
+                const y = padding + chartHeight * (1 - (value - yMin) / yRange);
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+                
+                // 繪製數據點
+                ctx.fillStyle = '#2563eb';
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.stroke();
+            
+            // 標示科目名稱 (右上角)
+            ctx.fillStyle = '#1f2937';
+            ctx.textAlign = 'right';
+            ctx.font = '14px Inter, sans-serif';
+            ctx.fillText(`${name} 餘額趨勢`, canvas.width - padding, 20);
+        }
+
+        // 生成報表和圖表
+        function generateReport() {
+            setLoading(true); // 開始載入
+            
+            // 由於 Canvas 繪圖需要時間，我們將所有同步操作放在這裡，然後在結尾結束載入狀態
+            const selectedAccountId = accountSelect.value;
+            const startMonth = startMonthInput.value;
+            const endMonth = endMonthInput.value;
+
+            // 隱藏訊息框
+            messageBox.classList.add('hidden');
+            reportBody.innerHTML = '';
+            
+            // 檢查月份範圍是否有效
+            if (new Date(startMonth) > new Date(endMonth)) {
+                showMessage('錯誤：起始月份不能晚於結束月份。', true);
+                resultsArea.classList.add('hidden');
+                setLoading(false);
+                return;
+            }
+
+            const selectedAccount = accountingData.find(a => a.id === selectedAccountId);
+            if (!selectedAccount) {
+                showMessage('錯誤：找不到選定的會計科目資料。', true);
+                resultsArea.classList.add('hidden');
+                setLoading(false);
+                return;
+            }
+
+            const months = getMonthsBetween(startMonth, endMonth);
+            const reportData = [];
+            let previousBalance = null;
+
+            // 收集並計算報表數據
+            for (const month of months) {
+                const balance = selectedAccount.balances[month];
+                
+                // 確保資料存在
+                if (balance === undefined) {
+                    showMessage(`警告：選定期間內 ${month} 的資料缺失，已跳過。`, false);
+                    continue; 
+                }
+
+                let changeAmount = 0;
+                let changeRate = 0;
+
+                if (previousBalance !== null) {
+                    changeAmount = balance - previousBalance;
+                    // 計算變化率，避免除以零
+                    if (previousBalance !== 0) {
+                        changeRate = changeAmount / previousBalance;
+                    } else if (changeAmount !== 0) {
+                        // 如果期初為零，期末不為零，則變化率設為極大值（用 1 表示）
+                        changeRate = 1; 
+                    }
+                }
+
+                reportData.push({
+                    month,
+                    balance,
+                    changeAmount,
+                    changeRate
+                });
+                
+                previousBalance = balance;
+            }
+            
+            // 如果沒有資料，則不顯示結果區
+            if (reportData.length === 0) {
+                showMessage('錯誤：在選定的月份範圍內找不到任何科目資料。', true);
+                resultsArea.classList.add('hidden');
+                setLoading(false);
+                return;
+            }
+
+            // 更新報表和圖表標題
+            const currentPeriod = `${startMonth} ~ ${endMonth}`;
+            tableTitle.textContent = `${selectedAccount.id} - ${selectedAccount.name} 期間餘額明細 (${currentPeriod})`;
+            chartTitle.textContent = `${selectedAccount.id} - ${selectedAccount.name} 餘額趨勢圖 (${currentPeriod})`;
+            
+            // 填充表格
+            reportData.forEach(item => {
+                const row = reportBody.insertRow();
+                row.className = 'hover:bg-gray-50';
+
+                // 月份
+                row.insertCell().textContent = item.month;
+                
+                // 期末餘額
+                const balanceCell = row.insertCell();
+                balanceCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono';
+                balanceCell.textContent = formatTableCurrency(item.balance);
+                
+                // --- 月變化額 ---
+                const changeAmountCell = row.insertCell();
+                let amountClass = 'text-gray-500'; // 第一個月預設為中性色
+                
+                if (item.month !== months[0]) {
+                    // 非第一個月，根據金額正負決定顏色
+                    amountClass = item.changeAmount >= 0 ? 'text-green-600' : 'text-red-600';
+                }
+
+                changeAmountCell.className = `px-6 py-4 whitespace-nowrap text-sm text-right font-semibold ${amountClass}`;
+                // 第一個月沒有變化額，顯示 '-'
+                changeAmountCell.textContent = item.month === months[0] ? '-' : formatTableCurrency(item.changeAmount);
+                
+                // --- 月變化率 ---
+                const changeRateCell = row.insertCell();
+                let rateClass = 'text-gray-500'; // 第一個月預設為中性色
+
+                if (item.month !== months[0]) {
+                     // 非第一個月，根據變化率正負決定顏色
+                     rateClass = item.changeRate >= 0 ? 'text-green-600' : 'text-red-600';
+                }
+
+                changeRateCell.className = `px-6 py-4 whitespace-nowrap text-sm text-right font-semibold ${rateClass}`;
+                
+                // 處理顯示內容
+                if (item.month === months[0]) {
+                     changeRateCell.textContent = '-';
+                } else if (item.changeRate === 1) {
+                     // 期初為 0，期末不為 0
+                     changeRateCell.textContent = '∞ (100%+)';
+                }
+                else {
+                    changeRateCell.textContent = `${(item.changeRate * 100).toFixed(2)}%`;
+                }
+            });
+
+            // 繪製圖表
+            const chartLabels = reportData.map(item => item.month);
+            const chartValues = reportData.map(item => item.balance);
+            drawChart(chartLabels, chartValues, selectedAccount.name);
+
+            // 顯示結果區域
+            resultsArea.classList.remove('hidden');
+            setLoading(false); // 結束載入
+        }
+
+        // 綁定事件
+        generateButton.addEventListener('click', generateReport);
+        
+        // 確保圖表在視窗大小改變時能重新繪製以適應新的寬度
+        window.addEventListener('resize', () => {
+             // 只有在結果區域可見時才重繪
+             if (!resultsArea.classList.contains('hidden')) {
+                generateReport();
+             }
+        });
+
+        // 頁面載入時初始化
+        window.onload = () => {
+            initializeAccountOptions();
+            // 首次載入時運行報表生成，展示預設結果
+            generateReport();
+        };
+
+    </script>
+</body>
+</html>

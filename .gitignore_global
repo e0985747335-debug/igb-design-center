@@ -1,0 +1,8 @@
+# === 系統自動忽略區 ===
+data/postgres/
+data/caddy/
+*.log
+*.gz
+*.zip
+__pycache__/
+node_modules/

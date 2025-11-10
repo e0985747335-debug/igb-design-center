@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UML 元件圖：用戶註冊系統架構</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .uml-container {
+            position: relative;
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            padding: 2rem;
+            height: 700px;
+            overflow: hidden; /* 確保繪圖區域乾淨 */
+        }
+
+        /* UML 元件樣式 */
+        .component {
+            position: absolute;
+            background-color: #e0f2f1; /* 淺綠色背景 */
+            border: 2px solid #0d9488; /* 綠色邊框 */
+            border-radius: 8px;
+            padding: 10px 20px;
+            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.1);
+            font-weight: 600;
+            text-align: center;
+            min-width: 150px;
+            z-index: 10;
+        }
+
+        /* 介面樣式 */
+        .interface-provided, .interface-required {
+            position: absolute;
+            z-index: 20;
+        }
+
+        /* 提供的介面 (棒棒糖 Lollipop) */
+        .interface-provided {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #3b82f6; /* 藍色 */
+            border-radius: 50%;
+            background-color: white;
+        }
+
+        /* 必需的介面 (插槽 Socket) */
+        .interface-required {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #3b82f6;
+            border-radius: 50%;
+            background-color: transparent;
+            /* 為了只顯示 C 形狀，隱藏部分邊框 */
+            clip-path: polygon(50% 0%, 100% 0%, 100% 100%, 50% 100%, 50% 50%, 0% 50%, 0% 0%);
+            transform: rotate(180deg); /* 讓開口朝向元件 */
+            left: -18px !important; /* 微調位置 */
+        }
+
+        .interface-label {
+            position: absolute;
+            font-size: 0.75rem;
+            color: #3b82f6;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        /* 連接線樣式 */
+        .connector {
+            position: absolute;
+            background-color: #3b82f6;
+            z-index: 5;
+        }
+        .connector-horizontal { height: 2px; }
+        .connector-vertical { width: 2px; }
+
+        /* 箭頭樣式 (指向所需介面) */
+        .arrow-head {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid #3b82f6;
+            transform: rotate(90deg); /* 箭頭朝右 */
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4 border-b-2 border-teal-500 pb-2">
+            UML 元件圖：微服務註冊驗證架構
+        </h1>
+        <p class="text-gray-600 mb-6">
+            本圖展示了系統中各主要元件（服務）的**結構**，以及它們如何透過**介面**（提供的/需要的）相互依賴。
+        </p>
+
+        <div id="umlDiagram" class="uml-container rounded-xl shadow-2xl">
+
+            <!-- 1. 前端元件 (Component: Client Web App) -->
+            <div id="Comp1" class="component" style="top: 50px; left: 50px;">
+                前端 Web App
+            </div>
+
+            <!-- 2. API 閘道器元件 (Component: API Gateway) -->
+            <div id="Comp2" class="component" style="top: 150px; left: 300px;">
+                API Gateway
+            </div>
+
+            <!-- 3. 驗證服務元件 (Component: Authentication Service) -->
+            <div id="Comp3" class="component" style="top: 350px; left: 50px;">
+                驗證微服務 (Auth)
+            </div>
+
+            <!-- 4. 資料庫元件 (Component: Database) -->
+            <div id="Comp4" class="component" style="top: 450px; left: 300px;">
+                用戶資料庫 (DB)
+            </div>
+
+            <!-- 5. 郵件服務元件 (Component: Email Service) -->
+            <div id="Comp5" class="component" style="top: 450px; left: 550px;">
+                通知郵件服務
+            </div>
+
+            <!-- 連接線與介面 (Interface Connections) -->
+
+            <!-- 關係 A: Client App (Requires) -> API Gateway (Provides) -->
+            <!-- 介面: 註冊介面 (Registration Interface) -->
+
+            <!-- Comp2 提供介面 (棒棒糖) -->
+            <div class="interface-provided" style="top: 180px; left: 280px;"></div>
+            <span class="interface-label" style="top: 160px; left: 220px;">I_註冊</span>
+
+            <!-- Comp1 必需介面 (插槽) -->
+            <div class="interface-required" style="top: 80px; left: 200px; transform: rotate(0deg);"></div>
+
+            <!-- 連接線 (Lollipop 到 Socket) -->
+            <div class="connector connector-horizontal" style="top: 189px; left: 200px; width: 80px;"></div>
+            <div class="connector connector-vertical" style="top: 89px; left: 200px; height: 100px;"></div>
+            <div class="connector connector-horizontal" style="top: 89px; left: 190px; width: 10px;"></div>
+
+            <!-- 關係 B: API Gateway (Requires) -> Auth Service (Provides) -->
+            <!-- 介面: 驗證介面 (Authentication Interface) -->
+
+            <!-- Comp3 提供介面 (棒棒糖) -->
+            <div class="interface-provided" style="top: 380px; left: 200px;"></div>
+            <span class="interface-label" style="top: 360px; left: 200px;">I_驗證</span>
+
+            <!-- Comp2 必需介面 (插槽) -->
+            <div class="interface-required" style="top: 200px; left: 300px; transform: rotate(90deg);"></div>
+
+            <!-- 連接線 (Lollipop 到 Socket) -->
+            <div class="connector connector-horizontal" style="top: 389px; left: 220px; width: 80px;"></div>
+            <div class="connector connector-vertical" style="top: 210px; left: 300px; height: 180px;"></div>
+            <div class="connector connector-horizontal" style="top: 210px; left: 290px; width: 10px;"></div>
+
+            <!-- 關係 C: Auth Service (Requires) -> Database (Provides) -->
+            <!-- 介面: 資料持久化 (Persistence Interface) -->
+
+            <!-- Comp4 提供介面 (棒棒糖) -->
+            <div class="interface-provided" style="top: 480px; left: 280px;"></div>
+            <span class="interface-label" style="top: 460px; left: 220px;">I_資料存取</span>
+
+            <!-- Comp3 必需介面 (插槽) -->
+            <div class="interface-required" style="top: 400px; left: 200px; transform: rotate(0deg);"></div>
+
+            <!-- 連接線 (Lollipop 到 Socket) -->
+            <div class="connector connector-horizontal" style="top: 489px; left: 200px; width: 80px;"></div>
+            <div class="connector connector-vertical" style="top: 409px; left: 200px; height: 80px;"></div>
+            <div class="connector connector-horizontal" style="top: 409px; left: 190px; width: 10px;"></div>
+
+
+            <!-- 關係 D: Auth Service (Requires) -> Email Service (Provides) -->
+            <!-- 介面: 通知發送 (Notification Interface) -->
+
+            <!-- Comp5 提供介面 (棒棒糖) -->
+            <div class="interface-provided" style="top: 480px; left: 530px;"></div>
+            <span class="interface-label" style="top: 460px; left: 470px;">I_通知</span>
+
+            <!-- Comp3 必需介面 (插槽) -->
+            <div class="interface-required" style="top: 380px; left: 530px; transform: rotate(-90deg);"></div>
+
+            <!-- 連接線 (Lollipop 到 Socket) -->
+            <div class="connector connector-horizontal" style="top: 489px; left: 430px; width: 100px;"></div>
+            <div class="connector connector-vertical" style="top: 389px; left: 430px; height: 100px;"></div>
+            <div class="connector connector-horizontal" style="top: 389px; left: 430px; width: 100px;"></div>
+
+        </div>
+    </div>
+</body>
+</html>

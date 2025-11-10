@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 系統全貌：功能總覽、策略指揮中心與 QDP 績效概覽</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* 設置 Inter 字體 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb; /* 淺色背景為主，儀表板區塊將使用深色 */
+            color: #1f2937;
+        }
+
+        /* IGB Logo 色系定義 */
+        :root {
+            --logo-blue: #00A3FF; /* 亮藍色 (主色) */
+            --logo-red: #E5001A;  /* 鮮紅色 (強調/警示色) */
+            --status-green: #10B981; /* 綠色 (正常狀態) */
+            --status-yellow: #F59E0B; /* 黃色 (降級/警告) */
+        }
+        .bg-logo-blue { background-color: var(--logo-blue); }
+        .text-logo-blue { color: var(--logo-blue); }
+        .border-logo-blue { border-color: var(--logo-blue); }
+        .bg-status-green { background-color: var(--status-green); }
+        .text-status-green { color: var(--status-green); }
+        .bg-status-yellow { background-color: var(--status-yellow); }
+        .text-status-yellow { color: var(--status-yellow); }
+        .bg-logo-red { background-color: var(--logo-red); }
+        .text-logo-red { color: var(--logo-red); }
+        .bg-logo-blue-dark { background-color: #0087D8; }
+
+        /* 儀表板卡片樣式 - 策略指揮中心區塊專用 */
+        .dashboard-card {
+            background-color: #1f2937; /* 深灰色背景 */
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .health-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        /* 功能總覽卡片樣式 */
+        .card-light {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease;
+        }
+        .card-light:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+        }
+
+        /* SVG 流程動畫 */
+        @keyframes pulse-flow {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: 100; }
+        }
+        .flow-line {
+            stroke-dasharray: 10 5;
+            animation: pulse-flow 2s linear infinite;
+        }
+
+        /* 導航標籤樣式 */
+        .nav-link {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        /* QDP 概覽專用樣式 */
+        .qdp-content h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+            border-bottom: 4px solid var(--logo-red);
+            padding-bottom: 0.5rem;
+        }
+
+        .qdp-content h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+            color: var(--logo-blue);
+        }
+
+        .qdp-content h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 1.5rem;
+            color: #374151;
+        }
+
+        .qdp-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        .qdp-content th, .qdp-content td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .qdp-content th {
+            background-color: #f3f4f6;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .qdp-content tr:last-child td {
+            border-bottom: none;
+        }
+        .qdp-content ul, .qdp-content ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="min-h-screen">
+        <!-- 導覽列 (Navigation) -->
+        <header class="bg-logo-blue text-white shadow-lg sticky top-0 z-20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap justify-between items-center">
+                <h1 class="text-2xl font-bold tracking-tight">IGB ERP 系統與技術</h1>
+                <nav class="flex space-x-4 mt-2 sm:mt-0">
+                    <button onclick="showSection('system-overview')" class="nav-link px-3 py-2 rounded-lg bg-logo-blue-dark hover:bg-white hover:text-logo-blue" data-section="system-overview">系統總覽 & 架構</button>
+                    <button onclick="showSection('command-center')" class="nav-link px-3 py-2 rounded-lg hover:bg-logo-blue-dark" data-section="command-center">策略指揮中心</button>
+                    <button onclick="showSection('qdp-overview')" class="nav-link px-3 py-2 rounded-lg hover:bg-logo-blue-dark" data-section="qdp-overview">QDP 績效概覽</button>
+                </nav>
+            </div>
+        </header>
+
+        <main class="py-12">
+            <!-- 容器：用於控制最大寬度 -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+                <!-- 區塊 1: 系統總覽與架構 (預設顯示) -->
+                <section id="system-overview" class="mb-16">
+
+                    <h2 class="text-4xl font-extrabold text-gray-900 mb-6 border-b-4 border-logo-blue pb-2">功能總覽：數位化企業的核心</h2>
+                    <p class="text-xl text-gray-600 mb-8">IGB ERP 系統提供統一的資訊平台，覆蓋企業關鍵環節，實現營運效率最大化。</p>
+
+                    <!-- 總覽卡片 -->
+                    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+                        <div class="card-light p-6 bg-white rounded-xl border border-gray-200">
+                            <svg class="w-8 h-8 text-logo-blue mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                            <h3 class="text-xl font-semibold text-gray-900 mb-2">即時數據決策</h3>
+                            <p class="text-gray-500 text-sm">數據即時同步，輔助管理層迅速決策。</p>
+                        </div>
+                        <div class="card-light p-6 bg-white rounded-xl border border-gray-200">
+                            <svg class="w-8 h-8 text-logo-blue mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7h16M4 7l-2-2m2 2l2-2m-2 2l-2 2m4-2h4M7 7h.01M17 7h.01M12 2v20"></path></svg>
+                            <h3 class="text-xl font-semibold text-gray-900 mb-2">端到端流程自動化</h3>
+                            <p class="text-gray-500 text-sm">統一流程，減少人工干預，確保數據準確性。</p>
+                        </div>
+                        <div class="card-light p-6 bg-white rounded-xl border border-gray-200">
+                            <svg class="w-8 h-8 text-logo-blue mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <h3 class="text-xl font-semibold text-gray-900 mb-2">單一數據來源 (SSOT)</h3>
+                            <p class="text-gray-500 text-sm">所有模組共用資料庫，消除資訊孤島。</p>
+                        </div>
+                        <div class="card-light p-6 bg-white rounded-xl border border-gray-200">
+                            <svg class="w-8 h-8 text-logo-blue mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                            <h3 class="text-xl font-semibold text-gray-900 mb-2">彈性擴展架構</h3>
+                            <p class="text-gray-500 text-sm">基於雲端技術，可依據企業成長隨時擴展。</p>
+                        </div>
+                    </div>
+
+                    <!-- 核心模組 (Core Modules) -->
+                    <h2 class="text-4xl font-extrabold text-gray-900 mb-6 border-b-4 border-logo-red pb-2">核心模組：八大功能領域</h2>
+                    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+                        <!-- 模組 1: 財務會計 -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-logo-red flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-red-100 text-logo-red rounded-full mb-3">💰</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">財務會計</h4>
+                            <p class="text-sm text-gray-500">總帳、應收/應付、資產管理。</p>
+                        </div>
+                        <!-- 模組 2: 進銷存 (ISP) -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-logo-blue flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-blue-100 text-logo-blue rounded-full mb-3">📦</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">進銷存 (ISP)</h4>
+                            <p class="text-sm text-gray-500">採購單、銷售訂單、庫存追蹤。</p>
+                        </div>
+                        <!-- 模組 3: 商品管理 -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-status-green flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-green-100 text-green-700 rounded-full mb-3">🏷️</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">商品管理</h4>
+                            <p class="text-sm text-gray-500">物料主檔、BOM、規格與版本控制。</p>
+                        </div>
+                        <!-- 模組 4: 廠商管理 -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-status-yellow flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-yellow-100 text-yellow-700 rounded-full mb-3">🤝</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">廠商管理</h4>
+                            <p class="text-sm text-gray-500">供應商資料、評級、詢報價流程。</p>
+                        </div>
+                        <!-- 模組 5: 人事管理 -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-teal-500 flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-teal-100 text-teal-700 rounded-full mb-3">👤</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">人事管理</h4>
+                            <p class="text-sm text-gray-500">考勤、薪資計算、績效評估。</p>
+                        </div>
+                        <!-- 模組 6: ERP 管理 -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-purple-500 flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-purple-100 text-purple-700 rounded-full mb-3">⚙️</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">ERP 管理</h4>
+                            <p class="text-sm text-gray-500">用戶權限、流程配置、參數設定。</p>
+                        </div>
+                        <!-- 模組 7: ERP 雲端整合 -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-logo-blue flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-blue-100 text-logo-blue rounded-full mb-3">☁️</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">ERP 雲端整合</h4>
+                            <p class="text-sm text-gray-500">API Gateway、外部系統串接。</p>
+                        </div>
+                        <!-- 模組 8: 數據中心 / BI -->
+                        <div class="card-light p-6 bg-white rounded-xl border-t-4 border-logo-red flex flex-col items-center text-center">
+                            <div class="text-4xl p-3 bg-red-100 text-logo-red rounded-full mb-3">📊</div>
+                            <h4 class="text-xl font-bold mb-2 text-gray-900">數據中心 / BI</h4>
+                            <p class="text-sm text-gray-500">即時儀表板、趨勢分析與報表。</p>
+                        </div>
+                    </div>
+
+                    <!-- 系統架構圖 (System Architecture Diagram) -->
+                    <h2 class="text-4xl font-extrabold text-gray-900 mb-8 border-b-4 border-logo-blue pb-2">系統架構圖：IGB ERP 技術分層</h2>
+                    <div class="bg-white p-6 md:p-10 rounded-xl card-light overflow-x-auto">
+                        <!-- 響應式 SVG 架構圖 -->
+                        <svg viewBox="0 0 900 650" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="var(--logo-blue)" />
+                                </marker>
+                                <filter id="shadow">
+                                    <feDropShadow dx="2" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.1"/>
+                                </filter>
+                            </defs>
+
+                            <!-- 圖層 1: 呈現層 (Presentation Layer) - Y=50 -->
+                            <rect x="50" y="20" width="800" height="80" fill="#e0f2fe" rx="15" ry="15" filter="url(#shadow)"/>
+                            <text x="450" y="65" text-anchor="middle" font-size="28" font-weight="bold" fill="#0c4a6e">呈現層 (Presentation Layer)</text>
+
+                            <rect x="100" y="30" width="150" height="60" fill="#ffffff" rx="10" ry="10" stroke="var(--logo-blue)" stroke-width="2"/>
+                            <text x="175" y="65" text-anchor="middle" font-size="18" fill="#0c4a6e">Web/Desktop UI</text>
+
+                            <rect x="375" y="30" width="150" height="60" fill="#ffffff" rx="10" ry="10" stroke="var(--logo-blue)" stroke-width="2"/>
+                            <text x="450" y="65" text-anchor="middle" font-size="18" fill="#0c4a6e">Mobile App</text>
+
+                            <rect x="650" y="30" width="150" height="60" fill="#ffffff" rx="10" ry="10" stroke="var(--logo-blue)" stroke-width="2"/>
+                            <text x="725" y="65" text-anchor="middle" font-size="18" fill="#0c4a6e">數據儀表板</text>
+
+
+                            <!-- 圖層 2: 應用服務層 (Application Service Layer) - Y=200 -->
+                            <rect x="50" y="150" width="800" height="300" fill="#ecfdf5" rx="15" ry="15" filter="url(#shadow)"/>
+                            <text x="450" y="195" text-anchor="middle" font-size="28" font-weight="bold" fill="#047857">應用服務層 (Application Service Layer)</text>
+
+                            <!-- 核心模組 -->
+                            <text x="250" y="240" font-size="20" font-weight="bold" fill="#047857">核心業務邏輯與服務</text>
+                            <rect x="100" y="250" width="150" height="60" fill="#ffffff" rx="10" ry="10" stroke="#047857" stroke-width="2"/>
+                            <text x="175" y="285" text-anchor="middle" font-size="18" fill="#065f46">ERP 核心模組 (8項)</text>
+
+                            <rect x="275" y="250" width="150" height="60" fill="#ffffff" rx="10" ry="10" stroke="#047857" stroke-width="2"/>
+                            <text x="350" y="285" text-anchor="middle" font-size="18" fill="#065f46">工作流程與權限</text>
+
+                            <!-- 整合與數據服務 -->
+                            <text x="650" y="240" font-size="20" font-weight="bold" fill="#047857">整合與微服務</text>
+                            <rect x="550" y="250" width="250" height="60" fill="#ffffff" rx="10" ry="10" stroke="#047857" stroke-width="2"/>
+                            <text x="675" y="285" text-anchor="middle" font-size="18" fill="#065f46">數據分析與 BI 服務</text>
+
+                            <rect x="550" y="325" width="250" height="60" fill="#ffffff" rx="10" ry="10" stroke="#047857" stroke-width="2"/>
+                            <text x="675" y="360" text-anchor="middle" font-size="18" fill="#065f46">雲端 API Gateway / 外部系統</text>
+
+
+                            <!-- 圖層 3: 資料層 (Data Layer) - Y=500 -->
+                            <rect x="50" y="500" width="800" height="100" fill="#fff7ed" rx="15" ry="15" filter="url(#shadow)"/>
+                            <text x="450" y="525" text-anchor="middle" font-size="28" font-weight="bold" fill="#92400e">資料層 (Data Layer)</text>
+
+                            <rect x="350" y="545" width="200" height="40" fill="#ffffff" rx="10" ry="10" stroke="#b45309" stroke-width="2"/>
+                            <text x="450" y="570" text-anchor="middle" font-size="18" fill="#92400e">中央資料庫 (Firestore/SQL)</text>
+
+
+                            <!-- 連接線 (Flow Lines) -->
+
+                            <!-- 呈現層 -> 應用服務層 -->
+                            <line x1="450" y1="100" x2="450" y2="150" stroke="var(--logo-blue)" stroke-width="3" marker-end="url(#arrowhead-blue)" class="flow-line"/>
+
+                            <!-- 核心模組 -> 資料層 -->
+                            <path d="M260 395 L260 490 L450 490 L450 545" stroke="var(--logo-blue)" stroke-width="3" fill="none" marker-end="url(#arrowhead-blue)" class="flow-line"/>
+
+                            <!-- 整合服務 -> 資料層 -->
+                            <path d="M680 395 L680 490 L450 490 L450 545" stroke="var(--logo-blue)" stroke-width="3" fill="none" marker-end="url(#arrowhead-blue)" class="flow-line"/>
+
+                            <!-- 資料層反饋 -->
+                            <line x1="500" y1="545" x2="500" y2="600" stroke="var(--logo-red)" stroke-width="1" class="flow-line"/>
+                            <text x="500" y="625" text-anchor="middle" font-size="16" fill="var(--logo-red)">數據回饋</text>
+
+                        </svg>
+                    </div>
+
+                </section>
+
+
+                <!-- 區塊 2: 策略指揮中心 (預設隱藏) -->
+                <section id="command-center" class="hidden">
+                    <div class="bg-[#111827] rounded-xl p-8 shadow-2xl">
+                        <header class="border-b border-gray-700 pb-4 mb-6 flex justify-between items-center text-gray-300">
+                            <h2 class="text-3xl font-extrabold text-logo-blue">IGB ERP 2.0 策略指揮中心</h2>
+                            <div class="text-sm text-gray-400">
+                                數據更新: <span class="text-logo-blue font-medium" id="timestamp">2025-10-25 20:30:00</span>
+                            </div>
+                        </header>
+
+                        <!-- 專案級 KPI 總覽 (Service-Level KPIs) -->
+                        <h3 class="text-xl font-bold text-gray-200 mb-4 border-b border-gray-700 pb-2">專案級 KPI 總覽</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
+                            <!-- KPI 1: 核心資料庫 (PostgreSQL HA) 可用性 -->
+                            <div class="dashboard-card border-b-4 border-status-green">
+                                <p class="text-sm text-gray-400">核心資料庫 (PostgreSQL HA)</p>
+                                <span class="text-4xl font-extrabold text-status-green">99.98%</span>
+                                <p class="text-xs text-gray-500 mt-1">目標: 99.99% (SLA)</p>
+                            </div>
+
+                            <!-- KPI 2: 韌性 / MDM 服務穩定率 -->
+                            <div class="dashboard-card border-b-4 border-status-yellow">
+                                <p class="text-sm text-gray-400">韌性 (MDM) 穩定完成率</p>
+                                <span class="text-4xl font-extrabold text-status-yellow">95.5%</span>
+                                <p class="text-xs text-gray-500 mt-1">目標: 98% (修復中)</p>
+                            </div>
+
+                            <!-- KPI 3: 核心交易平均響應時間 (Latency) -->
+                            <div class="dashboard-card border-b-4 border-status-green">
+                                <p class="text-sm text-gray-400">核心交易平均響應時間</p>
+                                <div class="flex items-baseline">
+                                    <span class="text-4xl font-extrabold text-status-green">0.01s</span>
+                                    <span class="text-sm text-gray-400 ml-2">(6ms - 20ms)</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">過去 10 分鐘平均</p>
+                            </div>
+
+                            <!-- KPI 4: 微服務介面錯誤率 (Error Rate) -->
+                            <div class="dashboard-card border-b-4 border-logo-red">
+                                <p class="text-sm text-gray-400">微服務介面錯誤率</p>
+                                <span class="text-4xl font-extrabold text-logo-red">88%</span>
+                                <p class="text-xs text-gray-500 mt-1">目標: 99% (需立即關注)</p>
+                            </div>
+                        </div>
+
+                        <!-- 核心服務實時狀態 (Runtime Health) -->
+                        <h3 class="text-xl font-bold text-gray-200 mb-4 border-b border-gray-700 pb-2">核心服務實時狀態 (Runtime Health)</h3>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+
+                            <!-- 服務 1: Wallet Ledger Service (FastAPI) -->
+                            <div class="dashboard-card">
+                                <p class="text-lg font-semibold text-gray-300">Wallet Ledger Service <span class="text-sm text-logo-blue">(FastAPI)</span></p>
+                                <div class="flex items-center mt-1 mb-2">
+                                    <span class="health-indicator bg-status-green"></span>
+                                    <span class="font-bold text-status-green">狀態: Online</span>
+                                </div>
+                                <p class="text-sm text-gray-400">延遲: 3ms</p>
+                                <p class="text-xs text-gray-500 mt-2">負責所有核心會計科目的交易記錄。</p>
+                            </div>
+
+                            <!-- 服務 2: MDM Configuration API -->
+                            <div class="dashboard-card">
+                                <p class="text-lg font-semibold text-gray-300">MDM Configuration API <span class="text-sm text-logo-blue">(FastAPI)</span></p>
+                                <div class="flex items-center mt-1 mb-2">
+                                    <span class="health-indicator bg-status-yellow"></span>
+                                    <span class="font-bold text-status-yellow">狀態: Degraded</span>
+                                </div>
+                                <p class="text-sm text-gray-400">延遲: 450 ms (高)</p>
+                                <p class="text-xs text-gray-500 mt-2">受主數據庫暫時降級影響，讀取依舊，寫入操作需要等待。</p>
+                            </div>
+
+                            <!-- 服務 3: PostgreSQL DB Cluster (HA) -->
+                            <div class="dashboard-card">
+                                <p class="text-lg font-semibold text-gray-300">PostgreSQL DB Cluster (HA)</p>
+                                <div class="flex items-center mt-1 mb-2">
+                                    <span class="health-indicator bg-status-green"></span>
+                                    <span class="font-bold text-status-green">狀態: Online</span>
+                                </div>
+                                <p class="text-sm text-gray-400">延遲: 2ms</p>
+                                <p class="text-xs text-gray-500 mt-2">運行於雙節點集群，讀寫性能良好。</p>
+                            </div>
+
+                            <!-- 服務 4: External EHSN Gateway (使用 Logo Red) -->
+                            <div class="dashboard-card">
+                                <p class="text-lg font-semibold text-gray-300">External EHSN Gateway</p>
+                                <div class="flex items-center mt-1 mb-2">
+                                    <span class="health-indicator bg-logo-red"></span>
+                                    <span class="font-bold text-logo-red">狀態: Offline</span>
+                                </div>
+                                <p class="text-sm text-gray-400">延遲: N/A</p>
+                                <p class="text-xs text-gray-500 mt-2">對外系統通訊閘道，需要重新啟動。</p>
+                            </div>
+
+                            <!-- 服務 5: Inventory Sync Microservice -->
+                            <div class="dashboard-card">
+                                <p class="text-lg font-semibold text-gray-300">Inventory Sync Microservice</p>
+                                <div class="flex items-center mt-1 mb-2">
+                                    <span class="health-indicator bg-status-green"></span>
+                                    <span class="font-bold text-status-green">狀態: Online</span>
+                                </div>
+                                <p class="text-sm text-gray-400">延遲: 32 ms</p>
+                                <p class="text-xs text-gray-500 mt-2">負責庫存數據的即時同步與分發。</p>
+                            </div>
+
+                            <!-- 服務 6: Placeholder / 可用性總覽 -->
+                            <div class="dashboard-card bg-logo-blue text-white flex items-center justify-center">
+                                <div class="text-center">
+                                    <p class="text-sm font-light">總體服務可用性評級</p>
+                                    <p class="text-5xl font-extrabold mt-1">A+</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 運行事件與行動 (Events & Actions) -->
+                        <h3 class="text-xl font-bold text-gray-200 mb-4 border-b border-gray-700 pb-2">運行事件與行動 (Events & Actions)</h3>
+                        <div class="dashboard-card p-0 overflow-hidden mb-8">
+                            <div class="space-y-1 divide-y divide-gray-700 max-h-96 overflow-y-auto">
+                                <!-- 模擬日誌條目 (Log Entries) -->
+                                <div class="p-3 grid grid-cols-12 text-sm">
+                                    <span class="col-span-3 text-gray-500">2025-10-25 23:01:50</span>
+                                    <span class="col-span-3 text-logo-red font-semibold">[Low] Wallet Ledger Service 流量超載 (TPS 500)</span>
+                                    <span class="col-span-4 text-gray-300">行動: 自動縮減 (System)</span>
+                                    <span class="col-span-2 text-gray-500">2025-10-25 23:02:10</span>
+                                </div>
+                                <div class="p-3 grid grid-cols-12 text-sm">
+                                    <span class="col-span-3 text-gray-500">2025-10-25 22:15:32</span>
+                                    <span class="col-span-3 text-status-yellow font-semibold">Info: MDM API 響應時間增加 (75ms)</span>
+                                    <span class="col-span-4 text-gray-300">行動: 持續監控 (System)</span>
+                                    <span class="col-span-2 text-gray-500">2025-10-25 22:15:32</span>
+                                </div>
+                                <div class="p-3 grid grid-cols-12 text-sm">
+                                    <span class="col-span-3 text-gray-500">2025-10-25 11:35:10</span>
+                                    <span class="col-span-3 text-logo-red font-semibold">[High] MDM API 錯誤總計 (400筆 / 300ms)</span>
+                                    <span class="col-span-4 text-gray-300">行動: 上報工單給 MDM 維護組 (工程師)</span>
+                                    <span class="col-span-2 text-gray-500">2025-10-25 11:35:10</span>
+                                </div>
+                                <div class="p-3 grid grid-cols-12 text-sm">
+                                    <span class="col-span-3 text-gray-500">2025-10-25 10:32:40</span>
+                                    <span class="col-span-3 text-status-yellow font-semibold">Regroup Failover 完成 - Slave 升級為 Master</span>
+                                    <span class="col-span-4 text-gray-300">行動: 通知 DB A 維護組 (系統)</span>
+                                    <span class="col-span-2 text-gray-500">2025-10-25 10:32:40</span>
+                                </div>
+                                <div class="p-3 grid grid-cols-12 text-sm">
+                                    <span class="col-span-3 text-gray-500">2025-10-25 10:30:15</span>
+                                    <span class="col-span-3 text-logo-red font-semibold">[CRIT] PostgreSQL Standby 節點失去連線 (LAG > 5s)</span>
+                                    <span class="col-span-4 text-gray-300">行動: 自動啟動 Regroup Failover (System)</span>
+                                    <span class="col-span-2 text-gray-500">2025-10-25 10:30:15</span>
+                                </div>
+                                <div class="p-3 text-center text-gray-500 text-xs">... 載入更多歷史事件 ...</div>
+                            </div>
+                        </div>
+
+                        <!-- 操作控制台 (Administrative Controls) -->
+                        <h3 class="text-xl font-bold text-gray-200 mb-4 border-b border-gray-700 pb-2">操作控制台 (Administrative Controls)</h3>
+                        <div class="flex flex-wrap gap-4 mb-8">
+                            <button class="px-6 py-3 bg-logo-blue text-white font-bold rounded-lg shadow-md hover:bg-logo-blue-dark transition duration-150">
+                                🌟 啟動韌性測試
+                            </button>
+                            <button class="px-6 py-3 bg-status-green text-white font-bold rounded-lg shadow-md hover:bg-green-700 transition duration-150">
+                                ✅ 執行 DB HA 配置
+                            </button>
+                            <button class="px-6 py-3 bg-logo-red text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition duration-150">
+                                🛑 核心服務緊急關閉
+                            </button>
+                            <button class="px-6 py-3 bg-status-yellow text-gray-900 font-bold rounded-lg shadow-md hover:bg-yellow-600 transition duration-150">
+                                🗓️ 年度報告導出
+                            </button>
+                        </div>
+
+                        <!-- 核心技術規格與架構 (Technical Specs) -->
+                        <h3 class="text-xl font-bold text-gray-200 mb-4 border-b border-gray-700 pb-2">核心技術規格與架構</h3>
+                        <div class="dashboard-card p-0 overflow-hidden">
+                            <table class="min-w-full divide-y divide-gray-700">
+                                <thead class="bg-gray-700">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">項目</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">規格描述</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">負責人</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-gray-800 divide-y divide-gray-700">
+                                    <tr class="hover:bg-gray-700 transition duration-150">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">核心資料庫</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">PostgreSQL 14.5 (HA Cluster)</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-logo-blue">系統維護組</td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-700 transition duration-150">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">部署架構</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">Kubernetes (K8s) & Microservices</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-logo-blue">架構師</td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-700 transition duration-150">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">前端技術</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">ReactJS / TailwindCSS</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-logo-blue">前端團隊</td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-700 transition duration-150">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">API 閘道</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">Kong Gateway (Rate Limiting)</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-logo-blue">雲端整合組</td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-700 transition duration-150">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">上次完整稽核日</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">2025 年 03 月 28 日</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-logo-blue">總稽核部門</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- 區塊 3: IGB 量子數據處理器 (QDP) 績效概覽 (預設隱藏) -->
+                <section id="qdp-overview" class="hidden">
+                    <!-- 新增標題，確保切換時有內容顯示 -->
+                    <h2 class="text-4xl font-extrabold text-gray-900 mb-6 border-b-4 border-logo-red pb-2">IGB 量子數據處理器 (QDP) 績效概覽</h2>
+                    <p class="text-xl text-gray-600 mb-8">本頁提供 IGB QDP 核心性能指標、技術規格與商業應用潛力的詳細介紹。</p>
+
+                    <div class="bg-white rounded-xl p-8 shadow-2xl card-light">
+                        <div class="qdp-content max-w-none">
+                            <h1 class="hidden">IGB 量子數據處理器 (QDP) 績效概覽</h1>
+                            <!-- 註：主標題已移至區塊頂部，這裡隱藏避免重複 -->
+
+                            <h2>一、 引言：IGB 量子數據處理器 (QDP) 介紹</h2>
+                            <p class="text-gray-600">IGB 量子數據處理器（Quantum Data Processor, QDP）是 IGB 科技公司開發的一款尖端量子計算硬體平台。QDP 旨在利用量子力學原理（如疊加態和量子糾纏）來執行傳統計算機無法有效處理的複雜運算。本概覽將聚焦於評估 IGB QDP 的核心績效，證明其在推動量子計算商業化應用方面的領導地位。</p>
+
+                            <h2>二、 核心績效指標 (KPIs)</h2>
+                            <p class="text-gray-600">IGB QDP 的性能評估主要基於以下量子計算的關鍵指標：</p>
+
+                            <h3>1. 量子位元數 (Qubit Count)</h3>
+                            <ul class="list-disc ml-6 text-gray-600">
+                                <li>**當前規格：** IGB QDP 最新版本配備 **127 個超導量子位元**。</li>
+                                <li>**意義：** 量子位元數量是衡量量子電腦規模的基礎指標。IGB 的 127 量子位元設計，使其能夠處理具有高維度希爾伯特空間的量子電路。</li>
+                            </ul>
+
+                            <h3>2. 量子位元品質 (Qubit Quality)</h3>
+                            <ul class="list-disc ml-6 text-gray-600">
+                                <li>**平均單量子位元閘保真度 (Average 1-Qubit Gate Fidelity)：** 典型值為 $\ge 99.99\%$。
+                                    <ul class="list-disc ml-6 mt-1">
+                                        <li>**定義：** 衡量在單個量子位元上執行基本操作的精確度。高保真度是減少錯誤累積的關鍵。</li>
+                                    </ul>
+                                </li>
+                                <li>**平均雙量子位元閘保真度 (Average 2-Qubit Gate Fidelity)：** 典型值為 $\ge 99.4\%$。
+                                    <ul class="list-disc ml-6 mt-1">
+                                        <li>**定義：** 衡量在兩個量子位元之間執行量子糾纏操作（如 CNOT 閘）的精確度。這是量子計算中最複雜且最容易出錯的操作。</li>
+                                    </ul>
+                                </li>
+                            </ul>
+
+                            <h3>3. 量子相干時間 (Coherence Time)</h3>
+                            <ul class="list-disc ml-6 text-gray-600">
+                                <li>**$T_1$ 弛豫時間 (Relaxation Time)：** 平均 $\ge 200 \mu s$。</li>
+                                <li>**$T_2$ 散相時間 (Dephasing Time)：** 平均 $\ge 150 \mu s$。</li>
+                                <li>**意義：** 相干時間代表量子位元維持其量子狀態而不受環境干擾的能力。IGB QDP 在相干性上的表現優於業界平均水平，允許運行更長的量子電路。</li>
+                            </ul>
+
+                            <h3>4. 量子體積 (Quantum Volume, QV)</h3>
+                            <ul class="list-disc ml-6 text-gray-600">
+                                <li>**測試結果：** IGB QDP 在標準基準測試中達到了 **QV 65536**（即 $2^{16}$）的量級。</li>
+                                <li>**定義：** 量子體積是一種綜合性指標，它同時考量量子位元數、連通性和錯誤率，用以衡量量子電腦處理複雜問題的整體能力。高 QV 值代表更高的計算可靠性和有效深度。</li>
+                            </ul>
+
+                            <h3>5. 連通性和架構 (Connectivity and Architecture)</h3>
+                            <ul class="list-disc ml-6 text-gray-600">
+                                <li>**拓撲結構：** 採用優化的 **蜂窩狀（Honeycomb）連通性**。</li>
+                                <li>**優勢：** 這種高連通性設計大幅減少了運行複雜量子電路所需的交換（SWAP）操作，從而降低了總體計算時間和誤差累積。</li>
+                            </ul>
+
+                            <h2>三、 實際應用與優勢</h2>
+
+                            <table class="qdp-table border border-gray-300">
+                                <thead>
+                                    <tr>
+                                        <th>應用領域</th>
+                                        <th>QDP 核心優勢</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>**金融建模**</td>
+                                        <td>快速執行複雜的蒙特卡羅模擬和優化問題，例如投資組合優化和風險分析。</td>
+                                    </tr>
+                                    <tr>
+                                        <td>**新藥研發**</td>
+                                        <td>準確模擬複雜分子結構的基態能量 (Ground State Energy)，加速新材料和新藥的發現。</td>
+                                    </tr>
+                                    <tr>
+                                        <td>**人工智慧**</td>
+                                        <td>支援量子機器學習 (QML) 算法，特別是在分類和數據模式識別方面，實現指數級加速。</td>
+                                    </tr>
+                                    <tr>
+                                        <td>**優化問題**</td>
+                                        <td>解決旅行推銷員問題 (TSP) 和物流優化等 NP-Hard 問題，提供近乎即時的解決方案。</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <h2>四、 結論與展望</h2>
+                            <p class="text-gray-600">IGB 量子數據處理器 (QDP) 通過其高達 127 個量子位元的規模、卓越的閘保真度（特別是雙量子位元閘）以及領先的量子體積，鞏固了其在量子計算領域的頂級地位。</p>
+
+                            <p class="text-gray-600 font-bold mt-4">展望未來，IGB 將重點投入於：</p>
+                            <ol class="list-decimal ml-6 text-gray-600">
+                                <li>**錯誤校正 (Error Correction)：** 繼續開發更強大的容錯量子位元 (Logical Qubits)，將量子保真度提升至商用級別。</li>
+                                <li>**規模擴展：** 探索模組化架構，以實現 1000 個以上量子位元的系統級擴展。</li>
+                                <li>**軟硬體整合：** 強化 QDP 與 IGB 量子軟體開發工具包（SDK）的無縫整合，讓研究人員和開發者能更容易地存取和編程。</li>
+                            </ol>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- 頁腳 -->
+        <footer class="bg-gray-900 text-white p-6 mt-12">
+            <div class="max-w-7xl mx-auto text-center text-sm">
+                &copy; 2025 <span class="text-logo-red font-semibold">IGB ERP Solution</span>. All rights reserved. | 模組化、高效率、雲端部署
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const overviewSection = document.getElementById('system-overview');
+        const commandCenterSection = document.getElementById('command-center');
+        const qdpOverviewSection = document.getElementById('qdp-overview'); // 新增 QDP 區塊
+        const navLinks = document.querySelectorAll('.nav-link');
+        const timestampElement = document.getElementById('timestamp');
+
+        /**
+         * 顯示指定的區塊並更新導航按鈕的樣式。
+         * @param {string} sectionId - 要顯示的區塊 ID ('system-overview' 或 'command-center' 或 'qdp-overview')
+         */
+        function showSection(sectionId) {
+            // 隱藏所有區塊
+            overviewSection.classList.add('hidden');
+            commandCenterSection.classList.add('hidden');
+            qdpOverviewSection.classList.add('hidden');
+
+            // 設置整體背景和文字顏色
+            if (sectionId === 'command-center') {
+                // 指揮中心使用深色模式
+                document.body.style.backgroundColor = '#111827';
+                document.body.style.color = '#f3f4f6';
+                commandCenterSection.classList.remove('hidden');
+            } else {
+                // 系統總覽和 QDP 概覽使用淺色模式
+                document.body.style.backgroundColor = '#f7f9fb';
+                document.body.style.color = '#1f2937';
+
+                if (sectionId === 'qdp-overview') {
+                    qdpOverviewSection.classList.remove('hidden');
+                } else {
+                    overviewSection.classList.remove('hidden');
+                }
+            }
+
+            // 更新導航按鈕樣式
+            navLinks.forEach(link => {
+                const isSelected = link.getAttribute('data-section') === sectionId;
+
+                // 統一設置：移除 hover 效果（背景設為藍色）
+                link.classList.remove('hover:bg-logo-blue-dark');
+                link.classList.remove('bg-logo-blue-dark');
+
+                if (isSelected) {
+                    // 選中狀態：背景使用深藍色
+                    link.classList.add('bg-logo-blue-dark');
+                } else {
+                    // 未選中狀態：背景使用亮藍色，並添加 hover 效果
+                    link.classList.remove('bg-logo-blue-dark');
+                    link.classList.add('hover:bg-logo-blue-dark');
+                    // 確保未選中按鈕在深藍背景上是可見的
+                }
+            });
+        }
+
+        // 模擬即時時間更新 (僅適用於策略指揮中心區塊)
+        function updateTimestamp() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+
+            if (timestampElement) {
+                timestampElement.textContent = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            }
+        }
+
+        // 初始化：顯示系統總覽
+        window.onload = function() {
+            // 設定初始時間
+            updateTimestamp();
+            setInterval(updateTimestamp, 1000);
+
+            // 預設顯示系統總覽
+            showSection('system-overview');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>淺色模式內容佈局</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 使用 Inter 字體 */
+        body {
+            font-family: 'Inter', sans-serif;
+            /* 確保整個頁面都能滾動 */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        /* 自定義滾動條樣式，讓它在淺色模式下更柔和 */
+        body::-webkit-scrollbar {
+            width: 8px;
+        }
+        body::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1; /* 淺灰色 */
+            border-radius: 4px;
+        }
+        body::-webkit-scrollbar-track {
+            background-color: #f8fafc; /* 接近背景色 */
+        }
+        /* 固定頂部導航欄以確保內容可滾動 */
+        #header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#4c6ef5', /* 主要藍色調，用於強調 */
+                        'light-background': '#f8fafc', /* 淺色背景 */
+                        'card-bg': '#ffffff', /* 卡片背景 */
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<!-- 整個頁面使用淺色背景 -->
+<body class="bg-light-background text-gray-800">
+
+    <!-- 頂部導航欄 (固定在頂部) -->
+    <header id="header" class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- 標題/品牌名稱 -->
+                <h1 class="text-2xl font-bold text-primary-blue tracking-tight">
+                    網頁應用程式
+                </h1>
+                <!-- 導航連結 -->
+                <nav class="hidden md:flex space-x-8">
+                    <a href="#" class="text-gray-600 hover:text-primary-blue font-medium transition duration-150 ease-in-out">首頁</a>
+                    <a href="#" class="text-gray-600 hover:text-primary-blue font-medium transition duration-150 ease-in-out">服務</a>
+                    <a href="#" class="text-gray-600 hover:text-primary-blue font-medium transition duration-150 ease-in-out">關於我們</a>
+                    <a href="#" class="text-gray-600 hover:text-primary-blue font-medium transition duration-150 ease-in-out">聯繫</a>
+                </nav>
+                <!-- 行動裝置選單按鈕 (僅在行動裝置顯示) -->
+                <button class="md:hidden text-gray-500 hover:text-primary-blue focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要內容區域 -->
+    <main class="flex-grow max-w-7xl mx-auto py-8 sm:px-6 lg:px-8 w-full">
+        <!-- 頁面標題 -->
+        <div class="mb-8">
+            <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight">
+                淺色佈景主題範例內容
+            </h2>
+            <p class="mt-2 text-xl text-gray-500">
+                這是確保可滾動和一致淺色背景的內容區。
+            </p>
+        </div>
+
+        <!-- 網格佈局的卡片內容 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+            <!-- 循環生成卡片，確保內容足夠長以觸發滾動 -->
+            <script>
+                // JavaScript 迴圈生成卡片內容，用於測試滾動條和佈局
+                const cardContainer = document.querySelector('.grid');
+                const cardTemplate = (index) => `
+                    <div class="bg-card-bg p-6 rounded-xl shadow-lg hover:shadow-xl transition duration-300 ease-in-out border border-gray-100">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <!-- 圖標 -->
+                            <div class="bg-primary-blue/10 p-2 rounded-full">
+                                <svg class="w-6 h-6 text-primary-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                            <h3 class="text-xl font-semibold text-gray-900">卡片標題 ${index + 1}</h3>
+                        </div>
+                        <p class="text-gray-600 mb-4">這是一個示範卡片，具有清晰的邊界和淺色的背景，符合亮色模式設計。請向下滾動。</p>
+                        <a href="#" class="text-primary-blue font-medium hover:text-blue-700 transition duration-150">查看詳情 &rarr;</a>
+                    </div>
+                `;
+
+                for (let i = 0; i < 9; i++) {
+                    cardContainer.innerHTML += cardTemplate(i);
+                }
+            </script>
+
+            <!-- 讓內容更長，以便在預覽中輕鬆測試滾動 -->
+            <div class="lg:col-span-3 bg-card-bg p-8 rounded-xl shadow-lg border border-gray-100 mt-4">
+                <h3 class="text-2xl font-bold text-gray-900 mb-3">長篇內容區塊</h3>
+                <p class="text-gray-700 leading-relaxed mb-4">
+                    這個區塊的設計是用來測試頁面長度。我們特意加入了大量的文字來確保頁面高度超過視口，從而強制瀏覽器顯示滾動條。這樣您就可以確認整個 `body` 的淺色背景可以一直滾動到頁面底部，解決了您提到的無法滾動查看整個頁面顏色的問題。
+                </p>
+                <p class="text-gray-700 leading-relaxed mb-4">
+                    設計上，我們使用了極淺的背景顏色 (`#f8fafc`) 搭配純白色的卡片背景 (`#ffffff`)，創造出層次感，並使用深藍色作為主要強調色，這是一個典型且舒適的淺色（亮色）主題配色方案。
+                </p>
+                <p class="text-gray-700 leading-relaxed">
+                    請注意右側的滾動條。當您向下滾動時，頂部的導航欄會保持不動 (Sticky Header)，但底下的主要內容會流暢地滾動經過，且整個頁面的淺色背景是連續可見的。
+                </p>
+            </div>
+
+            <!-- 額外內容以確保滾動 -->
+            <div class="lg:col-span-3 h-96 bg-light-background flex items-center justify-center text-gray-500 text-lg border-2 border-dashed border-gray-300 rounded-xl mt-4">
+                頁面底部額外空間 (用於確保充分滾動)
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 頁腳 (Footer) -->
+    <footer class="bg-white mt-12 border-t border-gray-100">
+        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-500">
+            &copy; 2025 淺色佈景主題範例. 版權所有.
+        </div>
+    </footer>
+
+</body>
+</html>

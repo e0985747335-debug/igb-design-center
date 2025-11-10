@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>科目餘額趨勢分析</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Chart.js for charting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <!-- 引入 Inter 字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* 自定義樣式 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* 深色背景 */
+            color: #e5e7eb; /* 淺灰文本 */
+            padding: 20px;
+        }
+
+        /* 容器樣式 */
+        .report-container {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: #161b22; /* 卡片背景 */
+            border: 1px solid #30363d;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Chart.js 的容器，確保響應式 */
+        .chart-wrapper {
+            position: relative;
+            height: 400px; /* 固定高度以保持圖表視覺穩定性 */
+            width: 100%;
+        }
+
+        /* 表格樣式 */
+        .data-table th, .data-table td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #2d333b;
+        }
+
+        .data-table th:first-child, .data-table td:first-child {
+            text-align: left;
+        }
+
+        .data-table th {
+            background-color: #1f252c;
+            color: #9ca3af;
+        }
+
+        /* 表單控制項樣式 */
+        .input-control {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            color: #e5e7eb;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            transition: border-color 0.2s;
+        }
+        .input-control:focus {
+            border-color: #3b82f6;
+            outline: none;
+        }
+        /* 針對 select 下拉選單在深色主題下的箭頭顏色調整，以提高可見性 */
+        select.input-control {
+            appearance: none; /* 移除瀏覽器預設樣式 */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%239ca3af'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 10.99l3.71-3.76a.75.75 0 111.08 1.04l-4.25 4.38a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z' clip-rule='evenodd' /%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem; /* 為箭頭留出空間 */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="report-container rounded-lg p-4 sm:p-8">
+
+        <header class="mb-8 border-b pb-4 border-gray-700">
+            <h1 class="text-3xl font-bold text-blue-400">科目餘額趨勢分析</h1>
+        </header>
+
+        <!-- 分析條件設定區塊 -->
+        <section class="mb-10 p-4 border border-gray-700 rounded-lg bg-[#0d1117]">
+            <h2 class="text-xl font-semibold mb-4 text-white">分析條件設定 - 分收入及支出</h2>
+
+            <!-- 選項區塊 -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+
+                <!-- 收入/資產/成本/費用 (主要科目) 選擇 - 已調整為更符合 ERP 規格的會計科目表結構 -->
+                <div class="flex flex-col">
+                    <label for="income-select" class="text-sm font-medium mb-1 text-gray-400">主要會計科目 (資產/收益/成本/費用)</label>
+                    <select id="income-select" onchange="handleSelectionChange('income')" class="input-control">
+                        <option value="" disabled selected>請選擇主要科目</option>
+
+                        <!-- I. 資產科目 (Assets) - 1XXX 開頭 -->
+                        <optgroup label="I. 資產科目 (Assets)">
+                            <option value="1001 - 現金">1001 - 現金</option>
+                            <option value="1201 - 應收帳款">1201 - 應收帳款</option>
+                            <option value="1501 - 存貨">1501 - 存貨</option>
+                        </optgroup>
+
+                        <!-- II. 收入/收益科目 (Revenue/Income) - 4XXX 開頭 -->
+                        <optgroup label="II. 收入/收益科目 (Revenue/Income) - 4XXX">
+                            <option value="4101 - 銷貨收入">4101 - 銷貨收入 (主要業務)</option>
+                            <option value="4201 - 勞務收入">4201 - 勞務收入 (服務類)</option>
+                            <option value="4301 - 利息收入">4301 - 利息收入 (非營業)</option>
+                            <option value="4401 - 租賃收入">4401 - 租賃收入</option>
+                            <option value="4999 - 其他營業外收入">4999 - 其他營業外收入</option>
+                        </optgroup>
+
+                        <!-- III. 成本/費用大類 (Costs/Expenses) - 5/6XXX 開頭 -->
+                        <optgroup label="III. 成本/費用大類 (Costs/Expenses) - 5/6XXX">
+                            <option value="5001 - 銷貨成本">5001 - 銷貨成本 (COGS)</option>
+                            <option value="6001 - 銷售費用">6001 - 銷售費用</option>
+                            <option value="6201 - 管理費用">6201 - 管理費用</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- 費用科目選擇 (包含所有細項) -->
+                <div class="flex flex-col">
+                    <label for="expense-select" class="text-sm font-medium mb-1 text-gray-400">費用科目細項</label>
+                    <select id="expense-select" onchange="handleSelectionChange('expense')" class="input-control">
+                        <option value="" disabled selected>請選擇費用類別</option>
+
+                        <!-- 💼 旅費及交通費 (Travel & Transport) - 增加細項 -->
+                        <optgroup label="💼 旅費及交通費 (Travel & Transport)">
+                            <option value="國內差旅費">國內差旅費 (Domestic)</option>
+                            <option value="國外差旅費">國外差旅費 (International)</option>
+                            <option value="市區交通費">市區交通費 (Local Transit)</option>
+                            <option value="高鐵/火車票">高鐵/火車票 (Rail Fare)</option>
+                            <option value="機票費用">機票費用 (Airfare)</option>
+                            <option value="住宿費用">住宿費用 (Accommodation)</option>
+                        </optgroup>
+
+                        <!-- 🍽️ 餐費及招待費 (Meals & Entertainment) - 增加細項 -->
+                        <optgroup label="🍽️ 餐費及招待費 (Meals & Entertainment)">
+                            <option value="客戶招待費">客戶招待費 (Client Entertainment)</option>
+                            <option value="員工福利餐費">員工福利餐費 (Staff Welfare)</option>
+                            <option value="內部會議餐飲">內部會議餐飲 (Internal Meeting F&B)</option>
+                        </optgroup>
+
+                        <!-- 📦 辦公與行政費 (Office & Admin) - 增加細項 -->
+                        <optgroup label="📦 辦公與行政費 (Office & Admin)">
+                            <option value="辦公用品及耗材">辦公用品及耗材 (Supplies)</option>
+                            <option value="郵電/通訊費">郵電/通訊費 (Post & Telecom)</option>
+                            <option value="租金支出">租金支出 (Rent Expense)</option>
+                            <option value="水電瓦斯費">水電瓦斯費 (Utilities)</option>
+                            <option value="修繕與維護費">修繕與維護費 (Repair & Maint.)</option>
+                            <option value="報章雜誌訂閱費">報章雜誌訂閱費 (Subscriptions)</option>
+                        </optgroup>
+
+                        <!-- 💻 資訊與軟體費 (IT & Software) - 增加細項 -->
+                        <optgroup label="💻 資訊與軟體費 (IT & Software)">
+                            <option value="軟體訂閱費">軟體訂閱費 (Software Subscription)</option>
+                            <option value="硬體採購費">硬體採購費 (Hardware Purchase)</option>
+                            <option value="資訊服務費">資訊服務費 (IT Services)</option>
+                            <option value="雲端服務費">雲端服務費 (Cloud Services)</option>
+                            <option value="網站網域名稱費">網站網域名稱費 (Domain/Web Fees)</option>
+                        </optgroup>
+
+                        <!-- 📈 行銷與業務費 (Marketing & Sales) - 增加細項 -->
+                        <optgroup label="📈 行銷與業務費 (Marketing & Sales)">
+                            <option value="廣告與宣傳費">廣告與宣傳費 (Advertising)</option>
+                            <option value="業務交際費">業務交際費 (Sales Relations)</option>
+                            <option value="展覽費">展覽費 (Exhibition Fees)</option>
+                            <option value="印刷宣傳品">印刷宣傳品 (Printed Materials)</option>
+                            <option value="市場調研費">市場調研費 (Market Research)</option>
+                        </optgroup>
+
+                        <!-- 📚 培訓與人才費 (Training & HR) - 增加細項 -->
+                        <optgroup label="📚 培訓與人才費 (Training & HR)">
+                            <option value="專業培訓費">專業培訓費 (Professional Training)</option>
+                            <option value="招募費用">招募費用 (Recruitment Costs)</option>
+                            <option value="教育訓練課程費">教育訓練課程費 (Course Fees)</option>
+                            <option value="員工健康檢查費">員工健康檢查費 (Health Check-ups)</option>
+                        </optgroup>
+
+                        <!-- 🧑‍💻 專業服務費 (Professional Services) - 增加細項 -->
+                        <optgroup label="🧑‍💻 專業服務費 (Professional Services)">
+                            <option value="顧問費">顧問費 (Consulting)</option>
+                            <option value="法律及會計費用">法律及會計費用 (Legal & Accounting)</option>
+                            <option value="外部審計費">外部審計費 (External Audit)</option>
+                            <option value="翻譯/口譯費">翻譯/口譯費 (Translation/Interpreting)</option>
+                        </optgroup>
+
+                        <!-- 🏦 財務與雜項費 (Financial & Misc.) - 增加細項 -->
+                        <optgroup label="🏦 財務與雜項費 (Financial & Misc.)">
+                            <option value="銀行手續費">銀行手續費 (Bank Charges)</option>
+                            <option value="利息支出">利息支出 (Interest Expense)</option>
+                            <option value="政府規費與罰鍰">政府規費與罰鍰 (Fees & Penalties)</option>
+                            <option value="保險費">保險費 (Insurance Premiums)</option>
+                            <option value="慈善捐贈">慈善捐贈 (Donations)</option>
+                        </optgroup>
+
+                        <!-- ❓ 其他雜項費用 (Miscellaneous) -->
+                        <optgroup label="❓ 其他雜項費用 (Miscellaneous)">
+                            <option value="其他雜項費用">其他雜項費用 (Misc. Other)</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- 起始月份 -->
+                <div class="flex flex-col">
+                    <label for="start-month" class="text-sm font-medium mb-1 text-gray-400">起始月份</label>
+                    <input type="month" id="start-month" value="2025-04" min="2025-01" max="2025-12" class="input-control">
+                </div>
+
+                <!-- 結束月份 -->
+                <div class="flex flex-col">
+                    <label for="end-month" class="text-sm font-medium mb-1 text-gray-400">結束月份</label>
+                    <input type="month" id="end-month" value="2025-09" min="2025-01" max="2025-12" class="input-control">
+                </div>
+            </div>
+
+            <!-- 執行按鈕獨立一行 -->
+            <div class="mt-4 flex justify-end">
+                <button onclick="loadReportData()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-200">
+                    載入並分析數據
+                </button>
+            </div>
+        </section>
+
+        <!-- 圖表區塊 -->
+        <section class="mb-10 p-4 border border-gray-700 rounded-lg bg-[#0d1117]">
+            <h2 id="chart-title" class="text-xl font-semibold mb-4 text-white">請選擇一個科目進行分析</h2>
+            <div class="chart-wrapper">
+                <canvas id="balanceChart"></canvas>
+            </div>
+        </section>
+
+        <!-- 明細表格區塊 -->
+        <section class="p-4 border border-gray-700 rounded-lg bg-[#0d1117]">
+            <h2 id="table-title" class="text-xl font-semibold mb-4 text-white">餘額變動明細</h2>
+            <div class="overflow-x-auto">
+                <table id="detail-table" class="data-table min-w-full text-sm text-gray-300 rounded-lg">
+                    <thead>
+                        <tr>
+                            <th>月份</th>
+                            <th>期末餘額 (單位:元)</th>
+                            <th>月變動額</th>
+                            <th>月變動率</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 表格內容將由 JavaScript 載入 -->
+                        <tr><td colspan="4" class="text-center py-8 text-gray-500">請選擇科目並點擊「載入並分析數據」</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // 全局變量用於儲存 Chart 實例
+        let balanceChartInstance = null;
+
+        // 報表數據 - 模擬數據
+        const defaultReportData = [
+            { month: '2025-04', balance: 880000, changeAmount: 0, changeRate: null, isIncrease: false },
+            { month: '2025-05', balance: 950000, changeAmount: 70000, changeRate: 0.0795, isIncrease: true },
+            { month: '2025-06', balance: 1100000, changeAmount: 150000, changeRate: 0.1579, isIncrease: true },
+            { month: '2025-07', balance: 1050000, changeAmount: -50000, changeRate: -0.0455, isIncrease: false },
+            { month: '2025-08', balance: 1200000, changeAmount: 150000, changeRate: 0.1429, isIncrease: true },
+            { month: '2025-09', balance: 1400000, changeAmount: 200000, changeRate: 0.1667, isIncrease: true },
+        ];
+
+        // 模擬不同科目的數據
+        function fetchSimulatedData(accountId, startMonth, endMonth) {
+            console.log(`模擬從 ${startMonth} 到 ${endMonth} 獲取科目 ${accountId} 的數據...`);
+
+            // 判斷是否為費用或成本科目 (5XXX/6XXX 開頭或費用科目細項)
+            const isExpenseOrCost = accountId.startsWith('5') || accountId.startsWith('6') || !accountId.includes('-');
+
+            if (isExpenseOrCost) {
+                const simulatedExpenseData = [];
+                // 費用/成本的初始餘額較低
+                let prevBalance = accountId.includes('成本') ? 200000 : 50000;
+
+                // 根據月份生成模擬數據
+                const months = defaultReportData.map(d => d.month); // 實際應該基於 startMonth 和 endMonth 生成月份
+
+                months.forEach((month, index) => {
+                    // 隨機生成一個較小的費用基數和波動
+                    let base = (accountId.includes('成本') ? 200000 : 50000) + index * 8000; // 成本更高
+                    const balance = base + Math.floor(Math.random() * 20000);
+
+                    const changeAmount = balance - prevBalance;
+                    const changeRate = index > 0 ? changeAmount / prevBalance : null;
+
+                    simulatedExpenseData.push({
+                        month: month,
+                        balance: balance,
+                        changeAmount: changeAmount,
+                        changeRate: changeRate,
+                        isIncrease: changeAmount > 0,
+                    });
+                    prevBalance = balance;
+                });
+
+                return Promise.resolve(simulatedExpenseData);
+            }
+
+            // 模擬收入/資產科目數據 (使用預設的較高金額)
+            return Promise.resolve(defaultReportData.map(d => ({...d})));
+        }
+
+        // 處理選單變更，確保只有一個選單有值
+        function handleSelectionChange(source) {
+            const incomeSelect = document.getElementById('income-select');
+            const expenseSelect = document.getElementById('expense-select');
+
+            if (source === 'income' && incomeSelect.value !== "") {
+                expenseSelect.value = ""; // 清除費用選單
+            } else if (source === 'expense' && expenseSelect.value !== "") {
+                incomeSelect.value = ""; // 清除收入選單
+            }
+        }
+
+
+        // 格式化數字為貨幣格式 (帶逗號)
+        function formatCurrency(number, unit = '') {
+            if (number === null || number === undefined) return '-';
+            const sign = number < 0 ? '-' : '';
+            const absoluteNumber = Math.abs(number);
+            return sign + absoluteNumber.toLocaleString('en-US') + unit;
+        }
+
+        // 格式化百分比
+        function formatPercentage(rate) {
+            if (rate === null) return '-';
+            return (rate * 100).toFixed(2) + '%';
+        }
+
+        // 渲染明細表格
+        function renderTable(reportData, balanceColumnTitle) {
+            const tbody = document.getElementById('detail-table').querySelector('tbody');
+            tbody.innerHTML = ''; // 清空現有內容
+
+            // 動態更新表格第二欄標題
+            const balanceHeader = document.querySelector('#detail-table thead tr th:nth-child(2)');
+            if (balanceHeader) {
+                balanceHeader.textContent = `${balanceColumnTitle} (單位:元)`;
+            }
+
+            if (reportData.length === 0) {
+                 tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">此期間無數據。</td></tr>';
+                 return;
+            }
+
+            reportData.forEach(item => {
+                const changeRateText = formatPercentage(item.changeRate);
+                const changeRateColor = item.changeRate > 0 ? 'text-green-400' : (item.changeRate < 0 ? 'text-red-400' : 'text-gray-400');
+                const changeAmountColor = item.changeAmount > 0 ? 'text-green-400' : (item.changeAmount < 0 ? 'text-red-400' : 'text-gray-400');
+
+                // 如果是資產/收入科目，餘額增加應顯示為綠色
+                // 這裡的邏輯需要與 loadReportData 中的 balanceColumnTitle 保持一致
+                const isExpenseOrCost = balanceColumnTitle.includes('支出') || balanceColumnTitle.includes('成本');
+
+                let balanceColorClass = 'text-gray-300';
+                if (!isExpenseOrCost) {
+                    // 資產或收入：正數為好 (綠色)
+                    balanceColorClass = item.balance > 0 ? 'text-green-400' : 'text-red-400';
+                }
+
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-[#1f252c] transition';
+                row.innerHTML = `
+                    <td class="text-left">${item.month}</td>
+                    <td class="${balanceColorClass}">${formatCurrency(item.balance, '')}</td>
+                    <td class="${changeAmountColor}">${formatCurrency(item.changeAmount, '')}</td>
+                    <td class="${changeRateColor}">${changeRateText}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 渲染圖表 (已更新為雙軸圖表)
+        function renderChart(reportData, balanceColumnTitle) {
+            if (balanceChartInstance) {
+                balanceChartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('balanceChart').getContext('2d');
+
+            Chart.defaults.color = '#9ca3af';
+            Chart.defaults.font.family = 'Inter, sans-serif';
+
+            // 確保第一個點的 changeAmount 是 0，以便圖表從 0 開始繪製
+            const changeAmounts = reportData.map(item => item.changeAmount);
+            if (changeAmounts.length > 0 && (changeAmounts[0] === null || changeAmounts[0] === undefined)) {
+                changeAmounts[0] = 0;
+            }
+
+            // 判斷是否為費用或成本科目，用於調整圖表顏色
+            const isExpenseOrCost = balanceColumnTitle.includes('支出') || balanceColumnTitle.includes('成本');
+
+            balanceChartInstance = new Chart(ctx, {
+                data: {
+                    labels: reportData.map(item => item.month),
+                    datasets: [
+                        {
+                            // 數據集 1: 期末餘額/累積收入/累積支出 (折線圖 - 左側 Y 軸)
+                            label: balanceColumnTitle,
+                            data: reportData.map(item => item.balance),
+                            type: 'line', // 明確指定類型
+                            yAxisID: 'yBalance', // 綁定到 yBalance 軸
+                            // 費用/成本類用紅色系，資產/收入類用藍色系
+                            borderColor: isExpenseOrCost ? '#ef4444' : '#3b82f6',
+                            backgroundColor: isExpenseOrCost ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                            tension: 0.3,
+                            pointRadius: 6,
+                            pointBackgroundColor: isExpenseOrCost ? '#ef4444' : '#3b82f6',
+                            fill: true,
+                            order: 1 // 確保折線圖在柱狀圖之上
+                        },
+                        {
+                            // 數據集 2: 月變動額 (柱狀圖 - 右側 Y 軸)
+                            label: '月變動額',
+                            data: changeAmounts,
+                            type: 'bar', // 明確指定類型
+                            yAxisID: 'yChange', // 綁定到 yChange 軸
+                            backgroundColor: changeAmounts.map(amount =>
+                                amount > 0 ? 'rgba(34, 197, 94, 0.6)' : 'rgba(239, 68, 68, 0.6)' // 綠色/紅色
+                            ),
+                            borderColor: changeAmounts.map(amount =>
+                                amount > 0 ? '#22c55e' : '#ef4444' // 綠色/紅色
+                            ),
+                            borderWidth: 1,
+                            order: 2 // 確保柱狀圖在折線圖之下 (視覺上)
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index', // 啟用懸停時顯示所有數據集
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                usePointStyle: true, // 折線圖使用點樣式，柱狀圖使用方塊
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += formatCurrency(context.parsed.y, ' NTD');
+                                    }
+                                    return label;
+                                }
+                            },
+                            backgroundColor: '#161b22',
+                            borderColor: '#30363d',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '月份',
+                                color: '#9ca3af'
+                            },
+                            grid: {
+                                color: '#2d333b',
+                                borderColor: '#30363d'
+                            }
+                        },
+                        // 主要 Y 軸 (左側) - 餘額/累積
+                        yBalance: {
+                            type: 'linear',
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: balanceColumnTitle + ' (單位: 元)',
+                                color: isExpenseOrCost ? '#ef4444' : '#3b82f6' // 顏色與折線圖一致
+                            },
+                            beginAtZero: false,
+                            grid: {
+                                color: '#2d333b',
+                                borderColor: '#30363d'
+                            },
+                            ticks: {
+                                callback: function(value, index, ticks) {
+                                    return formatCurrency(value, '');
+                                }
+                            }
+                        },
+                        // 次要 Y 軸 (右側) - 變動額
+                        yChange: {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: '月變動額 (單位: 元)',
+                                color: '#22c55e' // 使用綠色強調變動額軸
+                            },
+                            grid: {
+                                drawOnChartArea: false, // 不在圖表區繪製網格線，保持清爽
+                                borderColor: '#30363d'
+                            },
+                            ticks: {
+                                callback: function(value, index, ticks) {
+                                    return formatCurrency(value, '');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 載入數據和更新報表的主要函式
+        async function loadReportData() {
+            const incomeSelect = document.getElementById('income-select');
+            const expenseSelect = document.getElementById('expense-select');
+            const startMonth = document.getElementById('start-month').value;
+            const endMonth = document.getElementById('end-month').value;
+
+            let selectedAccountText = "";
+            let accountId = "";
+            let balanceColumnTitle = '期末餘額'; // 預設為「期末餘額」
+
+            // 確定哪個下拉選單被選中
+            if (incomeSelect.value !== "") {
+                selectedAccountText = incomeSelect.options[incomeSelect.selectedIndex].text;
+                accountId = incomeSelect.value;
+
+                // 根據 ERP 慣例的科目編號判斷類型 (1xxx 資產, 4xxx 收益, 5/6xxx 成本/費用)
+                const accountCodePrefix = accountId.substring(0, 4);
+
+                if (accountCodePrefix.startsWith('4')) {
+                    // 4xxx 收入/收益科目
+                    balanceColumnTitle = '當期累積收入';
+                } else if (accountCodePrefix.startsWith('5') || accountCodePrefix.startsWith('6')) {
+                    // 5xxx/6xxx 成本/費用科目
+                    balanceColumnTitle = '當期累積支出/成本';
+                } else {
+                    // 1xxx 資產科目 (或未分類/其他)
+                    balanceColumnTitle = '期末餘額';
+                }
+
+            } else if (expenseSelect.value !== "") {
+                selectedAccountText = expenseSelect.options[expenseSelect.selectedIndex].text;
+                accountId = expenseSelect.value;
+                // 費用科目細項明確標示為「當期累積支出」
+                balanceColumnTitle = '當期累積支出';
+            } else {
+                // 如果兩個都沒有選中
+                document.getElementById('chart-title').textContent = `請選擇一個科目進行分析`;
+                document.getElementById('table-title').textContent = `餘額變動明細`;
+                // 銷毀圖表
+                if (balanceChartInstance) { balanceChartInstance.destroy(); balanceChartInstance = null; }
+                renderTable([], balanceColumnTitle); // 清空表格
+                console.warn('請先在「主要會計科目」或「費用科目細項」中選擇一個科目進行分析。');
+                return;
+            }
+
+            // 1. 更新標題
+            const titleSuffix = ` (${startMonth} ~ ${endMonth})`;
+            document.getElementById('chart-title').textContent = `${selectedAccountText} 餘額趨勢圖 ${titleSuffix}`;
+            document.getElementById('table-title').textContent = `${selectedAccountText} 餘額變動明細 ${titleSuffix}`;
+
+            // 2. 獲取數據 (這裡使用模擬的 fetch)
+            try {
+                const fetchedData = await fetchSimulatedData(accountId, startMonth, endMonth);
+
+                // 3. 渲染報表 (傳入 balanceColumnTitle 以便表格和圖表標籤使用)
+                renderTable(fetchedData, balanceColumnTitle);
+                renderChart(fetchedData, balanceColumnTitle);
+
+                console.log('報表已更新。');
+
+            } catch (error) {
+                console.error('載入數據失敗:', error);
+                // 使用自定義的提示方式，避免 alert()
+                console.error('載入數據失敗，請檢查網路連接或 API 狀態。');
+            }
+        }
+
+        // 頁面載入時執行
+        window.onload = () => {
+            // 頁面載入時不自動載入數據，等待用戶選擇。
+            // 設置標題為提示訊息
+            document.getElementById('chart-title').textContent = `請選擇一個科目進行分析`;
+            document.getElementById('table-title').textContent = `餘額變動明細`;
+            // 初始化表格標題
+            const balanceHeader = document.querySelector('#detail-table thead tr th:nth-child(2)');
+            if (balanceHeader) {
+                balanceHeader.textContent = `期末餘額 (單位:元)`;
+            }
+        };
+    </script>
+</body>
+</html>

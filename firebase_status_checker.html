@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase 連線狀態檢查器</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f9;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8 min-h-screen flex items-center justify-center">
+
+    <div id="app" class="w-full max-w-lg bg-white shadow-2xl rounded-xl p-6 sm:p-8 border border-gray-100">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Firebase 狀態</h1>
+
+        <!-- 狀態顯示區域 -->
+        <div class="space-y-4">
+            <div class="status-card bg-indigo-50 p-4 rounded-lg shadow-inner">
+                <p class="text-sm font-semibold text-indigo-700 mb-1">應用程式 ID (`__app_id`)</p>
+                <p id="appIdDisplay" class="text-gray-600 font-mono break-all"></p>
+            </div>
+
+            <div class="status-card bg-yellow-50 p-4 rounded-lg shadow-inner">
+                <p class="text-sm font-semibold text-yellow-700 mb-1">配置載入狀態 (`__firebase_config`)</p>
+                <p id="configStatus" class="text-gray-600 font-medium"></p>
+            </div>
+
+            <div class="status-card bg-green-50 p-4 rounded-lg shadow-inner">
+                <p class="text-sm font-semibold text-green-700 mb-1">Firebase & 身份驗證狀態</p>
+                <p id="authStatus" class="text-gray-600 font-medium flex items-center"></p>
+            </div>
+
+            <div class="status-card bg-blue-50 p-4 rounded-lg shadow-inner">
+                <p class="text-sm font-semibold text-blue-700 mb-1">當前使用者 ID (`userId`)</p>
+                <p id="userIdDisplay" class="text-gray-600 font-mono break-all text-sm"></p>
+            </div>
+        </div>
+
+        <div id="errorDisplay" class="mt-6 p-4 bg-red-100 text-red-700 border border-red-300 rounded-lg hidden">
+            <strong>致命錯誤:</strong> <span id="errorMessage"></span>
+        </div>
+    </div>
+
+    <!-- Firebase 模組載入 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 設定 Firebase Debug Log
+        setLogLevel('debug');
+
+        const appIdDisplay = document.getElementById('appIdDisplay');
+        const configStatus = document.getElementById('configStatus');
+        const authStatus = document.getElementById('authStatus');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const errorDisplay = document.getElementById('errorDisplay');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        // --- 1. 取得並處理全域變數 (Global Variables) ---
+        
+        let app;
+        let db;
+        let auth;
+        let userId = '未登入';
+
+        // 檢查並載入 App ID
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        appIdDisplay.textContent = appId;
+        
+        let firebaseConfig;
+
+        // 將所有初始化和認證邏輯包裝在一個函數中，以允許 'return' 語句在錯誤時提前退出
+        async function startFirebaseChecks() {
+        
+            try {
+                // 檢查並解析 Firebase 配置
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    firebaseConfig = JSON.parse(__firebase_config);
+                    configStatus.innerHTML = '<span class="text-green-600">✅ 配置成功載入並解析</span>';
+                } else {
+                    throw new Error("全域變數 '__firebase_config' 缺失或為空。");
+                }
+            } catch (e) {
+                configStatus.innerHTML = `<span class="text-red-600">❌ 配置載入失敗: ${e.message}</span>`;
+                errorDisplay.classList.remove('hidden');
+                errorMessage.textContent = '無法取得 Firebase 配置，請檢查環境設定。';
+                return; // 提前退出函數
+            }
+
+
+            // --- 2. 初始化 Firebase 應用程式和服務 ---
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+            } catch (e) {
+                errorDisplay.classList.remove('hidden');
+                errorMessage.textContent = `Firebase 初始化錯誤: ${e.message}`;
+                return; // 提前退出函數
+            }
+
+            // --- 3. 處理身份驗證 (Authentication) ---
+
+            // 檢查 custom token 變數
+            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+            authStatus.innerHTML = '<span class="animate-spin mr-2">⚙️</span> 正在進行身份驗證...';
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    authStatus.innerHTML = '<span class="text-green-600">✅ 身份驗證成功 (已登入)</span>';
+                    userIdDisplay.textContent = userId;
+                } else {
+                    // 如果沒有登入，嘗試使用 custom token 或匿名登入
+                    try {
+                        if (initialAuthToken) {
+                            // 使用 custom token 登入
+                            await signInWithCustomToken(auth, initialAuthToken);
+                            // onAuthStateChanged 會再次觸發並進入 user 存在的分支
+                        } else {
+                            // 如果 token 不存在，則使用匿名登入
+                            const anonUser = await signInAnonymously(auth);
+                            userId = anonUser.user.uid;
+                            authStatus.innerHTML = '<span class="text-yellow-600">⚠️ 已使用匿名方式登入</span>';
+                            userIdDisplay.textContent = userId + ' (匿名)';
+                        }
+                    } catch (e) {
+                        authStatus.innerHTML = '<span class="text-red-600">❌ 登入失敗</span>';
+                        userIdDisplay.textContent = 'N/A';
+                        errorDisplay.classList.remove('hidden');
+                        errorMessage.textContent = `登入錯誤: ${e.message}`;
+                    }
+                }
+            });
+        }
+        
+        // 啟動檢查流程
+        startFirebaseChecks();
+
+    </script>
+</body>
+</html>

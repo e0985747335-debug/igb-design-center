@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>IGB ERP - Modular Frontend</title>
+  <!-- 如果你有原本的 css，會從 ../css 或 assets/css 加載 -->
+  <link rel="stylesheet" href="/static/assets/style.css" onerror="console.info('style.css not found')" />
+</head>
+<body>
+  <!-- LEFT SIDEBAR (自動擷取或佔位) -->
+          <aside class="sidebar w-60 bg-white border-r border-gray-200 h-screen sticky top-0 flex flex-col p-4 shadow-lg">
+            <div class="mb-8 pt-2 pb-4 border-b border-gray-100">
+                <h2 class="text-2xl font-extrabold text-indigo-700 flex items-center">
+                    <svg class="h-6 w-6 mr-1 text-indigo-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM5 8a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm0 4a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>
+                    IGB COMMAND
+                </h2>
+                <p class="text-xs text-gray-500 mt-1">數位企業命令中心 V3</p>
+            </div>
+
+            <nav class="module-list flex-1 space-y-1 pr-1">
+                <button onclick="switchModule('finance-module-view')" id="nav-finance" class="module-button active flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/></svg>
+                    財務管理 (Finance)
+                </button>
+                <button onclick="switchModule('expense-mgmt-view')" id="nav-expense-mgmt" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    費用管理中心 (Expense Mgmt)
+                </button>
+                <button onclick="switchModule('scm-module-view')" id="nav-scm" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M15 8l4 4 4-4"/><path d="M19 12h-4"/><path d="M7 16v4"/><path d="M11 16v4"/></svg>
+                    供應鏈管理 (SCM)
+                </button>
+                <button onclick="switchModule('manufacturing-module-view')" id="nav-manufacturing" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M6 20v-8m4 8v-4m4 4v-8m4 8V8"/><path d="M16 4l-4 4-4-4"/></svg>
+                    生產製造 (Manufacturing)
+                </button>
+                <button onclick="switchModule('hr-module-view')" id="nav-hr" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+                    人力資源 (HR)
+                </button>
+                <button onclick="switchModule('crm-module-view')" id="nav-crm" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    客戶關係管理 (CRM)
+                </button>
+                <button onclick="switchModule('bi-module-view')" id="nav-bi" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                    商業智慧 (BI)
+                </button>
+                <button onclick="switchModule('project-mgmt-module-view')" id="nav-project-mgmt" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.5V14"/><path d="M10 9V5"/><path d="M14 9V5"/><rect x="3" y="14" width="18" height="7" rx="1"/><rect x="3" y="3" width="18" height="7" rx="1"/></svg>
+                    專案管理 (Project Mgmt)
+                </button>
+                <button onclick="switchModule('wms-module-view')" id="nav-wms" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-teal-600" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 2a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V4a2 2 0 00-2-2H5zm6 4a1 1 0 11-2 0 1 1 0 012 0zM7 8a1 1 0 00-1 1v4a1 1 0 102 0V9a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                    倉儲管理 (WMS)
+                </button>
+
+                <div class="h-px bg-gray-200 my-4"></div>
+
+                <button onclick="switchModule('general-ledger-view')" id="nav-general-ledger" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12H3"/><path d="M17 6H7"/><path d="M17 18H7"/></svg>
+                    總帳明細 (GL)
+                </button>
+                <button onclick="switchModule('fixed-assets-view')" id="nav-fixed-assets" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M12 18h.01"/></svg>
+                    固定資產 (FA)
+                </button>
+                <button onclick="switchModule('accounts-receivable-view')" id="nav-accounts-receivable" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                    應收帳款 (AR)
+                </button>
+                <button onclick="switchModule('accounts-payable-view')" id="nav-accounts-payable" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2h-2"/><path d="M18 6h-8"/><path d="M18 10h-8"/><path d="M10 14h8"/></svg>
+                    應付帳款 (AP)
+                </button>
+                <button onclick="switchModule('single-expense-view')" id="nav-single-expense" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14v4M10 16h4M3 7l9-4 9 4-9 4-9-4zM2 17l10 4 10-4M2 17V7"/><path d="M14 16v-4m-2 0v4m0 0H7"/></svg>
+                    單筆費用申報
+                </button>
+                <button onclick="switchModule('currency-converter-view')" id="nav-currency-converter" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/></svg>
+                    匯率轉換器 (Currency)
+                </button>
+            </nav>
+        </aside>
+
+  <!-- MAIN APP AREA -->
+  <main id="igb-main-app" style="margin-left:260px; padding:20px;">
+    <div id="app-root">
+      <!-- 這裡是模組化載入點 -->
+      <div id="module-container">正在載入模組...</div>
+    </div>
+  </main>
+
+  <!-- 自動載入器 -->
+  <script src="/static/auto_loader.js"></script>
+  <script>
+    // 頁面載入後啟動模組加載
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.autoLoader) {
+        window.autoLoader.init({
+          defaultModule: 'project_mgmt_module'
+        });
+      } else {
+        document.getElementById('module-container').innerText = 'auto_loader.js 尚未就緒';
+      }
+    });
+  </script>
+</body>
+</html>

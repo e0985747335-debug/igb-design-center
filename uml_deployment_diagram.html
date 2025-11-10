@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML/CSS 渲染的三層式部署架構</title>
+    <!-- 引入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Lucide Icons 函式庫 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- 設定 Tailwind CSS 使用 Inter 字體並開啟 rounded corners -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'client': '#3b82f6', /* 藍色 */
+                        'app': '#10b981',    /* 綠色 */
+                        'data': '#ef4444',   /* 紅色 */
+                        'network': '#f59e0b', /* 黃色 */
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 設置基本樣式 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            padding: 2rem;
+        }
+        .diagram-container {
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+            padding: 2rem;
+        }
+
+        /* 節點通用樣式 */
+        .node {
+            padding: 1rem;
+            border-radius: 0.75rem;
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: default;
+        }
+        .node:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+        }
+
+        /* 連接線樣式（使用 Tailwind utilities 和 border） */
+        .connector {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 3rem;
+        }
+        .connector::before {
+            content: '';
+            position: absolute;
+            width: 4px; /* 垂直線寬度 */
+            height: 100%;
+            background-color: #9ca3af; /* 灰色線 */
+            border-radius: 2px;
+        }
+
+        /* 箭頭樣式 (純 CSS) */
+        .connector-arrow::after {
+            content: '▼';
+            position: absolute;
+            bottom: -0.5rem;
+            color: #9ca3af;
+            font-size: 0.8rem;
+            line-height: 0;
+            z-index: 10;
+        }
+
+        /* 標籤樣式 */
+        .label {
+            position: absolute;
+            background-color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            color: #4b5563;
+            border: 1px solid #d1d5db;
+            white-space: nowrap;
+            z-index: 20;
+        }
+
+        /* 響應式佈局調整 */
+        @media (min-width: 640px) {
+            .connector {
+                height: 4rem;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <div class="w-full max-w-2xl diagram-container">
+        <h1 class="text-3xl font-bold text-gray-900 mb-6 text-center">三層式部署架構 (HTML/CSS 確保兼容)</h1>
+        <p class="text-gray-600 mb-8 text-center">採用純 HTML 與 Tailwind CSS 渲染，確保在任何環境中都能正確顯示部署結構。</p>
+
+        <div class="space-y-8 flex flex-col items-center">
+
+            <!-- 1. 客戶端層 (Client Tier) -->
+            <div class="node bg-client w-full max-w-xs sm:max-w-sm">
+                <i data-lucide="monitor" class="w-6 h-6 inline-block mb-1"></i>
+                <div class="text-lg">客戶端層 (Client Tier)</div>
+                <div class="text-sm font-normal">使用者裝置 (PC / Mobile)</div>
+            </div>
+
+            <!-- 連接線 1 -->
+            <div class="connector connector-arrow">
+                <span class="label -right-20">HTTPS 請求</span>
+            </div>
+
+            <!-- 2. 網路與應用層 (Application Tier) -->
+            <div class="node bg-network w-full max-w-xs sm:max-w-sm">
+                <i data-lucide="shield" class="w-6 h-6 inline-block mb-1"></i>
+                <div class="text-lg">網路邊界 (Firewall / Load Balancer)</div>
+                <div class="text-sm font-normal">流量過濾與分發</div>
+            </div>
+
+            <!-- 連接線 2 -->
+            <div class="connector connector-arrow">
+                <span class="label right-full -translate-x-1/2 top-1/2 transform -translate-y-1/2">請求轉發</span>
+            </div>
+
+            <!-- 3. 應用程式層 (App Tier) -->
+            <div class="node bg-app w-full max-w-xs sm:max-w-sm">
+                <i data-lucide="server" class="w-6 h-6 inline-block mb-1"></i>
+                <div class="text-lg">應用程式層 (App Tier)</div>
+                <div class="text-sm font-normal">Web Server / 後端 API 服務</div>
+            </div>
+
+            <!-- 連接線 3 -->
+            <div class="connector connector-arrow">
+                <span class="label -left-20">資料庫查詢 (SQL)</span>
+            </div>
+
+            <!-- 4. 資料層 (Data Tier) -->
+            <div class="node bg-data w-full max-w-xs sm:max-w-sm">
+                <i data-lucide="database" class="w-6 h-6 inline-block mb-1"></i>
+                <div class="text-lg">資料層 (Data Tier)</div>
+                <div class="text-sm font-normal">資料庫伺服器 / 儲存</div>
+            </div>
+
+        </div>
+
+        <div class="mt-10 p-4 bg-gray-100 rounded-xl">
+            <h2 class="text-xl font-semibold text-gray-800 mb-3">部署說明：</h2>
+            <ul class="list-disc list-inside text-gray-700 space-y-2 text-sm">
+                <li>**客戶端層**：使用者透過瀏覽器或行動 App 發起請求。</li>
+                <li>**網路邊界**：請求通過防火牆並由負載平衡器分發，確保服務高可用性。</li>
+                <li>**應用程式層**：處理業務邏輯，並根據請求結果向資料層發起查詢。</li>
+                <li>**資料層**：儲存和管理所有持久化數據。</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 啟動 Lucide Icons -->
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+# IGB ERP 2.0 暫時 HTTP 模式（測試用）
+:80 {
+
+    # === FastAPI 反向代理 (HTTP 測試模式) ===
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy igb_fastapi:8000 {
+            # 明確定義上游請求標頭
+            header_up Accept "application/json, text/html"
+            header_up Content-Type "application/json; charset=utf-8"
+
+            # 針對 OpenAPI JSON 明確指定 Content-Type
+            @openapi path /openapi.json
+            header_down @openapi Content-Type "application/json; charset=utf-8"
+
+            # 針對 Swagger HTML 頁面明確指定 Content-Type
+            @swagger path /docs*
+            header_down @swagger Content-Type "text/html; charset=utf-8"
+        }
+    }
+
+    # === pgAdmin 反向代理 ===
+    handle_path /pgadmin/* {
+        reverse_proxy igb_pgadmin:80
+    }
+
+    # === 靜態首頁 ===
+    handle {
+        respond "IGB ERP 2.0 戰略指揮中心 (HTTP 測試模式)" 200
+    }
+
+    # === 日誌設定 ===
+    log {
+        output file /var/log/caddy/access.log
+        format console
+    }
+}

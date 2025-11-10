@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 系統功能總覽</title>
+    <!-- Load Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter font for clean aesthetics --><link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        /* Custom Tailwind Configuration */
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    // Custom ERP color palette for professionalism
+                    colors: {
+                        'erp-primary': '#06D6A0', /* Teal/Green Accent */
+                        'erp-neutral': '#118AB2', /* Professional Blue for Headers */
+                        'erp-bg-light': '#f8fafd',
+                        'erp-dark': '#073B4C',
+                    }
+                }
+            }
+        }
+    </style>
+</head>
+<body class="bg-erp-bg-light font-sans antialiased text-gray-800">
+
+    <!-- Header & Navigation --><header class="bg-white shadow-lg sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <!-- Logo/Title --><a href="#" class="text-3xl font-extrabold text-erp-neutral flex items-center">
+                <span class="text-erp-primary text-4xl mr-1">•</span> IGB ERP
+            </a>
+
+            <!-- Mock Navigation (for a true homepage experience) --><nav class="hidden md:flex space-x-6 text-lg font-medium">
+                <a href="#overview" class="text-gray-600 hover:text-erp-primary transition duration-150">系統總覽</a>
+                <a href="#modules" class="text-gray-600 hover:text-erp-primary transition duration-150">功能模組</a>
+                <a href="#demo" class="text-gray-600 hover:text-erp-primary transition duration-150">模組演示</a>
+                <a href="#contact" class="text-gray-600 hover:text-erp-primary transition duration-150">聯絡我們</a>
+            </nav>
+
+            <!-- Mobile Menu Placeholder --><button class="md:hidden text-gray-600 hover:text-erp-primary p-2 rounded-lg transition duration-150">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content --><main>
+
+        <!-- Hero Section - Vision & Overview --><section id="overview" class="bg-white pt-16 pb-20 sm:pt-24 sm:pb-32">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <hgroup class="mb-10">
+                    <p class="text-sm font-semibold uppercase tracking-wider text-erp-primary mb-2">Enterprise Resource Planning System</p>
+                    <h2 class="text-5xl sm:text-6xl font-black text-erp-dark leading-tight">
+                        IGB ERP 系統功能總覽
+                    </h2>
+                </hgroup>
+                <p class="mt-4 max-w-3xl mx-auto text-xl text-gray-600 leading-relaxed">
+                    IGB ERP 系統旨在整合企業內部所有資源和流程，提供從財務、供應鏈到人事的全面解決方案。透過模組化的設計，企業可以根據需求彈性配置，並利用雲端架構實現高效營運。
+                </p>
+                <div class="mt-10 flex justify-center space-x-4">
+                    <a href="#modules" class="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-full shadow-lg text-white bg-erp-neutral hover:bg-opacity-90 transition duration-300">
+                        探索核心模組
+                    </a>
+                    <a href="#demo" class="inline-flex items-center px-8 py-3 border border-gray-300 text-base font-medium rounded-full text-gray-700 bg-white hover:bg-gray-50 transition duration-300">
+                        模組互動演示
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Modules Section - Features in Grid Layout --><section id="modules" class="py-16 sm:py-24 bg-erp-bg-light">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-4xl font-extrabold text-erp-neutral text-center mb-16">
+                    七大核心模組，全面掌控營運
+                </h2>
+
+                <!-- Module Categories Grid --><div id="module-container" class="space-y-16">
+
+                    <!-- 1. 核心營運與供應鏈管理 --><div class="group">
+                        <h3 class="text-3xl font-bold text-erp-dark mb-6 border-l-4 border-erp-primary pl-4 flex items-center">
+                            <svg class="w-8 h-8 mr-2 text-erp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0l2.5-2.5M7 15h2l4.5 4.5 3.5-3.5"></path></svg>
+                            核心營運與供應鏈管理 (進銷存)
+                        </h3>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <!-- 進銷存 Card --><div class="bg-white rounded-xl shadow-xl p-6 transition duration-300 transform hover:scale-[1.02] border-t-4 border-erp-primary">
+                                <h4 class="text-2xl font-bold text-erp-neutral mb-3">進銷存 (Sales, Purchasing, Inventory Management)</h4>
+                                <p class="text-gray-500 mb-4 text-sm">功能描述：整合採購、銷售與庫存作業流程。從請購、採購單、入庫，到銷貨訂單、出貨、應收/應付帳款的產生，實現物流、資訊流與資金流的同步。</p>
+                                <div class="mt-4 pt-4 border-t border-gray-100">
+                                    <p class="font-semibold text-gray-700">🚀 主要效益</p>
+                                    <ul class="list-none text-sm text-gray-600 mt-2 space-y-1">
+                                        <li>✔ 提升庫存準確性</li>
+                                        <li>✔ 優化採購成本</li>
+                                        <li>✔ 加速訂單處理週期</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. 財務會計管理 --><div class="group">
+                        <h3 class="text-3xl font-bold text-erp-dark mb-6 border-l-4 border-erp-primary pl-4 flex items-center">
+                            <svg class="w-8 h-8 mr-2 text-erp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V5m0 0a2 2 0 100-4 2 2 0 000 4zm-7 11h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                            財務會計管理
+                        </h3>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <!-- 財務會計 Card --><div class="bg-white rounded-xl shadow-xl p-6 transition duration-300 transform hover:scale-[1.02] border-t-4 border-erp-primary">
+                                <h4 class="text-2xl font-bold text-erp-neutral mb-3">財務會計 (Financial Accounting)</h4>
+                                <p class="text-gray-500 mb-4 text-sm">功能描述：處理企業所有會計事務，包括總帳、應收帳款、應付帳款、固定資產及成本會計。支援自動拋轉傳票，生成標準會計報表（如資產負債表、損益表）。</p>
+                                <div class="mt-4 pt-4 border-t border-gray-100">
+                                    <p class="font-semibold text-gray-700">🚀 主要效益</p>
+                                    <ul class="list-none text-sm text-gray-600 mt-2 space-y-1">
+                                        <li>✔ 確保財務數據的準確與即時性</li>
+                                        <li>✔ 符合法規要求</li>
+                                        <li>✔ 提供可靠的財務分析</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. 基礎資料與主檔管理 --><div class="group">
+                        <h3 class="text-3xl font-bold text-erp-dark mb-6 border-l-4 border-erp-primary pl-4 flex items-center">
+                            <svg class="w-8 h-8 mr-2 text-erp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10h16V7a2 2 0 00-2-2H6a2 2 0 00-2 2zM9 14v-2m0 0h6m-6 0h6"></path></svg>
+                            基礎資料與主檔管理
+                        </h3>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <!-- 商品管理 Card --><div class="bg-white rounded-xl shadow-xl p-6 transition duration-300 transform hover:scale-[1.02] border-t-4 border-erp-primary">
+                                <h4 class="text-2xl font-bold text-erp-neutral mb-3">商品管理 (Product Management)</h4>
+                                <p class="text-gray-500 mb-4 text-sm">功能描述：集中管理所有銷售和採購商品的基礎資料。包含商品編號、規格、單位、成本、定價策略、安全庫存量等資訊，是進銷存作業的基礎。</p>
+                                <div class="mt-4 pt-4 border-t border-gray-100">
+                                    <p class="font-semibold text-gray-700">🚀 主要效益</p>
+                                    <ul class="list-none text-sm text-gray-600 mt-2 space-y-1">
+                                        <li>✔ 統一商品標準</li>
+                                        <li>✔ 避免資料重複與錯誤</li>
+                                        <li>✔ 提升營運效率</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- 廠商管理 Card --><div class="bg-white rounded-xl shadow-xl p-6 transition duration-300 transform hover:scale-[1.02] border-t-4 border-erp-primary">
+                                <h4 class="text-2xl font-bold text-erp-neutral mb-3">廠商管理 (Vendor Management)</h4>
+                                <p class="text-gray-500 mb-4 text-sm">功能描述：管理所有供應商和承包商的詳細資訊。包括聯繫方式、交易歷史、採購價格、付款條件、信用額度評估等。</p>
+                                <div class="mt-4 pt-4 border-t border-gray-100">
+                                    <p class="font-semibold text-gray-700">🚀 主要效益</p>
+                                    <ul class="list-none text-sm text-gray-600 mt-2 space-y-1">
+                                        <li>✔ 建立穩定的供應鏈關係</li>
+                                        <li>✔ 有效評估與篩選供應商</li>
+                                        <li>✔ 控管採購風險</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. 人力資源管理 --><div class="group">
+                        <h3 class="text-3xl font-bold text-erp-dark mb-6 border-l-4 border-erp-primary pl-4 flex items-center">
+                            <svg class="w-8 h-8 mr-2 text-erp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20V5c0-1.105-.9-2-2-2h-4c-1.105 0-2 .9-2 2v15m-4 0v-2a3 3 0 01-3-3m-2-3h12a2 2 0 012 2v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4a2 2 0 012-2z"></path></svg>
+                            人力資源管理
+                        </h3>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <!-- 人事管理 Card --><div class="bg-white rounded-xl shadow-xl p-6 transition duration-300 transform hover:scale-[1.02] border-t-4 border-erp-primary">
+                                <h4 class="text-2xl font-bold text-erp-neutral mb-3">人事管理 (HR Management)</h4>
+                                <p class="text-gray-500 mb-4 text-sm">功能描述：涵蓋員工資料、薪資計算、考勤管理、休假管理、績效評估等功能。協助企業有效管理人力資源，確保薪資發放與法規遵循。</p>
+                                <div class="mt-4 pt-4 border-t border-gray-100">
+                                    <p class="font-semibold text-gray-700">🚀 主要效益</p>
+                                    <ul class="list-none text-sm text-gray-600 mt-2 space-y-1">
+                                        <li>✔ 提高人資部門的行政效率</li>
+                                        <li>✔ 優化員工體驗</li>
+                                        <li>✔ 支援人才發展</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. 系統與雲端架構 --><div class="group">
+                        <h3 class="text-3xl font-bold text-erp-dark mb-6 border-l-4 border-erp-primary pl-4 flex items-center">
+                            <svg class="w-8 h-8 mr-2 text-erp-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20h4V4h-4v16zm-5-3h4v-2H5v2zm0-5h4v-2H5v2zm0-5h4V5H5v2zm9 10h5v-2h-5v2zm0-5h5v-2h-5v2zm0-5h5V5h-5v2z"></path></svg>
+                            系統與雲端架構
+                        </h3>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <!-- ERP 管理 Card --><div class="bg-white rounded-xl shadow-xl p-6 transition duration-300 transform hover:scale-[1.02] border-t-4 border-erp-primary">
+                                <h4 class="text-2xl font-bold text-erp-neutral mb-3">ERP 管理 (ERP Administration)</h4>
+                                <p class="text-gray-500 mb-4 text-sm">功能描述：系統配置與權限管理中心。負責設定各模組的參數、維護主資料、定義使用者角色及操作權限，確保系統安全與穩定運行。</p>
+                                <div class="mt-4 pt-4 border-t border-gray-100">
+                                    <p class="font-semibold text-gray-700">🚀 主要效益</p>
+                                    <ul class="list-none text-sm text-gray-600 mt-2 space-y-1">
+                                        <li>✔ 實現精細化的權限控管</li>
+                                        <li>✔ 系統配置貼合企業實際需求</li>
+                                        <li>✔ 確保系統安全與穩定運行</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- ERP 雲端 Card --><div class="bg-white rounded-xl shadow-xl p-6 transition duration-300 transform hover:scale-[1.02] border-t-4 border-erp-primary">
+                                <h4 class="text-2xl font-bold text-erp-neutral mb-3">ERP 雲端 (Cloud ERP)</h4>
+                                <p class="text-gray-500 mb-4 text-sm">功能描述：IGB ERP 系統基於雲端架構運行，無需投入大量硬體成本，透過瀏覽器即可隨時隨地存取系統。提供自動更新、資料備份與高可用性保障。</p>
+                                <div class="mt-4 pt-4 border-t border-gray-100">
+                                    <p class="font-semibold text-gray-700">🚀 主要效益</p>
+                                    <ul class="list-none text-sm text-gray-600 mt-2 space-y-1">
+                                        <li>✔ 降低IT維護成本</li>
+                                        <li>✔ 加速部署</li>
+                                        <li>✔ 提供業務連續性和行動工作能力</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div> <!-- End module-container --></div>
+        </section>
+
+        <!-- Module Demo Section - Iframe for Procurement UI --><section id="demo" class="py-16 sm:py-24 bg-gray-100">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-4xl font-extrabold text-erp-neutral text-center mb-16">
+                    模組實際操作演示：採購管理
+                </h2>
+                <p class="text-center text-xl text-gray-600 mb-12 max-w-3xl mx-auto">
+                    透過以下互動式介面，您可以直接體驗 IGB ERP 系統的採購管理模組如何簡化流程、集中管理供應商與商品。
+                </p>
+                <div class="bg-white rounded-xl shadow-2xl overflow-hidden border-4 border-erp-neutral">
+                    <iframe
+                        src="igb_procurement_ui.html"
+                        title="IGB ERP 採購管理模組演示"
+                        class="w-full h-[80vh] min-h-[600px] border-0"
+                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                    ></iframe>
+                </div>
+            </div>
+        </section>
+
+        <!-- Call to Action / Footer Contact --><section id="contact" class="bg-erp-dark py-16 sm:py-20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h2 class="text-3xl font-extrabold text-white sm:text-4xl">
+                    準備好優化您的企業營運了嗎？
+                </h2>
+                <p class="mt-4 text-xl text-gray-300 max-w-2xl mx-auto">
+                    立即聯絡我們的專家團隊，客製化最適合您的 IGB ERP 解決方案。
+                </p>
+                <div class="mt-8">
+                    <a href="mailto:contact@igberp.com" class="inline-flex items-center px-8 py-4 border border-transparent text-base font-bold rounded-full shadow-lg text-erp-dark bg-erp-primary hover:bg-opacity-90 transition duration-300 transform hover:scale-105">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path></svg>
+                        聯絡我們 (contact@igberp.com)
+                    </a>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer --><footer class="bg-gray-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-gray-400">
+            &copy; 2025 IGB ERP System. All rights reserved.
+        </div>
+    </footer>
+
+</body>
+</html>

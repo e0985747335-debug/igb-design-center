@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 數位企業命令中心 V3 (Light Mode)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <style>
+        /* 使用 Inter 字體 */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc; /* Light background */
+        }
+        /* 自定義滾動條樣式 (Light Mode) */
+        .module-list { max-height: 85vh; overflow-y: auto; }
+        .module-list::-webkit-scrollbar { width: 8px; }
+        .module-list::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+        .module-list::-webkit-scrollbar-track { background-color: #f1f5f9; }
+
+        /* 模組按鈕樣式 */
+        .module-button { transition: all 0.2s; border-left: 3px solid transparent; }
+        .module-button:hover { background-color: #f3f4f6; } /* 懸停時增加淺灰色背景 */
+        .module-button.active {
+            background-color: #e0f2fe; /* Light blue background */
+            color: #1d4ed8; /* Darker blue text */
+            font-weight: 600;
+            border-left-color: #1d4ed8;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* 增加陰影強調活躍狀態 */
+        }
+        /* 輔助導航樣式 */
+        .sub-nav-item { transition: background-color 0.15s; }
+        .sub-nav-item:hover { transform: translateY(-1px); }
+        .sub-nav-item.active { background-color: #e0f2fe; font-weight: 600; color: #1d4ed8; }
+
+        .kpi-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+
+        /* 列印樣式 (Light Mode 優化) */
+        @media print {
+            .print-hide, .sidebar { display: none !important; }
+            body { background-color: #fff !important; color: #000 !important; margin: 0 !important; }
+            .main-content { margin-left: 0 !important; width: 100% !important; }
+            .kpi-card { box-shadow: none !important; border: 1px solid #ccc !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- 訊息彈出框 (Message Box) - 確保 JS 函數存在以支援此 UI -->
+    <div id="messageBox" class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900 bg-opacity-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md transform transition-all duration-300 scale-100">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 id="msgTitle" class="text-xl font-bold text-gray-800">訊息</h3>
+                <button onclick="closeMessageBox()" class="text-gray-400 hover:text-gray-600 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <p id="msgText" class="text-gray-700 mb-6"></p>
+            <div class="flex justify-end">
+                <button onclick="closeMessageBox()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                    確認
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex">
+        <aside class="sidebar w-60 bg-white border-r border-gray-200 h-screen sticky top-0 flex flex-col p-4 shadow-lg">
+            <div class="mb-8 pt-2 pb-4 border-b border-gray-100">
+                <h2 class="text-2xl font-extrabold text-indigo-700 flex items-center">
+                    <svg class="h-6 w-6 mr-1 text-indigo-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM5 8a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm0 4a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>
+                    IGB COMMAND
+                </h2>
+                <p class="text-xs text-gray-500 mt-1">數位企業命令中心 V3</p>
+            </div>
+
+            <nav class="module-list flex-1 space-y-1 pr-1">
+                <button onclick="switchModule('finance-module-view')" id="nav-finance" class="module-button active flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H7l-5 5 5 5h10l5-5-5-5z"/></svg>
+                    財務管理 (Finance)
+                </button>
+                <!-- START: 重新加入費用管理中心 (Expense Mgmt) -->
+                <button onclick="switchModule('expense-mgmt-view')" id="nav-expense-mgmt" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    費用管理中心 (Expense Mgmt)
+                </button>
+                <!-- END: 費用管理中心 -->
+                <button onclick="switchModule('scm-module-view')" id="nav-scm" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M15 8l4 4 4-4"/><path d="M19 12h-4"/><path d="M7 16v4"/><path d="M11 16v4"/></svg>
+                    供應鏈管理 (SCM)
+                </button>
+                <button onclick="switchModule('manufacturing-module-view')" id="nav-manufacturing" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M6 20v-8m4 8v-4m4 4v-8m4 8V8"/><path d="M16 4l-4 4-4-4"/></svg>
+                    生產製造 (Manufacturing)
+                </button>
+                <button onclick="switchModule('hr-module-view')" id="nav-hr" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+                    人力資源 (HR)
+                </button>
+                <button onclick="switchModule('crm-module-view')" id="nav-crm" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    客戶關係管理 (CRM)
+                </button>
+                <button onclick="switchModule('bi-module-view')" id="nav-bi" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                    商業智慧 (BI)
+                </button>
+                <button onclick="switchModule('project-mgmt-module-view')" id="nav-project-mgmt" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.5V14"/><path d="M10 9V5"/><path d="M14 9V5"/><rect x="3" y="14" width="18" height="7" rx="1"/><rect x="3" y="3" width="18" height="7" rx="1"/></svg>
+                    專案管理 (Project Mgmt)
+                </button>
+                <button onclick="switchModule('wms-module-view')" id="nav-wms" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-teal-600" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 2a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V4a2 2 0 00-2-2H5zm6 4a1 1 0 11-2 0 1 1 0 012 0zM7 8a1 1 0 00-1 1v4a1 1 0 102 0V9a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                    倉儲管理 (WMS)
+                </button>
+
+                <div class="h-px bg-gray-200 my-4"></div>
+
+                <button onclick="switchModule('general-ledger-view')" id="nav-general-ledger" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12H3"/><path d="M17 6H7"/><path d="M17 18H7"/></svg>
+                    總帳明細 (GL)
+                </button>
+                <button onclick="switchModule('fixed-assets-view')" id="nav-fixed-assets" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M12 18h.01"/></svg>
+                    固定資產 (FA)
+                </button>
+                <button onclick="switchModule('accounts-receivable-view')" id="nav-accounts-receivable" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                    應收帳款 (AR)
+                </button>
+                <button onclick="switchModule('accounts-payable-view')" id="nav-accounts-payable" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2h-2"/><path d="M18 6h-8"/><path d="M18 10h-8"/><path d="M10 14h8"/></svg>
+                    應付帳款 (AP)
+                </button>
+                <button onclick="switchModule('single-expense-view')" id="nav-single-expense" class="module-button flex items-center p-3 w-full rounded-lg text-gray-800 hover:bg-gray-100">
+                    <svg class="h-5 w-5 mr-3 text-accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14v4M10 16h4M3 7l9-4 9 4-9 4-9-4zM2 17l10 4 10-4M2 17V7"/><path d="M14 16v-4m-2 0v4m0 0H7"/></svg>
+                    單筆費用申報
+                </button>
+            </nav>
+        </aside>
+
+        <main class="main-content flex-1 p-8">
+
+            <div class="max-w-full mx-auto">
+
+                <header class="mb-6">
+                    <h1 class="text-3xl font-extrabold text-gray-800" id="view-title">財務管理 (Finance)</h1>
+                    <p class="text-gray-500 text-sm mt-1" id="view-subtitle">即時現金流與費用總覽</p>
+                </header>
+
+                <div id="view-container">
+
+                    <div id="finance-module-view" class="module-view space-y-8">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4">關鍵財務指標 (KPI)</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border border-indigo-100"><p class="text-sm font-medium text-gray-500">現金餘額</p><p class="text-3xl font-extrabold text-indigo-600 mt-1">NT$ 2,500K</p><span class="text-xs text-green-500 flex items-center mt-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>+5% YoY</span></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border border-yellow-100"><p class="text-sm font-medium text-gray-500">應收帳款 (A/R)</p><p class="text-3xl font-extrabold text-yellow-600 mt-1">NT$ 850K</p><span class="text-xs text-red-500 flex items-center mt-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>逾期率 12%</span></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border border-red-100"><p class="text-sm font-medium text-gray-500">應付帳款 (A/P)</p><p class="text-3xl font-extrabold text-red-600 mt-1">NT$ 420K</p><span class="text-xs text-indigo-600 flex items-center mt-2"><svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>7日內支付: $75K</span></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border border-green-100"><p class="text-sm font-medium text-gray-500">淨利潤率 (YTD)</p><p class="text-3xl font-extrabold text-green-600 mt-1">15.8%</p><span class="text-xs text-green-500 flex items-center mt-2">目標達成率: 98%</span></div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-6">
+                            <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">月度現金流趨勢</h3><div class="h-80"><canvas id="cashFlowChart"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">費用類別分佈</h3><div class="h-80 flex justify-center items-center"><canvas id="expenseChart" class="max-h-72"></canvas></div></div>
+                        </div>
+                        <div class="pt-4 border-t border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-2">財務子功能</h3>
+                            <div class="flex space-x-4">
+                                <button onclick="switchModule('general-ledger-view')" class="sub-nav-item py-1 px-3 rounded-md text-sm text-indigo-600 hover:bg-indigo-100">總帳明細</button>
+                                <button onclick="switchModule('accounts-receivable-view')" class="sub-nav-item py-1 px-3 rounded-md text-sm text-indigo-600 hover:bg-indigo-100">應收帳款</button>
+                                <button onclick="switchModule('accounts-payable-view')" class="sub-nav-item py-1 px-3 rounded-md text-sm text-red-600 hover:bg-red-100">應付帳款</button>
+                                <button onclick="switchModule('fixed-assets-view')" class="sub-nav-item py-1 px-3 rounded-md text-sm text-yellow-600 hover:bg-yellow-100">固定資產</button>
+                                <button onclick="switchModule('placeholder-view', 'Budgeting')" data-module="budgeting" class="sub-nav-item py-1 px-3 rounded-md text-sm text-green-600 hover:bg-green-100">預算與分析</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- START: 費用管理中心 (Expense Mgmt View) -->
+                    <div id="expense-mgmt-view" class="module-view hidden space-y-8">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center">
+                            <svg class="h-6 w-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            費用管理中心 (Expense Management)
+                        </h2>
+                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <div class="flex space-x-4 mb-6 border-b pb-3" id="expense-mgmt-tabs">
+                                <button onclick="switchExpenseSubView('claimer')" id="tab-claimer" class="sub-nav-item py-1 px-3 rounded-md text-sm bg-indigo-500 text-white active">我的費用 (申請者)</button>
+                                <button onclick="switchExpenseSubView('approver')" id="tab-approver" class="sub-nav-item py-1 px-3 rounded-md text-sm text-gray-700 bg-gray-100 hover:bg-gray-200">費用審批 (審批者)</button>
+                            </div>
+
+                            <!-- 申請者清單 (claimer-content) -->
+                            <div id="claimer-content" class="space-y-6">
+                                <h3 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">我的申報狀態總覽</h3>
+                                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div class="kpi-card bg-indigo-50 p-4 rounded-lg"><p class="text-xs font-medium text-gray-500">我的待審批筆數</p><p class="text-xl font-bold text-indigo-700 mt-0.5" id="stat-claimer-pending-count">0</p></div>
+                                    <div class="kpi-card bg-yellow-50 p-4 rounded-lg"><p class="text-xs font-medium text-gray-500">我的草稿總額</p><p class="text-xl font-bold text-yellow-700 mt-0.5" id="stat-claimer-draft-total">NT$ 0</p></div>
+                                    <div class="kpi-card bg-green-50 p-4 rounded-lg"><p class="text-xs font-medium text-gray-500">已核准總額 (YTD)</p><p class="text-xl font-bold text-green-700 mt-0.5" id="stat-claimer-approved-total">NT$ 0</p></div>
+                                    <div class="kpi-card bg-red-50 p-4 rounded-lg"><p class="text-xs font-medium text-gray-500">駁回筆數 (本月)</p><p class="text-xl font-bold text-red-700 mt-0.5" id="stat-claimer-rejected-count">0</p></div>
+                                </div>
+                                <h3 class="text-xl font-semibold text-gray-700 border-b pb-2 mt-8">申報清單</h3>
+                                <div class="overflow-x-auto shadow-md rounded-xl border border-gray-200">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">ID</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">申報日期</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">事由</th><th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">金額 (TWD)</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">狀態</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">操作</th></tr>
+                                        </thead>
+                                        <tbody id="expense-mgmt-list" class="bg-white divide-y divide-gray-200">
+                                            <!-- Data will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                    <p id="expense-mgmt-empty" class="text-center py-6 text-gray-500 hidden">沒有費用申報記錄。</p>
+                                </div>
+                            </div>
+                            <!-- 審批者內容 (approver-content) -->
+                            <div id="approver-content" class="hidden space-y-6">
+                                <h3 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">待審批狀態總覽</h3>
+                                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div class="kpi-card bg-yellow-50 p-4 rounded-lg"><p class="text-xs font-medium text-gray-500">待審批筆數</p><p class="text-xl font-bold text-yellow-700 mt-0.5" id="stat-approver-pending-count">0</p></div>
+                                    <div class="kpi-card bg-indigo-50 p-4 rounded-lg"><p class="text-xs font-medium text-gray-500">待審批總額</p><p class="text-xl font-bold text-indigo-700 mt-0.5" id="stat-approver-pending-total">NT$ 0</p></div>
+                                    <div class="kpi-card bg-red-50 p-4 rounded-lg"><p class="text-xs font-medium text-gray-500">已駁回筆數 (YTD)</p><p class="text-xl font-bold text-red-700 mt-0.5" id="stat-approver-rejected-count">0</p></div>
+                                    <div class="kpi-card bg-green-50 p-4 rounded-lg"><p class="text-xs font-medium text-gray-500">已核准總額 (YTD)</p><p class="text-xl font-bold text-green-700 mt-0.5" id="stat-approver-approved-total">NT$ 0</p></div>
+                                </div>
+                                <h3 class="text-xl font-semibold text-gray-700 border-b pb-2 mt-8">待審批清單</h3>
+                                <div class="overflow-x-auto shadow-md rounded-xl border border-gray-200">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">ID</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">申請人</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">申報日期</th><th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">金額 (TWD)</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">專案</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">操作</th></tr>
+                                        </thead>
+                                        <tbody id="approver-mgmt-list" class="bg-white divide-y divide-gray-200">
+                                            <!-- Approver claims will be loaded here -->
+                                        </tbody>
+                                    </table>
+                                    <p id="approver-mgmt-empty" class="text-center py-6 text-gray-500 hidden">目前沒有待審批的申報單。</p>
+                                </div>
+                            </div>
+
+                            <!-- 費用詳情/編輯視圖 -->
+                            <div id="expense-detail-view" class="hidden max-w-2xl mx-auto pt-8">
+                                <h3 class="text-2xl font-bold text-gray-800 mb-6 flex justify-between items-center">
+                                    <span id="detail-view-title">費用申報詳情/編輯</span>
+                                    <span id="detail-status" class="px-3 py-1 rounded-full text-sm font-semibold text-gray-700 bg-gray-200">草稿</span>
+                                </h3>
+                                <form id="detail-edit-form" class="space-y-4" onsubmit="handleDetailFormSubmit(event)">
+                                    <input type="hidden" id="detail-id" name="claim-id">
+
+                                    <!-- 摘要資訊 -->
+                                    <div class="grid grid-cols-2 gap-4 border-b pb-4 mb-4">
+                                        <div><p class="text-sm font-medium text-gray-500">申報人</p><p id="detail-claimer" class="font-semibold text-gray-900">王小明 (業務發展部)</p></div>
+                                        <div><p class="text-sm font-medium text-gray-500">金額</p><p id="detail-amount" class="text-xl font-extrabold text-indigo-600">NT$ 0</p></div>
+                                    </div>
+
+                                    <!-- 編輯欄位 -->
+                                    <div>
+                                        <label for="detail-date" class="block text-sm font-medium text-gray-700">發生日期</label>
+                                        <input type="date" id="detail-date" name="date" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                    </div>
+
+                                    <!-- 優化: 新增專案編輯欄位 -->
+                                    <div>
+                                        <label for="detail-project" class="block text-sm font-medium text-gray-700">關聯專案/模組 ID*</label>
+                                        <select id="detail-project" name="project-id" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border shadow-sm">
+                                            <!-- Options populated by JS -->
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label for="detail-description" class="block text-sm font-medium text-gray-700">說明/事由</label>
+                                        <textarea id="detail-description" name="description" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                                    </div>
+
+                                    <!-- 費用明細（簡化為只讀展示） -->
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-700 mb-1">詳細科目/項目</p>
+                                        <p id="detail-minor-category" class="font-semibold text-gray-700 bg-gray-50 p-2 rounded-md border"></p>
+                                    </div>
+
+                                    <!-- 操作按鈕 -->
+                                    <div class="pt-4 flex justify-between space-x-3" id="claimer-buttons">
+                                        <button type="button" onclick="backToExpenseMgmt()" id="detail-back-button"
+                                            class="inline-flex justify-center rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none transition duration-150 ease-in-out">
+                                            返回清單
+                                        </button>
+                                        <div class="flex space-x-3">
+                                            <button type="button" onclick="submitClaimForApproval()" id="detail-submit-button"
+                                                class="inline-flex justify-center items-center py-2 px-5 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150">
+                                                提交審批 (Submit)
+                                            </button>
+                                            <button type="submit" id="detail-save-draft-button"
+                                                class="inline-flex justify-center items-center py-2 px-5 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150">
+                                                儲存草稿 (Save)
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- 審批者操作按鈕 -->
+                                    <div class="pt-4 flex justify-between space-x-3 hidden" id="approver-buttons">
+                                        <button type="button" onclick="backToExpenseMgmt()"
+                                            class="inline-flex justify-center rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none transition duration-150 ease-in-out">
+                                            返回審批清單
+                                        </button>
+                                        <div class="flex space-x-3">
+                                            <button type="button" id="reject-button" onclick="handleApproval(parseInt(document.getElementById('detail-id').value), 'Rejected')"
+                                                class="inline-flex justify-center items-center py-2 px-5 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150">
+                                                拒絕 (Reject)
+                                            </button>
+                                            <button type="button" id="approve-button" onclick="handleApproval(parseInt(document.getElementById('detail-id').value), 'Approved')"
+                                                class="inline-flex justify-center items-center py-2 px-5 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150">
+                                                核准 (Approve)
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END: 費用管理中心 -->
+
+
+                    <div id="general-ledger-view" class="module-view hidden space-y-6">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4">日記帳分錄 (Journal Entries)</h2>
+                        <div class="bg-white p-4 rounded-xl shadow-md flex flex-wrap items-end gap-4">
+                            <div class="flex-1 min-w-[200px]"><label for="date-range" class="block text-sm font-medium text-gray-700">日期範圍</label><input type="text" id="date-range" oninput="filterLedger()" placeholder="YYYY-MM-DD 至 YYYY-MM-DD" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 focus:border-indigo-500 focus:ring-indigo-500"></div>
+                            <div class="flex-1 min-w-[150px]"><label for="account-filter" class="block text-sm font-medium text-gray-700">帳戶名稱</label><select id="account-filter" onchange="filterLedger()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">所有帳戶</option>
+                                <option value="現金">現金</option>
+                                <option value="應收帳款">應收帳款</option>
+                                <option value="銷貨收入">銷貨收入</option>
+                                <option value="薪資費用">薪資費用</option>
+                                <option value="銀行存款">銀行存款</option>
+                                <option value="應付費用">應付費用</option>
+                            </select></div>
+                            <div class="flex-1 min-w-[250px]"><label for="search-text" class="block text-sm font-medium text-gray-700">搜尋描述/憑證</label><input type="text" id="search-text" oninput="filterLedger()" placeholder="輸入關鍵字" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 focus:border-indigo-500 focus:ring-indigo-500"></div>
+                            <button onclick="resetFilters()" class="px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-md hover:bg-gray-300 transition shadow-sm">重設</button>
+                        </div>
+                        <div class="gl-table-container bg-white shadow-lg">
+                            <table class="min-w-full divide-y divide-gray-200"><thead class="bg-indigo-50 sticky top-0"><tr><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">日期</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">憑證號碼</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">描述</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">帳戶名稱</th><th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">借方 (Debit)</th><th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">貸方 (Credit)</th></tr></thead><tbody id="ledger-body" class="bg-white divide-y divide-gray-200"></tbody></table>
+                            <div id="no-results" class="text-center py-10 text-gray-500 hidden">找不到符合篩選條件的日記帳分錄。</div>
+                        </div>
+                        <div class="mt-4 p-4 rounded-xl shadow-lg" id="balance-summary"></div>
+                    </div>
+
+                    <div id="accounts-receivable-view" class="module-view hidden space-y-8">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center">
+                            <svg class="h-6 w-6 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                            應收帳款管理 (Accounts Receivable)
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-indigo-500"><p class="text-sm font-medium text-gray-500">總應收帳款</p><p class="text-3xl font-extrabold text-indigo-600 mt-1">NT$ 450K</p><p class="text-xs text-gray-500 mt-2">未收款客戶數: 12</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500"><p class="text-sm font-medium text-gray-500">逾期帳款總額 (30+天)</p><p class="text-3xl font-extrabold text-red-600 mt-1">NT$ 55K</p><p class="text-xs text-red-600 mt-2">逾期率: 12.2% (高)</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500"><p class="text-sm font-medium text-gray-500">平均收款天數 (DSO)</p><p class="text-3xl font-extrabold text-yellow-600 mt-1">45 天</p><p class="text-xs text-red-600 mt-2">目標: 35 天 (需改進)</p></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                            <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">待收發票明細</h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-indigo-50"><tr><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">發票編號</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">客戶名稱</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">到期日</th><th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">剩餘金額</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">帳齡</th></tr></thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr><td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">INV-2025-0010</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">高山科技公司</td><td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">2025/10/01</td><td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-red-600">NT$ 25,000</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">30 天以上</td></tr>
+                                        <tr><td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">INV-2025-0015</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">東方電子企業</td><td class="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">2025/11/10</td><td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-yellow-600">NT$ 120,000</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">未逾期 (14 天)</td></tr>
+                                    </tbody>
+                                </table>
+                                <button class="mt-4 px-4 py-2 bg-indigo-500 text-white font-medium rounded-md hover:bg-indigo-600 transition shadow-md">發送催款提醒</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="accounts-payable-view" class="module-view hidden space-y-8">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center">
+                            <svg class="h-6 w-6 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2h-2"/><path d="M18 6h-8"/><path d="M18 10h-8"/><path d="M10 14h8"/></svg>
+                            應付帳款管理 (Accounts Payable)
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500"><p class="text-sm font-medium text-gray-500">總應付帳款</p><p class="text-3xl font-extrabold text-red-600 mt-1">NT$ 210K</p><p class="text-xs text-gray-500 mt-2">未支付供應商數: 5</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500"><p class="text-sm font-medium text-gray-500">需在 7 天內支付</p><p class="text-3xl font-extrabold text-yellow-600 mt-1">NT$ 75K</p><p class="text-xs text-red-600 mt-2">佔總 AP: 35.7% (高)</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500"><p class="text-sm font-medium text-gray-500">平均支付天數 (DPO)</p><p class="text-3xl font-extrabold text-green-600 mt-1">32 天</p><p class="text-xs text-gray-500 mt-2">目標: 40 天 (可再延後)</p></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                            <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">待支付發票明細</h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-indigo-50"><tr><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">發票編號</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">供應商</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">到期日</th><th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">支付金額</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">狀態</th></tr></thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr><td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">P-2025-4521</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">供應商 Delta</td><td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">2025/10/27 (今日)</td><td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-red-600">NT$ 45,000</td><td class="px-6 py-4 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">已到期</span></td></tr>
+                                        <tr><td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">P-2025-4528</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">零組件廠 Mega</td><td class="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">2025/11/15</td><td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-yellow-600">NT$ 100,000</td><td class="px-6 py-4 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">待支付</span></td></tr>
+                                    </tbody>
+                                </table>
+                                <button class="mt-4 px-4 py-2 bg-green-500 text-white font-medium rounded-md hover:bg-green-600 transition shadow-md">提交批量支付</button>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div id="fixed-assets-view" class="module-view hidden space-y-8">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center">
+                            <svg class="h-6 w-6 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M12 18h.01"/></svg>
+                            固定資產管理 (Fixed Assets)
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500"><p class="text-sm font-medium text-gray-500">資產總淨值 (NBV)</p><p class="text-3xl font-extrabold text-yellow-600 mt-1">NT$ 9,500K</p><p class="text-xs text-gray-500 mt-2">較去年下降: 8.5% (正常折舊)</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-purple-500"><p class="text-sm font-medium text-gray-500">當期折舊費用 (本月)</p><p class="text-3xl font-extrabold text-purple-600 mt-1">NT$ 85K</p><p class="text-xs text-gray-500 mt-2">使用年限法: $45K / 雙倍餘額法: $40K</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500"><p class="text-sm font-medium text-gray-500">待盤點資產數量</p><p class="text-3xl font-extrabold text-blue-600 mt-1">25 項</p><p class="text-xs text-gray-500 mt-2">位於：製造車間 & IT 機房</p></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                            <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">主要資產清單</h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-indigo-50"><tr><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">資產名稱</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">原始成本</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">累計折舊</th><th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">當前淨值</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">剩餘年限</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">狀態</th></tr></thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">高精度 CNC 機床 (M1)</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">NT$ 5,000,000</td><td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">NT$ 1,500,000</td><td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-yellow-600">NT$ 3,500,000</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">7 年</td><td class="px-6 py-4 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">使用中</span></td></tr>
+                                        <tr><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">伺服器集群 (RACK-5)</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">NT$ 500,000</td><td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">NT$ 300,000</td><td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-yellow-600">NT$ 200,000</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1 年</td><td class="px-6 py-4 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">維護排程</span></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div id="scm-module-view" class="module-view hidden space-y-8">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center">
+                            <svg class="h-6 w-6 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M15 8l4 4 4-4"/><path d="M19 12h-4"/><path d="M7 16v4"/><path d="M11 16v4"/></svg>
+                            供應鏈管理儀表板 (SCM)
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500"><p class="text-sm font-medium text-gray-500">供應商準時交貨率 (OTD)</p><p class="text-3xl font-extrabold text-yellow-600 mt-1">91%</p><p class="text-xs text-red-600 mt-2">目標: 95% (需跟進延遲訂單)</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500"><p class="text-sm font-medium text-gray-500">庫存周轉率 (年化)</p><p class="text-3xl font-extrabold text-green-600 mt-1">5.8 次</p><p class="text-xs text-green-600 mt-2">較去年增長: +0.3 次</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-indigo-500"><p class="text-sm font-medium text-gray-500">待審批採購單價值</p><p class="text-3xl font-extrabold text-indigo-600 mt-1">NT$ 480K</p><p class="text-xs text-gray-500 mt-2">高價值 PO 數量: 4 筆</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500"><p class="text-sm font-medium text-gray-500">關鍵零件缺料風險</p><p class="text-3xl font-extrabold text-red-600 mt-1">中</p><p class="text-xs text-yellow-600 mt-2">零件 Z (供應商 B) 庫存警戒</p></div>
+                        </div>
+
+                        <!-- SCM 新增內容: 待審批 PO 清單 -->
+                        <div id="scm-po-list-container" class="space-y-6">
+                            <h3 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-4">待審批採購單 (Pending Purchase Orders)</h3>
+
+                            <div class="overflow-x-auto shadow-md rounded-xl border border-gray-200">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">PO ID</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">供應商</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">訂單日期</th><th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">總金額 (TWD)</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">需求專案</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">狀態</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">操作</th></tr>
+                                    </thead>
+                                    <tbody id="scm-po-list" class="bg-white divide-y divide-gray-200">
+                                        <!-- PO Data will be loaded here by JS -->
+                                    </tbody>
+                                </table>
+                                <p id="scm-po-empty" class="text-center py-6 text-gray-500 hidden">目前沒有待審批的採購單。</p>
+                            </div>
+                        </div>
+
+                        <!-- SCM PO 詳情/審批視圖 -->
+                        <div id="scm-po-detail-view" class="hidden max-w-2xl mx-auto pt-8">
+                            <h3 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">採購單審批 (<span id="po-detail-id"></span>)</h3>
+                            <div class="space-y-4 bg-white p-6 rounded-xl shadow-lg border border-indigo-100">
+                                <div><p class="text-sm font-medium text-gray-500">供應商</p><p id="po-detail-supplier" class="font-semibold text-gray-900"></p></div>
+                                <div><p class="text-sm font-medium text-gray-500">總金額</p><p id="po-detail-amount" class="text-xl font-extrabold text-indigo-600"></p></div>
+                                <div><p class="text-sm font-medium text-gray-500">交貨日期</p><p id="po-detail-delivery" class="font-semibold text-gray-900"></p></div>
+                                <div><p class="text-sm font-medium text-gray-500">採購品項摘要</p><p id="po-detail-items" class="text-sm text-gray-700 bg-gray-50 p-2 rounded-md border"></p></div>
+
+                                <div class="pt-4 flex justify-end space-x-3">
+                                    <button type="button" onclick="backToSCMList()" class="inline-flex justify-center rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">
+                                        返回清單
+                                    </button>
+                                    <button type="button" onclick="handlePOApproval(parseInt(document.getElementById('po-detail-id').textContent), 'Rejected')" class="inline-flex justify-center items-center py-2 px-5 shadow-sm text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700">
+                                        拒絕採購
+                                    </button>
+                                    <button type="button" onclick="handlePOApproval(parseInt(document.getElementById('po-detail-id').textContent), 'Approved')" class="inline-flex justify-center items-center py-2 px-5 shadow-sm text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700">
+                                        核准採購
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-6">
+                            <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">採購支出類別分佈 (本季)</h3><div class="h-80 flex justify-center items-center"><canvas id="purchaseCategoryChart" class="max-h-72"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl shadow-lg">
+                                <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">緊急採購與物流活動</h3>
+                                <ul class="space-y-3 text-sm pt-2">
+                                    <li class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border-l-4 border-indigo-500"><span>PO-8850：審批供應商 D 的高價訂單</span><button onclick="showMessageBox('SCM 動作', '模擬審批 PO-8850', false)" class="text-sm font-medium text-white bg-green-500 hover:bg-green-600 rounded px-2 py-1">審批</button></li>
+                                    <li class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border-l-4 border-yellow-500"><span>待收貨：零件 Z 預計今日下午 2 點到貨</span><button onclick="showMessageBox('SCM 動作', '模擬通知 WMS 準備收貨', false)" class="text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 rounded px-2 py-1">通知倉儲</button></li>
+                                </ul>
+                                <h3 class="text-lg font-semibold text-gray-700 mt-8 mb-4 border-t pt-4">主要供應商績效概覽</h3>
+                                <div class="text-sm text-gray-500 space-y-2">
+                                    <p>供應商 A：OTD <span class="text-green-600 font-semibold">98%</span> | 品質 <span class="text-green-600 font-semibold">99.5%</span></p>
+                                    <p>供應商 B：OTD <span class="text-red-600 font-semibold">85%</span> | 品質 <span class="text-yellow-600 font-semibold">96%</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="manufacturing-module-view" class="module-view hidden space-y-8">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center">
+                            <svg class="h-6 w-6 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M6 20v-8m4 8v-4m4 4v-8m4 8V8"/><path d="M16 4l-4 4-4-4"/></svg>
+                            生產製造命令中心 (Manufacturing)
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500"><p class="text-sm font-medium text-gray-500">設備綜合效率 (OEE)</p><p class="text-3xl font-extrabold text-green-600 mt-1">82%</p><p class="text-xs text-yellow-600 mt-2">目標: 85% (優化中)</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500"><p class="text-sm font-medium text-gray-500">未完成工單 (WIP)</p><p class="text-3xl font-extrabold text-yellow-600 mt-1">45 張</p><p class="text-xs text-red-600 mt-2">急單數量: 5 張</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-indigo-500"><p class="text-sm font-medium text-gray-500">準時完工率 (OTD)</p><p class="text-3xl font-extrabold text-indigo-600 mt-1">94%</p><p class="text-xs text-green-600 mt-2">較上月提升: +1.5%</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500"><p class="text-sm font-medium text-gray-500">平均生產週期</p><p class="text-3xl font-extrabold text-red-600 mt-1">4.2 天</p><p class="text-xs text-red-600 mt-2">目標: 4.0 天 (略長)</p></div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-6">
+                            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg h-96"><h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">工單狀態分佈</h3><div class="h-64 flex justify-center items-center"><canvas id="workOrderStatusChart"></canvas></div></div>
+                            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
+                                <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">緊急生產異常與物料短缺</h3>
+                                <ul class="space-y-3 text-sm pt-2">
+                                    <li class="flex justify-between items-center bg-red-50 p-3 rounded-lg border-l-4 border-red-500"><span>CNC 機床 #3 停止運作 (E01)</span><button onclick="showMessageBox('製造動作', '模擬處理 CNC 機床 #3 異常', false)" class="text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded px-2 py-1">處理</button></li>
+                                    <li class="flex justify-between items-center bg-yellow-50 p-3 rounded-lg border-l-4 border-yellow-500"><span>零件 X 短缺：WOS-1210 無法開工 (M03)</span><button onclick="showMessageBox('製造動作', '模擬聯繫採購處理零件 X 短缺', false)" class="text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded px-2 py-1">聯繫採購</button></li>
+                                </ul>
+                                <h3 class="text-lg font-semibold text-gray-700 mt-8 mb-4 border-t pt-4">未結工單清單 (WIP)</h3>
+                                <div class="text-sm text-gray-500 space-y-2">
+                                    <p>WO-1201: 產品 A - 狀態: **生產中 (85%)**</p>
+                                    <p>WO-1205: 產品 B - 狀態: **停滯 (等待維修)**</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div id="hr-module-view" class="module-view hidden space-y-8">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center">
+                            <svg class="h-6 w-6 text-pink-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+                            人力資源中心 (HR Management)
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-pink-500"><p class="text-sm font-medium text-gray-500">員工總數</p><p class="text-3xl font-extrabold text-pink-600 mt-1">215 人</p><p class="text-xs text-gray-500 mt-2">本月新入職: 3 人</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500"><p class="text-sm font-medium text-gray-500">年度離職率 (TTR)</p><p class="text-3xl font-extrabold text-red-600 mt-1">7.2%</p><p class="text-xs text-red-600 mt-2">目標: 5% (高於預期)</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500"><p class="text-sm font-medium text-gray-500">平均招聘時間</p><p class="text-3xl font-extrabold text-yellow-600 mt-1">35 天</p><p class="text-xs text-gray-500 mt-2">空缺職位: 8 個</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500"><p class="text-sm font-medium text-gray-500">考核完成率 (本季)</p><p class="text-3xl font-extrabold text-green-600 mt-1">96%</p><p class="text-xs text-green-600 mt-2">剩餘待完成: 9 份</p></div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-6">
+                            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg h-96"><h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">部門員工人數分佈</h3><div class="h-64 flex justify-center items-center"><canvas id="employeeDistributionChart"></canvas></div></div>
+                            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
+                                <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">待處理人力資源任務</h3>
+                                <ul class="space-y-3 text-sm pt-2">
+                                    <li class="flex justify-between items-center bg-pink-50 p-3 rounded-lg border-l-4 border-pink-500"><span>薪資發放：本月薪酬結算審批 (PAY)</span><button onclick="showMessageBox('HR 動作', '模擬審批薪資結算', false)" class="text-sm font-medium text-white bg-green-500 hover:bg-green-600 rounded px-2 py-1">審批</button></li>
+                                    <li class="flex justify-between items-center bg-red-50 p-3 rounded-lg border-l-4 border-red-500"><span>員工離職手續：研發部 Sarah.L 最終面談 (EXIT)</span><button onclick="showMessageBox('HR 動作', '模擬處理 Sarah.L 離職手續', false)" class="text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded px-2 py-1">處理</button></li>
+                                </ul>
+                                <h3 class="text-lg font-semibold text-gray-700 mt-8 mb-4 border-t pt-4">待審批的休假申請</h3>
+                                <div class="text-sm text-gray-500 space-y-2">
+                                    <p>員工 A (銷售)：旅遊假 (11/10 - 11/14) - **待審批**</p>
+                                    <p>員工 B (製造)：事假 (今日) - **已核准**</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div id="crm-module-view" class="module-view hidden space-y-8">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center">
+                            <svg class="h-6 w-6 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            客戶關係管理 (CRM Center)
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-indigo-500"><p class="text-sm font-medium text-gray-500">當月新銷售機會</p><p class="text-3xl font-extrabold text-indigo-600 mt-1">15</p><p class="text-xs text-gray-500 mt-2">總潛在價值: $ 850K</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500"><p class="text-sm font-medium text-gray-500">銷售轉換率 (本季)</p><p class="text-3xl font-extrabold text-yellow-600 mt-1">22%</p><p class="text-xs text-green-600 mt-2">較上季增長: +3%</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500"><p class="text-sm font-medium text-gray-500">待處理服務工單</p><p class="text-3xl font-extrabold text-red-600 mt-1">8</p><p class="text-xs text-red-600 mt-2">SLA 臨界值: 2 筆</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500"><p class="text-sm font-medium text-gray-500">平均問題解決時間 (AHT)</p><p class="text-3xl font-extrabold text-green-600 mt-1">3.5 小時</p><p class="text-xs text-green-600 mt-2">目標: 4 小時 (已達成)</p></div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-6">
+                            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg"><h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">本月銷售漏斗進度 (Pipeline)</h3><div class="h-80"><canvas id="salesFunnelChart"></canvas></div></div>
+                            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
+                                <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">高價值待跟進銷售機會</h3>
+                                <ul class="space-y-3 text-sm pt-2">
+                                    <li class="flex justify-between items-center bg-yellow-50 p-3 rounded-lg border-l-4 border-yellow-500"><span>客戶: Delta - 跟進合約細節</span><button onclick="showMessageBox('CRM 動作', '模擬跟進 Delta 合約細節', false)" class="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded px-2 py-1">跟進</button></li>
+                                    <li class="flex justify-between items-center bg-indigo-50 p-3 rounded-lg border-l-4 border-indigo-500"><span>客戶: 北部工廠 - 產品展示回饋</span><button onclick="showMessageBox('CRM 動作', '模擬安排北部工廠會議', false)" class="text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded px-2 py-1">安排會議</button></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div id="bi-module-view" class="module-view hidden space-y-8">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center">
+                            <svg class="h-6 w-6 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                            商業智慧中心 (Executive BI Dashboard)
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500"><p class="text-sm font-medium text-gray-500">綜合淨利潤率 (YTD)</p><p class="text-3xl font-extrabold text-green-600 mt-1">15.8%</p><p class="text-xs text-green-500 flex items-center mt-2">目標: 15.0% (超出預期)</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500"><p class="text-sm font-medium text-gray-500">營運費用總額 (OPEX)</p><p class="text-3xl font-extrabold text-red-600 mt-1">NT$ 1.2M</p><p class="text-xs text-red-600 mt-2">較預算: +1.5% (不利差異)</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-indigo-500"><p class="text-sm font-medium text-gray-500">銷售預測準確度</p><p class="text-3xl font-extrabold text-indigo-600 mt-1">92%</p><p class="text-xs text-gray-500 mt-2">主要產品線：95%</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500"><p class="text-sm font-medium text-gray-500">平均客戶價值 (CLV)</p><p class="text-3xl font-extrabold text-yellow-600 mt-1">NT$ 15K</p><p class="text-xs text-green-500 flex items-center mt-2">較去年增長: 10%</p></div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-6">
+                            <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">過去 12 個月綜合利潤趨勢</h3><div class="h-80"><canvas id="profitTrendChart"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">銷售-製造-庫存 平衡分析</h3><div class="h-80"><canvas id="balanceAnalysisChart"></canvas></div></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-lg mt-8">
+                            <h2 class="text-xl font-semibold text-gray-700 mb-4 flex items-center text-blue-600 border-b pb-2">
+                                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 11H5"/><path d="m12 3 7 8-7 8-7-8 7-8z"/></svg>
+                                BI 策略決策建議 (AI 驅動)
+                            </h2>
+                            <ul class="space-y-3 text-sm text-gray-700">
+                                <li class="flex items-start">
+                                    <span class="text-green-600 font-bold mr-2">財務：</span>
+                                    <span>由於淨利潤率超出預期，建議重新審視 Q4 預算，將 $200K 重新分配至高回報的研發專案。</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="text-red-600 font-bold mr-2">供應鏈：</span>
+                                    <span>零件 Z 的供應商風險增加 (OTD 低於 88%)，建議啟動第二供應商驗證程序。</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+
+                    <div id="project-mgmt-module-view" class="module-view hidden space-y-8">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center">
+                            <svg class="h-6 w-6 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.5V14"/><path d="M10 9V5"/><path d="M14 9V5"/><rect x="3" y="14" width="18" height="7" rx="1"/><rect x="3" y="3" width="18" height="7" rx="1"/></svg>
+                            專案管理中心 (Project Mgmt)
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-purple-500"><p class="text-sm font-medium text-gray-500">進行中專案數量</p><p class="text-3xl font-extrabold text-purple-600 mt-1">7</p><p class="text-xs text-gray-500 mt-2">高優先級: 3 個</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500"><p class="text-sm font-medium text-gray-500">專案延遲率</p><p class="text-3xl font-extrabold text-red-600 mt-1">15%</p><p class="text-xs text-red-600 mt-2">主要集中在研發部門</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500"><p class="text-sm font-medium text-gray-500">資源使用率 (本週)</p><p class="text-3xl font-extrabold text-yellow-600 mt-1">78%</p><p class="text-xs text-gray-500 mt-2">目標: 85% (尚有餘裕)</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500"><p class="text-sm font-medium text-gray-500">預算健康度</p><p class="text-3xl font-extrabold text-green-600 mt-1">95%</p><p class="text-xs text-green-600 mt-2">平均成本偏差率: 5% (可控)</p></div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-6">
+                            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg h-96"><h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">專案類型分佈</h3><div class="h-64 flex justify-center items-center"><canvas id="projectTypeChart"></canvas></div></div>
+                            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
+                                <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">關鍵專案進度 (Critical Path)</h3>
+                                <ul class="space-y-4 pt-2">
+                                    <li class="p-3 bg-gray-50 rounded-lg border-l-4 border-red-500"><div class="flex justify-between items-center mb-1"><span class="font-semibold text-gray-900">P-R&D-005：下一代晶片研發</span><span class="text-xs font-bold text-red-600">延遲 5 天</span></div><div class="w-full bg-gray-200 rounded-full h-2.5"><div class="bg-red-500 h-2.5 rounded-full" style="width: 70%"></div></div><p class="text-xs text-gray-500 mt-1">負責人: Sarah.L | 進度: 70% | 待辦任務: 3 (關鍵)</p></li>
+                                    <li class="p-3 bg-gray-50 rounded-lg border-l-4 border-green-500"><div class="flex justify-between items-center mb-1"><span class="font-semibold text-gray-900">P-IT-002：ERP 系統 V2 部署</span><span class="text-xs font-bold text-green-600">準時</span></div><div class="w-full bg-gray-200 rounded-full h-2.5"><div class="bg-green-500 h-2.5 rounded-full" style="width: 90%"></div></div><p class="text-xs text-gray-500 mt-1">負責人: Michael.C | 進度: 90% | 待辦任務: 1 (收尾)</p></li>
+                                    <li class="p-3 bg-gray-50 rounded-lg border-l-4 border-yellow-500"><div class="flex justify-between items-center mb-1"><span class="font-semibold text-gray-900">P-MKT-010：東南亞市場進入</span><span class="text-xs font-bold text-yellow-600">黃色警示</span></div><div class="w-full bg-gray-200 rounded-full h-2.5"><div class="bg-yellow-500 h-2.5 rounded-full" style="width: 45%"></div></div><p class="text-xs text-gray-500 mt-1">負責人: David.W | 進度: 45% | 資源瓶頸: 人力不足</p></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- START: 倉儲管理 (WMS) 模組 -->
+                    <div id="wms-module-view" class="module-view hidden space-y-8">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center">
+                            <svg class="h-6 w-6 mr-2 text-teal-600" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 2a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V4a2 2 0 00-2-2H5zm6 4a1 1 0 11-2 0 1 1 0 012 0zM7 8a1 1 0 00-1 1v4a1 1 0 102 0V9a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                            倉儲管理中心 (WMS)
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500"><p class="text-sm font-medium text-gray-500">庫存準確度 (Accuracy)</p><p class="text-3xl font-extrabold text-green-600 mt-1">98.5%</p><p class="text-xs text-green-600 mt-2">Cycle Count 筆數: 15/天</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-yellow-500"><p class="text-sm font-medium text-gray-500">倉庫容積使用率 (Space)</p><p class="text-3xl font-extrabold text-yellow-600 mt-1">75%</p><p class="text-xs text-gray-500 mt-2">最高容許: 85% (尚可負荷)</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-indigo-500"><p class="text-sm font-medium text-gray-500">平均出庫時間 (OTD)</p><p class="text-3xl font-extrabold text-indigo-600 mt-1">2.1 小時</p><p class="text-xs text-green-600 mt-2">較目標快: 0.4 小時</p></div>
+                            <div class="kpi-card bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500"><p class="text-sm font-medium text-gray-500">積壓作業 (Pending Tasks)</p><p class="text-3xl font-extrabold text-red-600 mt-1" id="stat-wms-pending">0 筆</p><p class="text-xs text-red-600 mt-2">緊急出庫任務: 3 筆</p></div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-6">
+                            <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">庫存價值分佈 (按類別)</h3><div class="h-80 flex justify-center items-center"><canvas id="inventoryValueChart" class="max-h-72"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">過去 7 天出入庫活動趨勢</h3><div class="h-80"><canvas id="warehouseVolumeChart"></canvas></div></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-lg mt-8">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">待處理倉儲任務清單 (SCM 連動)</h3>
+                            <div class="overflow-x-auto shadow-md rounded-xl border border-gray-200">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">任務 ID</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">任務類型</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">來源單據</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">品項/數量</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">狀態</th><th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">操作</th></tr>
+                                    </thead>
+                                    <tbody id="wms-task-list" class="bg-white divide-y divide-gray-200">
+                                    </tbody>
+                                </table>
+                                <p id="wms-task-empty" class="text-center py-6 text-gray-500 hidden">目前沒有新的倉儲任務。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END: 倉儲管理 (WMS) 模組 -->
+
+
+                    <div id="single-expense-view" class="module-view hidden max-w-2xl mx-auto">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center">
+                            <svg class="h-6 w-6 mr-2 text-accent-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14v4M10 16h4M3 7l9-4 9 4-9 4-9-4zM2 17l10 4 10-4M2 17V7"/><path d="M14 16v-4m-2 0v4m0 0H7"/></svg>
+                            單筆費用申報
+                        </h2>
+                        <div class="bg-white shadow-lg rounded-xl p-6 sm:p-10 border border-gray-200">
+                            <p class="text-gray-500 mb-8">請填寫詳細的費用資訊以便報銷與審批。儲存後將生成一筆新的**草稿報銷單**。</p>
+                            <form id="single-form" class="space-y-4" onsubmit="handleSingleExpenseSubmit(event)">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="expense-major" class="block text-sm font-medium text-gray-700">會計科目 (大項)*</label>
+                                        <select id="expense-major" name="major-category" required
+                                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border shadow-sm">
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="expense-minor" class="block text-sm font-medium text-gray-700">會計科目 (細目)*</label>
+                                        <select id="expense-minor" name="minor-category" required disabled
+                                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 bg-gray-50 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border shadow-sm">
+                                            <option value="" disabled selected>請先選擇大項</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="expense-amount" class="block text-sm font-medium text-gray-700">金額 (Amount)*</label>
+                                        <input type="number" step="0.01" min="0.01" id="expense-amount" name="amount" required
+                                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="1200.00">
+                                    </div>
+                                    <div>
+                                        <label for="expense-currency" class="block text-sm font-medium text-gray-700">幣別 (Currency)*</label>
+                                        <select id="expense-currency" name="currency" required
+                                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border shadow-sm">
+                                            <option value="TWD" selected>TWD (新臺幣)</option>
+                                            <option value="USD">USD (美元)</option>
+                                            <option value="EUR">EUR (歐元)</option>
+                                            <option value="JPY">JPY (日圓)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label for="expense-project" class="block text-sm font-medium text-gray-700">關聯專案/模組 ID*</label>
+                                    <select id="expense-project" name="project-id" required
+                                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border shadow-sm">
+                                    </select>
+                                </div>
+
+
+                                <div>
+                                    <label for="expense-date" class="block text-sm font-medium text-gray-700">發生日期 (Date)*</label>
+                                    <input type="date" id="expense-date" name="date" required
+                                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                </div>
+
+                                <div class="md:col-span-2">
+                                    <label for="expense-description" class="block text-sm font-medium text-gray-700">說明/備註 (Description)</label>
+                                    <textarea id="expense-description" name="description" rows="3" placeholder="請簡述這筆費用的用途..."
+                                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                                </div>
+
+
+                                <div class="pt-4 flex justify-end space-x-3">
+                                    <button type="button" onclick="switchModule('finance-module-view')"
+                                        class="inline-flex justify-center rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none transition duration-150 ease-in-out">
+                                        返回主儀表板
+                                    </button>
+                                    <button id="single-save-button" type="submit"
+                                        class="inline-flex justify-center items-center py-3 px-6 border border-transparent shadow-lg text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v8a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4L14 7m0 0l-2-2m2 2l2 2"/></svg>
+                                        儲存為草稿並繼續
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- 這裡可能還有 placeholder-view 等其他佔位符模組，為簡潔省略 -->
+                    <div id="placeholder-view" class="module-view hidden space-y-8">
+                         <h2 class="text-2xl font-semibold text-gray-700 mb-4">模組未實作</h2>
+                         <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <p id="placeholder-text" class="text-gray-500">此為 V2 模組的 Light Mode 遷移佔位符，詳細儀表板將在 V3 階段依序完成整合。</p>
+                         </div>
+                    </div>
+
+
+                </div> </div>
+        </main>
+    </div>
+
+    <script>
+        // === 1. 核心數據與狀態 ===
+        const chartInstances = { cashFlow: null, expense: null, purchaseCategory: null, workOrderStatus: null, employeeDistribution: null, salesFunnel: null, profitTrend: null, balanceAnalysis: null, projectType: null, inventoryValue: null, warehouseVolume: null };
+        let currentExpenseSubView = 'claimer'; // 'claimer' or 'approver'
+
+        // 費用申報模擬數據 (包含狀態管理所需的欄位)
+        let mockClaims = [
+            { id: 1001, title: '國內差旅費 - 2025-10-20', total: 3500.00, submitDate: '2025-10-20', status: 'Approved', projectCode: 'RND-001', accountCode: '國內差旅費 (Domestic)', claimer: "王小明", department: "研發部", purpose: '參加台北研討會的交通費' },
+            { id: 1002, title: '客戶招待費 - 2025-10-26', total: 1280.50, submitDate: '2025-10-26', status: 'Pending', projectCode: 'MKT-002', accountCode: '客戶招待費 (Client Entertainment)', claimer: "李大偉", department: "業務部", purpose: '與潛在客戶的晚餐' },
+            { id: 1003, title: '軟體訂閱費 - 2025-10-27', total: 9500.00, submitDate: '2025-10-27', status: 'Draft', projectCode: 'OPEX-GEN', accountCode: '軟體訂閱費 (Software Subscription)', claimer: "王小明", department: "研發部", purpose: '續訂設計軟體 Adobe XD' },
+            { id: 1004, title: '國外差旅費 - 2025-10-28', total: 15000.00, submitDate: '2025-10-28', status: 'Rejected', projectCode: 'IT-003', accountCode: '國外差旅費 (International)', claimer: "王小明", department: "研發部", purpose: '倫敦出差機票費用' },
+            { id: 1005, title: '郵電/通訊費 - 2025-10-28', total: 2500.00, submitDate: '2025-10-28', status: 'Pending', projectCode: 'OPEX-GEN', accountCode: '郵電/通訊費 (Post & Telecom)', claimer: "陳曉華", department: "行政部", purpose: '本月辦公室通訊費用' },
+        ];
+
+        // 採購單模擬數據 (Mock Purchase Orders) - 專為 SCM 模組新增
+        let mockPurchaseOrders = [
+            { id: 2001, supplier: '零組件廠 Mega', orderDate: '2025-10-15', total: 120000.00, projectCode: 'P2025-4', status: 'Pending', requiredDate: '2025-11-05', items: '1500件 DDR5 記憶體' },
+            { id: 2002, supplier: '鋁合金供應商 Alpha', orderDate: '2025-10-20', total: 450000.00, projectCode: 'MKT-002', status: 'Pending', requiredDate: '2025-11-15', items: '500kg 鋁合金型材' },
+            { id: 2003, supplier: '包裝材料廠 Beta', orderDate: '2025-10-25', total: 8000.00, projectCode: 'OPEX-GEN', status: 'Approved', requiredDate: '2025-11-01', items: '標準紙箱 500個' },
+        ];
+
+        // WMS 任務模擬數據 (新增)
+        let mockWMSTasks = [
+            { id: 3001, type: 'CycleCount', referenceId: 'A-3-5', detail: '儲位 A-3-5 盤點 (零件 Y)', status: 'Pending', origin: 'WMS' },
+            { id: 3002, type: 'Outbound', referenceId: 'SO-1015', detail: '緊急出庫 成品 A 500件', status: 'Pending', origin: 'CRM' },
+        ];
+
+        // 模組標題對應表
+        const moduleTitles = {
+            'finance-module-view': ['財務管理 (Finance)', '即時現金流與費用總覽'],
+            'expense-mgmt-view': ['費用管理中心 (Expense Mgmt)', '我的申報與審批總覽'], // 新增
+            'scm-module-view': ['供應鏈管理 (SCM)', '採購、庫存和供應商績效概覽'],
+            'manufacturing-module-view': ['生產製造 (Manufacturing)', 'OEE、工單狀態和產能監控'],
+            'hr-module-view': ['人力資源 (HR)', '員工、薪酬與離職率分析'],
+            'crm-module-view': ['客戶關係管理 (CRM)', '銷售漏斗、轉換率和客戶服務'],
+            'bi-module-view': ['商業智慧 (BI)', '跨部門策略數據分析與預測'],
+            'project-mgmt-module-view': ['專案管理 (Project Mgmt)', '專案進度、資源和預算健康度'],
+            'wms-module-view': ['倉儲管理 (WMS)', '庫存水位、儲位和出入庫作業效率'], // 新增 WMS 模組標題
+            'general-ledger-view': ['總帳明細 (General Ledger)', '所有借貸分錄的詳細清單'],
+            'fixed-assets-view': ['固定資產 (FA)', '追蹤資產壽命、折舊計算和維護排程'],
+            'accounts-receivable-view': ['應收帳款 (Accounts Receivable)', '追蹤客戶未付款項和控制信用額度'],
+            'accounts-payable-view': ['應付帳款 (Accounts Payable)', '管理供應商發票、支付時程和現金流預測'],
+            'single-expense-view': ['單筆費用申報', '快速填寫並生成報銷草稿']
+        };
+
+        // 費用細目到會計科目映射 (用於產生總帳分錄)
+        const expenseToGLAccountMap = {
+            '國內差旅費 (Domestic)': { code: '6201', name: '差旅費用' },
+            '國外差旅費 (International)': { code: '6202', name: '差旅費用' },
+            '客戶招待費 (Client Entertainment)': { code: '6311', name: '交際費' },
+            '軟體訂閱費 (Software Subscription)': { code: '6420', name: '資訊服務費' },
+            '郵電/通訊費 (Post & Telecom)': { code: '6405', name: '雜項費用' },
+            '市區交通費 (Local Transit)': { code: '6201', name: '差旅費用' },
+            '高鐵/火車票 (Rail Fare)': { code: '6201', name: '差旅費用' },
+            '機票費用 (Airfare)': { code: '6202', name: '差旅費用' },
+            '住宿費用 (Accommodation)': { code: '6202', name: '差旅費用' },
+            '員工福利餐費 (Staff Welfare)': { code: '6312', name: '福利費用' },
+            '內部會議餐飲 (Internal Meeting F&B)': { code: '6410', name: '會議費用' },
+            '辦公用品及耗材 (Supplies)': { code: '6401', name: '辦公用品費' },
+            '租金支出 (Rent Expense)': { code: '6402', name: '租賃費用' },
+            '水電瓦斯費 (Utilities)': { code: '6403', name: '水電費用' },
+            '修繕與維護費 (Repair & Maint.)': { code: '6404', name: '維修費用' },
+            '網站網域名稱費 (Domain/Web Fees)': { code: '6421', name: '資訊費用' },
+            '其他雜項費用 (Misc. Other)': { code: '6999', name: '雜項支出' },
+            // 更多科目...
+        };
+
+        // 模擬專案清單/模組採購清單
+        const mockProjects = [
+            { id: '', name: '請選擇專案 (必選)' },
+            { id: 'OPEX-GEN', name: 'OPEX-GEN (一般營運支出)' },
+            { id: 'P2025-4', name: 'P2025-4 (DDR5 記憶體採購)' },
+            { id: 'P2025-5', name: 'P2025-5 (OLED 顯示模組採購)' },
+            { id: 'RND-001', name: 'RND-001 (產品原型設計)' },
+            { id: 'MKT-002', name: 'MKT-002 (Q4 行銷活動)' },
+            { id: 'IT-003', name: 'IT-003 (系統維護升級)' },
+        ];
+
+        const expenseCategories = [
+            { title: "💼 旅費及交通費 (Travel & Transport)", subItems: ["國內差旅費 (Domestic)", "國外差旅費 (International)", "市區交通費 (Local Transit)", "高鐵/火車票 (Rail Fare)", "機票費用 (Airfare)", "住宿費用 (Accommodation)"] },
+            { title: "🍽️ 餐費及招待費 (Meals & Entertainment)", subItems: ["客戶招待費 (Client Entertainment)", "員工福利餐費 (Staff Welfare)", "內部會議餐飲 (Internal Meeting F&B)"] },
+            { title: "📦 辦公與行政費 (Office & Admin)", subItems: ["辦公用品及耗材 (Supplies)", "郵電/通訊費 (Post & Telecom)", "租金支出 (Rent Expense)", "水電瓦斯費 (Utilities)", "修繕與維護費 (Repair & Maint.)", "報章雜誌訂閱費 (Subscriptions)"] },
+            { title: "💻 資訊與軟體費 (IT & Software)", subItems: ["軟體訂閱費 (Software Subscription)", "硬體採購費 (Hardware Purchase)", "資訊服務費 (IT Services)", "雲端服務費 (Cloud Services)", "網站網域名稱費 (Domain/Web Fees)"] },
+            { title: "📈 行銷與業務費 (Marketing & Sales)", subItems: ["廣告與宣傳費 (Advertising)", "業務交際費 (Sales Relations)", "展覽費 (Exhibition Fees)", "印刷宣傳品 (Printed Materials)", "市場調研費 (Market Research)"] },
+            { title: "📚 培訓與人才費 (Training & HR)", subItems: ["專業培訓費 (Professional Training)", "招募費用 (Recruitment Costs)", "教育訓練課程費 (Course Fees)", "員工健康檢查費 (Health Check-ups)"] },
+            { title: "🧑‍💻 專業服務費 (Professional Services)", subItems: ["顧問費 (Consulting)", "法律及會計費用 (Legal & Accounting)", "外部審計費 (External Audit)", "翻譯/口譯費 (Translation/Interpreting)"] },
+            { title: "🏦 財務與雜項費 (Financial & Misc.)", subItems: ["銀行手續費 (Bank Charges)", "利息支出 (Interest Expense)", "政府規費與罰鍰 (Fees & Penalties)", "保險費 (Insurance Premiums)", "慈善捐贈 (Donations)"] },
+            { title: "❓ 其他雜項費用 (Miscellaneous)", subItems: ["其他雜項費用 (Misc. Other)"] }
+        ];
+
+        // 總帳模擬數據 (Mock Journal Entries)
+        let journalEntries = [
+            { date: '2024-10-25', voucher: 'J001', description: '支付員工薪資', account: '薪資費用', debit: 800000.00, credit: 0.00 },
+            { date: '2024-10-25', voucher: 'J001', description: '支付員工薪資', account: '銀行存款', debit: 0.00, credit: 800000.00 },
+            { date: '2024-10-26', voucher: 'J002', description: '採購辦公設備', account: '設備資產', debit: 150000.00, credit: 0.00 },
+            { date: '2024-10-26', voucher: 'J002', description: '採購辦公設備', account: '應付帳款', debit: 0.00, credit: 150000.00 },
+            { date: '2024-10-26', voucher: 'J003', description: '產品 A 銷貨', account: '應收帳款', debit: 450000.00, credit: 0.00 },
+            { date: '2024-10-26', voucher: 'J003', description: '產品 A 銷貨', account: '銷貨收入', debit: 0.00, credit: 450000.00 },
+            { date: '2024-10-27', voucher: 'J004', description: '收到客戶付款', account: '現金', debit: 300000.00, credit: 0.00 },
+            { date: '2024-10-27', voucher: 'J004', description: '收到客戶付款', account: '應收帳款', debit: 0.00, credit: 300000.00 },
+            { date: '2024-10-27', voucher: 'J005', description: '支付辦公室租金', account: '租金費用', debit: 50000.00, credit: 0.00 },
+            { date: '2024-10-27', voucher: 'J005', description: '支付辦公室租金', account: '銀行存款', debit: 0.00, credit: 50000.00 },
+            { date: '2024-10-28', voucher: 'J006', description: '支付銀行借款利息', account: '利息費用', debit: 15000.00, credit: 0.00 },
+            { date: '2024-10-28', voucher: 'J006', description: '支付銀行借款利息', account: '現金', debit: 0.00, credit: 15000.00 },
+        ];
+
+
+        // === 2. 輔助函數 (Utility Functions) ===
+
+        // 確保所有用於 HTML onclick 的函數都在 window 上
+        window.formatCurrency = function(value) { return value === 0 ? '-' : 'NT$ ' + parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+
+        function getStatusColor(status) {
+            switch (status) {
+                case 'Draft': return { bg: 'bg-gray-200', text: 'text-gray-700', label: '草稿' };
+                case 'Pending': return { bg: 'bg-yellow-100', text: 'text-yellow-700', label: '待審批' };
+                case 'Approved': return { bg: 'bg-green-100', text: 'text-green-700', label: '已核准' };
+                case 'Rejected': return { bg: 'bg-red-100', text: 'text-red-700', label: '已駁回' };
+                default: return { bg: 'bg-gray-100', text: 'text-gray-500', label: '未知' };
+            }
+        }
+
+        // 訊息框函數 (已掛載到 window)
+        const messageBox = document.getElementById('messageBox');
+        const msgTitle = document.getElementById('msgTitle');
+        const msgText = document.getElementById('msgText');
+
+        window.showMessageBox = function(title, message, isError = false) {
+            msgTitle.textContent = title;
+            msgText.innerHTML = message;
+            msgTitle.classList.toggle('text-red-600', isError);
+            msgTitle.classList.toggle('text-gray-800', !isError);
+            messageBox.classList.remove('hidden');
+            messageBox.classList.add('flex');
+        }
+
+        window.closeMessageBox = function() {
+            messageBox.classList.add('hidden');
+            messageBox.classList.remove('flex');
+        }
+
+        // 取得下一個憑證號碼 (用於 GL 整合)
+        let lastVoucherNum = 6; // J006 是 mockEntries 中的最後一個
+        function getNextVoucherId() {
+            lastVoucherNum += 1;
+            return 'J' + String(lastVoucherNum).padStart(3, '0');
+        }
+
+        // 取得下一個 WMS 任務 ID
+        let lastWMSId = 3002; // WMS 任務從 3001 開始
+        function getNextWMSId() {
+            lastWMSId += 1;
+            return lastWMSId;
+        }
+
+
+        // --- 核心圖表銷毀函數 ---
+        function destroyAllCharts() {
+            Object.keys(chartInstances).forEach(key => {
+                if (chartInstances[key]) {
+                    chartInstances[key].destroy();
+                    chartInstances[key] = null;
+                }
+            });
+        }
+
+        // --- 3. 視圖切換邏輯 (Switch Module Logic) ---
+        window.switchModule = function(viewId, subModule = null) {
+
+            const targetViewId = viewId;
+            let finalViewId = targetViewId;
+
+            const titleElement = document.getElementById('view-title');
+            const subtitleElement = document.getElementById('view-subtitle');
+
+            // 處理標題和副標題
+            if (targetViewId === 'placeholder-view' && subModule) {
+                 titleElement.textContent = `${subModule} 模組 (開發中)`;
+                 subtitleElement.textContent = "此為 V2 模組的 Light Mode 遷移佔位符，詳細儀表板將在 V3 階段依序完成整合。";
+            } else {
+                const [newTitle, newSubtitle] = moduleTitles[viewId] || [viewId.replace('-module-view', ''), ''];
+                titleElement.textContent = newTitle;
+                subtitleElement.textContent = newSubtitle;
+            }
+
+            // 隱藏所有視圖內容
+            document.querySelectorAll('.module-view').forEach(view => {
+                view.classList.add('hidden');
+            });
+            // 移除所有 Tab/模組按鈕的 active 樣式
+            document.querySelectorAll('.module-button').forEach(button => {
+                button.classList.remove('active');
+            });
+
+            // 顯示選定的視圖內容
+            const targetElement = document.getElementById(finalViewId);
+            if (targetElement) {
+                 targetElement.classList.remove('hidden');
+            } else {
+                 // 模組名稱不存在，切換到通用佔位符
+                 document.getElementById('placeholder-view').classList.remove('hidden');
+                 document.getElementById('placeholder-text').textContent = `模組 ID: ${targetViewId} 尚未實作。請等待 V3 階段完成。`;
+                 finalViewId = 'placeholder-view';
+            }
+
+            // 設置選定的模組按鈕為 active
+            let navIdToActivate = viewId.replace('-view', '');
+            if (navIdToActivate.endsWith('-module')) {
+                navIdToActivate = navIdToActivate.replace('-module', '');
+            } else if (navIdToActivate === 'single-expense') {
+                // Keep as is
+            } else if (navIdToActivate.startsWith('accounts-') || navIdToActivate === 'general-ledger' || navIdToActivate === 'fixed-assets') {
+                 navIdToActivate = 'finance';
+            }
+
+            const navButton = document.getElementById(`nav-${navIdToActivate}`);
+            if (navButton) {
+                 navButton.classList.add('active');
+            }
+
+
+            // --- 核心圖表管理和初始化邏輯 ---
+            destroyAllCharts(); // 1. 銷毀所有現有圖表
+
+            const initMap = {
+                'finance-module-view': [renderCashFlowChart, renderExpenseChart],
+                'expense-mgmt-view': [renderExpenseManagement], // 新增費用管理渲染
+                'scm-module-view': [renderSCMView, renderPurchaseCategoryChart], // SCM 新增渲染
+                'wms-module-view': [renderWMSDashboard, renderInventoryValueChart, renderWarehouseVolumeChart], // WMS 儀表板渲染
+                'manufacturing-module-view': [renderWorkOrderStatusChart],
+                'hr-module-view': [renderEmployeeDistributionChart],
+                'crm-module-view': [renderSalesFunnelChart],
+                'bi-module-view': [renderProfitTrendChart, renderBalanceAnalysisChart],
+                'project-mgmt-module-view': [renderProjectTypeChart]
+            };
+
+            const initFuncs = initMap[finalViewId];
+
+            if (initFuncs) {
+                // 2. 異步渲染目標模組圖表/內容
+                initFuncs.forEach(func => {
+                    setTimeout(() => { func(); }, 50);
+                });
+            } else if (finalViewId === 'general-ledger-view') {
+                 renderGeneralLedger();
+            } else if (finalViewId === 'single-expense-view') {
+                 renderCategorySelects();
+                 renderProjectSelect();
+            }
+        }
+
+
+        // --- 4. 費用管理中心邏輯 (Expense Management Center Logic) ---
+
+        // 費用管理子視圖切換 (已掛載到 window)
+        window.switchExpenseSubView = function(subView) {
+            currentExpenseSubView = subView;
+            const claimerContent = document.getElementById('claimer-content');
+            const approverContent = document.getElementById('approver-content');
+            const expenseDetailView = document.getElementById('expense-detail-view');
+            const tabClaimer = document.getElementById('tab-claimer');
+            const tabApprover = document.getElementById('tab-approver');
+
+            // 確保詳情頁面隱藏
+            expenseDetailView.classList.add('hidden');
+
+            // 更新標籤樣式
+            const activeClass = 'bg-indigo-500 text-white';
+            const inactiveClass = 'bg-gray-100 text-gray-700 hover:bg-gray-200';
+
+            if (subView === 'claimer') {
+                tabClaimer.className = `sub-nav-item py-1 px-3 rounded-md text-sm ${activeClass}`;
+                tabApprover.className = `sub-nav-item py-1 px-3 rounded-md text-sm ${inactiveClass}`;
+                claimerContent.classList.remove('hidden');
+                approverContent.classList.add('hidden');
+                renderExpenseManagement(); // 重新渲染申請者清單
+            } else if (subView === 'approver') {
+                tabClaimer.className = `sub-nav-item py-1 px-3 rounded-md text-sm ${inactiveClass}`;
+                tabApprover.className = `sub-nav-item py-1 px-3 rounded-md text-sm ${activeClass}`;
+                claimerContent.classList.add('hidden');
+                approverContent.classList.remove('hidden');
+                renderApproverView(); // 渲染審批者清單
+            }
+        }
+
+        // 渲染費用管理列表 (申請者視圖)
+        function renderExpenseManagement() {
+            const listBody = document.getElementById('expense-mgmt-list');
+            const emptyState = document.getElementById('expense-mgmt-empty');
+            const userClaims = mockClaims.filter(c => c.claimer === "王小明"); // 假設當前使用者是王小明
+
+            // 隱藏詳情視圖，確保只顯示列表
+            document.getElementById('expense-detail-view').classList.add('hidden');
+            document.getElementById('claimer-content').classList.remove('hidden');
+
+
+            listBody.innerHTML = '';
+
+            // 計算統計數據
+            const stats = userClaims.reduce((acc, claim) => {
+                acc.pendingCount += (claim.status === 'Pending');
+                acc.draftTotal += (claim.status === 'Draft' ? claim.total : 0);
+                acc.approvedTotal += (claim.status === 'Approved' ? claim.total : 0);
+                acc.rejectedCount += (claim.status === 'Rejected');
+                return acc;
+            }, { pendingCount: 0, draftTotal: 0, approvedTotal: 0, rejectedCount: 0 });
+
+            // 填充統計卡片
+            document.getElementById('stat-claimer-pending-count').textContent = stats.pendingCount;
+            document.getElementById('stat-claimer-draft-total').textContent = formatCurrency(stats.draftTotal);
+            document.getElementById('stat-claimer-approved-total').textContent = formatCurrency(stats.approvedTotal);
+            document.getElementById('stat-claimer-rejected-count').textContent = stats.rejectedCount;
+
+
+            if (userClaims.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                userClaims.sort((a, b) => b.id - a.id).forEach(claim => {
+                    const statusInfo = getStatusColor(claim.status);
+
+                    // 根據狀態決定按鈕行為和文字
+                    const isEditable = claim.status === 'Draft' && claim.claimer === "王小明";
+                    const buttonText = isEditable ? '編輯' : '查看';
+                    const buttonClass = isEditable ? 'text-indigo-600 hover:text-indigo-800' : 'text-gray-500 hover:text-gray-700';
+
+                    const row = `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">${claim.id}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${claim.submitDate}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">${claim.title}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold">${formatCurrency(claim.total)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusInfo.bg} ${statusInfo.text}">${statusInfo.label}</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <button onclick="openClaimDetail(${claim.id}, 'claimer')" class="${buttonClass} font-medium">${buttonText}</button>
+                            </td>
+                        </tr>
+                    `;
+                    listBody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+        }
+
+        // 渲染審批者列表 (審批者視圖)
+        function renderApproverView() {
+            const listBody = document.getElementById('approver-mgmt-list');
+            const emptyState = document.getElementById('approver-mgmt-empty');
+
+            // 審批者只看 Pending 的申報單 (不論申請人是誰)
+            const approverClaims = mockClaims.filter(c => c.status === 'Pending');
+
+            listBody.innerHTML = '';
+
+            // 計算統計數據
+            const totalPending = approverClaims.reduce((sum, c) => sum + c.total, 0);
+            const totalApproved = mockClaims.filter(c => c.status === 'Approved').reduce((sum, c) => sum + c.total, 0);
+            const totalRejectedCount = mockClaims.filter(c => c.status === 'Rejected').length;
+
+            // 填充統計卡片
+            document.getElementById('stat-approver-pending-count').textContent = approverClaims.length;
+            document.getElementById('stat-approver-pending-total').textContent = formatCurrency(totalPending);
+            document.getElementById('stat-approver-approved-total').textContent = formatCurrency(totalApproved);
+            document.getElementById('stat-approver-rejected-count').textContent = totalRejectedCount;
+
+
+            if (approverClaims.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                approverClaims.sort((a, b) => b.id - a.id).forEach(claim => {
+                    const row = `
+                        <tr class="hover:bg-gray-50 cursor-pointer">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">${claim.id}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${claim.claimer}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${claim.submitDate}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-yellow-700">${formatCurrency(claim.total)}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">${claim.projectCode}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <button onclick="openClaimDetail(${claim.id}, 'approver')" class="text-green-600 hover:text-green-800 font-medium">審批</button>
+                            </td>
+                        </tr>
+                    `;
+                    listBody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+        }
+
+        // 輔助函數：渲染詳情頁面的專案下拉選單
+        function populateDetailProjectSelect(currentProjectCode, isEditable) {
+            const projectSelect = document.getElementById('detail-project');
+            if (!projectSelect) return;
+
+            projectSelect.innerHTML = '';
+            mockProjects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = `${project.id} - ${project.name.replace(/ *\([^)]*\) */g, "")}`;
+                if (project.id === currentProjectCode) {
+                    option.selected = true;
+                }
+                projectSelect.appendChild(option);
+            });
+
+            projectSelect.disabled = !isEditable;
+        }
+
+        // 開啟費用詳情/編輯頁面 (已掛載到 window)
+        window.openClaimDetail = function(claimId, mode) {
+            const claim = mockClaims.find(c => c.id === claimId);
+            if (!claim) {
+                showMessageBox("錯誤", "找不到該費用申報單。", true);
+                return;
+            }
+
+            // 隱藏清單頁面
+            document.getElementById('claimer-content').classList.add('hidden');
+            document.getElementById('approver-content').classList.add('hidden');
+            document.getElementById('expense-detail-view').classList.remove('hidden');
+
+            const statusInfo = getStatusColor(claim.status);
+            const isEditable = mode === 'claimer' && claim.status === 'Draft' && claim.claimer === "王小明";
+
+            // 填充數據
+            document.getElementById('detail-id').value = claim.id;
+            document.getElementById('detail-claimer').textContent = `${claim.claimer} (${claim.department})`;
+            document.getElementById('detail-amount').textContent = formatCurrency(claim.total);
+            document.getElementById('detail-status').textContent = statusInfo.label;
+            document.getElementById('detail-status').className = `px-3 py-1 rounded-full text-sm font-semibold ${statusInfo.text} ${statusInfo.bg}`;
+            document.getElementById('detail-date').value = claim.submitDate;
+            document.getElementById('detail-description').value = claim.purpose;
+            document.getElementById('detail-minor-category').textContent = claim.accountCode;
+
+            // 設置標題和專案選單
+            document.getElementById('detail-view-title').textContent = (mode === 'claimer' && isEditable) ? '編輯費用申報' : (mode === 'approver' ? '審批費用申報' : '查看費用申報');
+            populateDetailProjectSelect(claim.projectCode, isEditable);
+
+            // 設置編輯權限 (如果不是草稿或是在審批模式下，都禁用編輯欄位)
+            const disableFields = (mode === 'approver') || (mode === 'claimer' && !isEditable);
+            document.getElementById('detail-date').disabled = disableFields;
+            document.getElementById('detail-description').disabled = disableFields;
+
+            // 顯示/隱藏操作按鈕
+            const claimerButtons = document.getElementById('claimer-buttons');
+            const approverButtons = document.getElementById('approver-buttons');
+
+            claimerButtons.classList.toggle('hidden', mode === 'approver');
+            approverButtons.classList.toggle('hidden', mode !== 'approver');
+
+            if (mode === 'claimer') {
+                document.getElementById('detail-submit-button').classList.toggle('hidden', !isEditable);
+                document.getElementById('detail-save-draft-button').classList.toggle('hidden', !isEditable);
+            }
+        }
+
+        // 返回費用管理清單 (已掛載到 window)
+        window.backToExpenseMgmt = function() {
+            document.getElementById('expense-detail-view').classList.add('hidden');
+            // 確保我們切換回正確的子視圖，並重新渲染
+            switchExpenseSubView(currentExpenseSubView);
+
+            // 恢復主標題
+            const [newTitle, newSubtitle] = moduleTitles['expense-mgmt-view'];
+            document.getElementById('view-title').textContent = newTitle;
+            document.getElementById('view-subtitle').textContent = newSubtitle;
+        }
+
+        // 儲存草稿 (Detail Form Save) (已掛載到 window)
+        window.handleDetailFormSubmit = function(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            const claimId = parseInt(formData.get('claim-id'));
+
+            const claimIndex = mockClaims.findIndex(c => c.id === claimId);
+            if (claimIndex === -1 || mockClaims[claimIndex].status !== 'Draft') {
+                showMessageBox("錯誤", "無法儲存：找不到草稿狀態的申報單。", true);
+                return;
+            }
+
+            // 更新數據
+            mockClaims[claimIndex].submitDate = formData.get('date');
+            mockClaims[claimIndex].purpose = formData.get('description');
+            mockClaims[claimIndex].projectCode = formData.get('project-id');
+            mockClaims[claimIndex].title = `${mockClaims[claimIndex].accountCode} - ${formData.get('date')}`;
+
+            showMessageBox("儲存成功", `✅ 申報單 **#${claimId}** 的草稿已更新。`);
+            backToExpenseMgmt();
+        }
+
+        // 提交審批 (Detail Form Submit) (已掛載到 window)
+        window.submitClaimForApproval = function() {
+            const claimId = parseInt(document.getElementById('detail-id').value);
+            const claimIndex = mockClaims.findIndex(c => c.id === claimId);
+
+            if (claimIndex === -1 || mockClaims[claimIndex].status !== 'Draft') {
+                showMessageBox("錯誤", "提交失敗：只有草稿狀態的申報單才能提交審批。", true);
+                return;
+            }
+
+            // 模擬狀態轉換
+            mockClaims[claimIndex].status = 'Pending';
+
+            showMessageBox("提交成功", `🚀 申報單 **#${claimId}** 已成功提交審批，狀態變更為「待審批」。`);
+            backToExpenseMgmt();
+        }
+
+        // 審批者執行核准/拒絕操作 (已掛載到 window)
+        window.handleApproval = function(claimId, newStatus) {
+            const claimIndex = mockClaims.findIndex(c => c.id === claimId);
+
+            if (claimIndex === -1 || mockClaims[claimIndex].status !== 'Pending') {
+                showMessageBox("錯誤", `操作失敗：申報單 #${claimId} 無法審批 (狀態必須是「待審批」)。`, true);
+                return;
+            }
+
+            const statusLabel = getStatusColor(newStatus).label;
+
+            // 模擬狀態轉換
+            mockClaims[claimIndex].status = newStatus;
+
+            if (newStatus === 'Approved') {
+                // *** 核心閉環邏輯：生成日記帳分錄 ***
+                const approvedClaim = mockClaims[claimIndex];
+                const voucherId = getNextVoucherId();
+                const glMapping = expenseToGLAccountMap[approvedClaim.accountCode] || { code: '6999', name: '雜項費用' };
+
+                // 1. 借方：費用科目 (Debit - Expense)
+                journalEntries.push({
+                    date: approvedClaim.submitDate,
+                    voucher: voucherId,
+                    description: `費用申報 #${approvedClaim.id}: ${approvedClaim.purpose} (借)`,
+                    account: glMapping.name,
+                    debit: approvedClaim.total,
+                    credit: 0.00
+                });
+
+                // 2. 貸方：應付費用 (Credit - Liability/Cash Out)
+                journalEntries.push({
+                    date: approvedClaim.submitDate,
+                    voucher: voucherId,
+                    description: `費用申報 #${approvedClaim.id} (貸: 應付/現金)`,
+                    account: '應付費用', // 假設支付流程未完成前先掛應付費用 2301
+                    debit: 0.00,
+                    credit: approvedClaim.total
+                });
+                showMessageBox(`審批完成`, `✅ 申報單 **#${claimId}** 已**核准**。總帳分錄 **${voucherId}** 已自動生成。`);
+
+            } else {
+                 showMessageBox(`審批完成`, `❌ 申報單 **#${claimId}** 已被**${statusLabel}**。`);
+            }
+
+            // 返回審批清單
+            switchExpenseSubView('approver');
+
+            // 確保總帳在下次查看時是更新的
+            renderGeneralLedger(journalEntries);
+        }
+
+
+        // --- 5. 單筆費用申報表單邏輯 (保持不變) ---
+        function renderCategorySelects() {
+            const majorSelect = document.getElementById('expense-major');
+            const minorSelect = document.getElementById('expense-minor');
+
+            if (!majorSelect || !minorSelect) return;
+
+            // 渲染大項 (Major Category)
+            majorSelect.innerHTML = '<option value="" disabled selected>請選擇費用大項</option>';
+            expenseCategories.forEach((cat, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = cat.title;
+                majorSelect.appendChild(option);
+            });
+            majorSelect.disabled = false;
+
+            // 處理大項選擇變更，以渲染細項 (Minor Category)
+            majorSelect.onchange = (e) => {
+                const selectedIndex = parseInt(e.target.value);
+                const minorCats = expenseCategories[selectedIndex].subItems;
+
+                minorSelect.innerHTML = '<option value="" disabled selected>請選擇費用細目</option>';
+                minorCats.forEach(minor => {
+                    const option = document.createElement('option');
+                    option.value = minor;
+                    option.textContent = minor;
+                    minorSelect.appendChild(option);
+                });
+                minorSelect.disabled = false;
+                minorSelect.classList.remove('bg-gray-50');
+            };
+            minorSelect.disabled = true;
+            minorSelect.classList.add('bg-gray-50');
+        }
+
+        function renderProjectSelect() {
+            const projectSelect = document.getElementById('expense-project');
+            if (!projectSelect) return;
+
+            projectSelect.innerHTML = '';
+            mockProjects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = `${project.id} - ${project.name.replace(/ *\([^)]*\) */g, "")}`;
+                if (project.id === 'OPEX-GEN') {
+                    option.selected = true;
+                }
+                projectSelect.appendChild(option);
+            });
+        }
+
+        window.handleSingleExpenseSubmit = function(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+
+            const majorIndex = formData.get('major-category');
+            const projectId = formData.get('project-id');
+
+            // 替換原本的 alert()
+            if (!form.checkValidity() || projectId === "" || majorIndex === "" || formData.get('minor-category') === "") {
+                form.reportValidity();
+                showMessageBox("資料不完整", "錯誤：請確保所有必填欄位都已填寫。", true);
+                return;
+            }
+
+            const claimId = Math.max(0, ...mockClaims.map(c => c.id)) + 1;
+
+            const newClaim = {
+                id: claimId,
+                title: `${formData.get('minor-category')} - ${formData.get('date')}`,
+                total: parseFloat(formData.get('amount')),
+                submitDate: formData.get('date'),
+                status: 'Draft',
+                projectCode: projectId,
+                accountCode: formData.get('minor-category'),
+                purpose: formData.get('description') || '無詳細說明',
+                details: [`${formData.get('minor-category')}: ${formData.get('currency')} ${formData.get('amount')}`],
+                claimer: "王小明", // 提交人固定為王小明
+                department: "業務發展部"
+            };
+
+            mockClaims.push(newClaim);
+
+            showMessageBox(`申報成功！`, `✅ 報銷單 **#${claimId}** (金額: ${formatCurrency(newClaim.total)}) 已儲存為**草稿**，請前往**費用管理中心**查看。`);
+            form.reset();
+
+            // 提交後，切換到費用管理中心以展示連動性
+            switchModule('expense-mgmt-view');
+        }
+
+        // --- 7. SCM 模組邏輯 (新增) ---
+
+        // 渲染 SCM 待審批 PO 列表
+        function renderSCMView() {
+            const listBody = document.getElementById('scm-po-list');
+            const emptyState = document.getElementById('scm-po-empty');
+
+            // SCM 模組只看 Pending 的 PO
+            const pendingPOs = mockPurchaseOrders.filter(po => po.status === 'Pending');
+
+            listBody.innerHTML = '';
+
+            // 確保詳情視圖隱藏
+            document.getElementById('scm-po-detail-view').classList.add('hidden');
+            document.getElementById('scm-po-list-container').classList.remove('hidden');
+
+
+            if (pendingPOs.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                pendingPOs.sort((a, b) => b.id - a.id).forEach(po => {
+                    const row = `
+                        <tr class="hover:bg-gray-50 cursor-pointer">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">${po.id}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${po.supplier}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${po.orderDate}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-indigo-700">${formatCurrency(po.total)}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">${po.projectCode}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-700">待審批</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <button onclick="openPODetail(${po.id})" class="text-green-600 hover:text-green-800 font-medium">審批</button>
+                            </td>
+                        </tr>
+                    `;
+                    listBody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+        }
+
+        // 開啟 PO 審批詳情頁面
+        window.openPODetail = function(poId) {
+            const po = mockPurchaseOrders.find(p => p.id === poId);
+            if (!po) {
+                showMessageBox("錯誤", "找不到該採購單。", true);
+                return;
+            }
+
+            document.getElementById('scm-po-list-container').classList.add('hidden');
+            document.getElementById('scm-po-detail-view').classList.remove('hidden');
+
+            document.getElementById('po-detail-id').textContent = po.id;
+            document.getElementById('po-detail-supplier').textContent = po.supplier;
+            document.getElementById('po-detail-amount').textContent = formatCurrency(po.total);
+            document.getElementById('po-detail-delivery').textContent = po.requiredDate;
+            document.getElementById('po-detail-items').textContent = po.items;
+        }
+
+        // 處理 PO 審批操作 (已新增 WMS 連動邏輯)
+        window.handlePOApproval = function(poId, newStatus) {
+            const poIndex = mockPurchaseOrders.findIndex(p => p.id === poId);
+
+            if (poIndex === -1 || mockPurchaseOrders[poIndex].status !== 'Pending') {
+                showMessageBox("錯誤", `PO #${poId} 無法審批 (狀態必須是「待審批」)。`, true);
+                return;
+            }
+
+            mockPurchaseOrders[poIndex].status = newStatus;
+
+            if (newStatus === 'Approved') {
+                 const approvedPO = mockPurchaseOrders[poIndex];
+
+                 // *** SCM -> WMS 閉環邏輯：創建入庫任務 ***
+                 const newWMSId = getNextWMSId();
+                 mockWMSTasks.push({
+                    id: newWMSId,
+                    type: 'Inbound',
+                    referenceId: `PO-${approvedPO.id}`,
+                    detail: `${approvedPO.items} (供應商: ${approvedPO.supplier})`,
+                    status: 'Pending',
+                    origin: 'SCM'
+                 });
+
+                 showMessageBox(`採購單核准`, `✅ PO **#${poId}** 已核准！已自動在 WMS 創建任務 **#${newWMSId}** 準備收貨。`);
+            } else {
+                 showMessageBox(`採購單拒絕`, `❌ PO **#${poId}** 已被拒絕。`);
+            }
+
+            backToSCMList();
+        }
+
+        // 返回 SCM 清單
+        window.backToSCMList = function() {
+            document.getElementById('scm-po-detail-view').classList.add('hidden');
+            document.getElementById('scm-po-list-container').classList.remove('hidden');
+            renderSCMView();
+        }
+
+
+        // --- 8. WMS 模組邏輯 (新增任務清單和操作) ---
+
+        // 渲染 WMS 儀表板 (調用清單和 KPI 更新)
+        function renderWMSDashboard() {
+            renderWMSTaskList(); // 專門呼叫清單渲染，確保執行
+
+            // 確保圖表也渲染 (如果它們不存在於 initMap 中，這裡調用確保它們運行)
+            setTimeout(renderInventoryValueChart, 100);
+            setTimeout(renderWarehouseVolumeChart, 100);
+        }
+
+        // 渲染 WMS 待處理任務清單 (已掛載到 window)
+        window.renderWMSTaskList = function() {
+            const listBody = document.getElementById('wms-task-list');
+            const emptyState = document.getElementById('wms-task-empty');
+            const statPendingElement = document.getElementById('stat-wms-pending');
+
+            // 只顯示 Pending 任務
+            const pendingTasks = mockWMSTasks.filter(t => t.status === 'Pending');
+
+            listBody.innerHTML = '';
+
+            statPendingElement.textContent = pendingTasks.length + ' 筆';
+
+            if (pendingTasks.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                pendingTasks.forEach(task => {
+                    const actionButton = task.type === 'Inbound'
+                        ? `<button onclick="receiveWMSTask(${task.id})" class="text-white bg-green-600 hover:bg-green-800 font-medium rounded-md px-2 py-1">確認收貨</button>`
+                        : `<button onclick="completeWMSTask(${task.id})" class="text-white bg-indigo-600 hover:bg-indigo-800 font-medium rounded-md px-2 py-1">執行作業</button>`;
+
+                    const typeLabel = task.type === 'Inbound' ? '入庫' : (task.type === 'Outbound' ? '出庫' : '盤點');
+                    const statusColor = task.type === 'Inbound' ? 'bg-blue-100 text-blue-700' : (task.type === 'Outbound' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700');
+
+                    const row = `
+                        <tr class="hover:bg-gray-50 cursor-pointer">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${task.id}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${typeLabel}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">${task.referenceId} (${task.origin})</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">${task.detail}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">${task.status}</span></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">${actionButton}</td>
+                        </tr>
+                    `;
+                    listBody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+        }
+
+        // 模擬完成入庫作業 (已掛載到 window)
+        window.receiveWMSTask = function(taskId) {
+            const taskIndex = mockWMSTasks.findIndex(t => t.id === taskId);
+            if (taskIndex > -1) {
+                mockWMSTasks[taskIndex].status = 'Completed';
+
+                // 模擬入庫後續動作 (例如：更新庫存數據)
+                showMessageBox("入庫完成", `✅ WMS 任務 **#${taskId}** (來源 ${mockWMSTasks[taskIndex].referenceId}) 已確認收貨，庫存數據已更新。`);
+
+                // 重新渲染 WMS 清單
+                renderWMSTaskList();
+            }
+        }
+
+        // 模擬完成一般任務 (已掛載到 window)
+        window.completeWMSTask = function(taskId) {
+             const taskIndex = mockWMSTasks.findIndex(t => t.id === taskId);
+            if (taskIndex > -1) {
+                mockWMSTasks[taskIndex].status = 'Completed';
+                showMessageBox("任務完成", `✅ WMS 任務 **#${taskId}** 已執行完畢。`);
+                renderWMSTaskList();
+            }
+        }
+
+        // --- 9. 總帳和圖表邏輯 (已掛載到 window) ---
+
+        window.filterLedger = function(entries = journalEntries) {
+            const dateRange = document.getElementById('date-range').value.trim();
+            const accountFilter = document.getElementById('account-filter').value;
+            const searchText = document.getElementById('search-text').value.toLowerCase().trim();
+            let filteredEntries = journalEntries;
+            if (accountFilter) { filteredEntries = filteredEntries.filter(entry => entry.account === accountFilter); }
+            if (searchText) { filteredEntries = filteredEntries.filter(entry => entry.description.toLowerCase().includes(searchText) || entry.voucher.toLowerCase().includes(searchText)); }
+            if (dateRange && dateRange.length === 10) { filteredEntries = filteredEntries.filter(entry => entry.date === dateRange); }
+            renderGeneralLedger(filteredEntries);
+        }
+        window.resetFilters = function() { document.getElementById('date-range').value = ''; document.getElementById('account-filter').value = ''; document.getElementById('search-text').value = ''; renderGeneralLedger(); }
+        window.renderGeneralLedger = function(entries = journalEntries) {
+            const tbody = document.getElementById('ledger-body');
+            const balanceSummary = document.getElementById('balance-summary');
+            const noResults = document.getElementById('no-results');
+            tbody.innerHTML = ''; let totalDebit = 0; let totalCredit = 0;
+
+            // 排序，確保憑證號碼連續的分錄排在一起
+            entries.sort((a, b) => {
+                if (a.date !== b.date) return new Date(a.date) - new Date(b.date);
+                return a.voucher.localeCompare(b.voucher);
+            });
+
+            if (entries.length === 0) { noResults.classList.remove('hidden'); balanceSummary.innerHTML = ''; return; } else { noResults.classList.add('hidden'); }
+            entries.forEach((entry, index) => {
+                totalDebit += entry.debit; totalCredit += entry.credit;
+                const row = document.createElement('tr'); row.classList.add(index % 2 === 0 ? 'bg-white' : 'bg-gray-50', 'hover:bg-indigo-50', 'transition');
+                const debitDisplay = formatCurrency(entry.debit); const creditDisplay = formatCurrency(entry.credit);
+                const isGroupStart = index === 0 || entry.voucher !== entries[index - 1].voucher;
+                const dateDisplay = isGroupStart ? entry.date : ''; const voucherDisplay = isGroupStart ? entry.voucher : '';
+                row.innerHTML = `<td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900">${dateDisplay}</td><td class="px-6 py-3 whitespace-nowrap text-sm text-gray-500">${voucherDisplay}</td><td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900">${entry.description}</td><td class="px-6 py-3 whitespace-nowrap text-sm font-medium text-indigo-600">${entry.account}</td><td class="px-6 py-3 whitespace-nowrap text-sm text-right text-green-700 font-mono">${debitDisplay}</td><td class="px-6 py-3 whitespace-nowrap text-sm text-right text-red-700 font-mono">${creditDisplay}</td>`;
+                tbody.appendChild(row);
+            });
+            const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
+            const balanceColor = isBalanced ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100';
+            const balanceStatus = isBalanced ? '平衡 (Balanced)' : '不平衡 (Out of Balance)';
+            balanceSummary.innerHTML = `<div class="flex justify-between items-center text-lg font-bold"><div class="space-y-1"><p class="text-gray-600">借方總額 (Total Debit): <span class="text-green-600">${formatCurrency(totalDebit)}</span></p><p class="text-gray-600">貸方總額 (Total Credit): <span class="text-red-600">${formatCurrency(totalCredit)}</span></p></div><div class="p-3 rounded-lg ${balanceColor} font-extrabold text-xl shadow-md">${balanceStatus}</div></div>`;
+        }
+
+        // --- 圖表渲染邏輯 (佔位符) ---
+        function renderCashFlowChart() {
+            const ctx = document.getElementById('cashFlowChart')?.getContext('2d');
+            if (!ctx) return;
+            if (chartInstances.cashFlow) chartInstances.cashFlow.destroy();
+            chartInstances.cashFlow = new Chart(ctx, { type: 'line', data: { labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], datasets: [{ label: '現金流入', data: [2000, 2500, 3000, 3500, 3200, 4000], borderColor: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.1)', tension: 0.3, fill: true }, { label: '現金流出', data: [1500, 1800, 2200, 2800, 2500, 3000], borderColor: '#EF4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', tension: 0.3, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: (v) => `${v}K` } } } } });
+        }
+        function renderExpenseChart() {
+            const ctx = document.getElementById('expenseChart')?.getContext('2d');
+            if (!ctx) return;
+            if (chartInstances.expense) chartInstances.expense.destroy();
+            chartInstances.expense = new Chart(ctx, { type: 'doughnut', data: { labels: ['旅費', '餐飲招待', '行政費用', 'IT/軟體', '行銷'], datasets: [{ data: [30, 15, 20, 10, 25], backgroundColor: ['#3B82F6', '#F59E0B', '#EF4444', '#10B981', '#6366F1'] }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } } });
+        }
+        function renderPurchaseCategoryChart() {
+            const ctx = document.getElementById('purchaseCategoryChart')?.getContext('2d');
+            if (!ctx) return;
+            if (chartInstances.purchaseCategory) chartInstances.purchaseCategory.destroy();
+            chartInstances.purchaseCategory = new Chart(ctx, { type: 'bar', data: { labels: ['原材料', '零件', '服務', '設備'], datasets: [{ label: '採購金額 (NT$ K)', data: [650, 480, 250, 150], backgroundColor: ['#FBBF24', '#3B82F6', '#10B981', '#EF4444'] }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } } });
+        }
+        function renderWorkOrderStatusChart() { /* Manufacturing Chart Placeholder */ }
+        function renderEmployeeDistributionChart() { /* HR Chart Placeholder */ }
+        function renderSalesFunnelChart() { /* CRM Chart Placeholder */ }
+        function renderProfitTrendChart() { /* BI Chart Placeholder */ }
+        function renderBalanceAnalysisChart() { /* BI Chart Placeholder */ }
+        function renderProjectTypeChart() { /* Project Mgmt Chart Placeholder */ }
+
+        // WMS 圖表 1: 庫存價值分佈
+        function renderInventoryValueChart() {
+             const ctx = document.getElementById('inventoryValueChart')?.getContext('2d');
+             if (!ctx) return;
+             if (chartInstances.inventoryValue) chartInstances.inventoryValue.destroy();
+             chartInstances.inventoryValue = new Chart(ctx, {
+                 type: 'pie',
+                 data: {
+                     labels: ['原材料', '半成品', '成品 A', '成品 B'],
+                     datasets: [{
+                         data: [40, 20, 30, 10], // 價值佔比 (%)
+                         backgroundColor: ['#6EE7B7', '#FBBF24', '#3B82F6', '#EF4444'],
+                         hoverOffset: 4
+                     }]
+                 },
+                 options: {
+                     responsive: true,
+                     maintainAspectRatio: true,
+                     plugins: {
+                         legend: { position: 'bottom' },
+                         tooltip: { callbacks: { label: (context) => `${context.label}: ${context.raw}%` } }
+                     }
+                 }
+             });
+        }
+
+        // WMS 圖表 2: 過去 7 天出入庫活動趨勢
+        function renderWarehouseVolumeChart() {
+            const ctx = document.getElementById('warehouseVolumeChart')?.getContext('2d');
+            if (!ctx) return;
+            if (chartInstances.warehouseVolume) chartInstances.warehouseVolume.destroy();
+            chartInstances.warehouseVolume = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['週二', '週三', '週四', '週五', '週六', '週日', '週一'],
+                    datasets: [
+                        { label: '入庫量 (單位)', data: [1500, 1800, 2200, 1900, 800, 500, 2500], backgroundColor: '#10B981' },
+                        { label: '出庫量 (單位)', data: [1200, 2000, 1700, 2100, 900, 600, 2300], backgroundColor: '#3B82F6' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: '總單位數' } },
+                        x: { stacked: false }
+                    },
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+        }
+
+
+        // --- 9. 頁面初始化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // 預設顯示財務儀表板 (Finance)
+            switchModule('finance-module-view');
+        });
+    </script>
+</body>
+</html>

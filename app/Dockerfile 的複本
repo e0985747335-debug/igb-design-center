@@ -1,0 +1,50 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI(
+    title="IGB ERP 2.0 API",
+    description="Strategic Command Center API backend",
+    version="1.0.0"
+)
+
+# 允許前端（Caddy / 靜態頁）跨域訪問
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ====== 模擬資料（對應你的 HTML KPI 與技術規格） ======
+dashboard_data = {
+    "summary": [
+        {"label": "核心服務可用性 (PostgreSQL HA)", "value": "99.98%", "target": "99.99%", "unit": "SLA%", "color": "lime"},
+        {"label": "主數據 (MDM) 維度完整率", "value": "95.5%", "target": "98%", "unit": "%", "color": "orange"},
+        {"label": "核心交易風險曝險時間", "value": "0.01s", "target": "0s", "unit": "秒/次", "color": "lime"},
+        {"label": "微服務介面驗證覆蓋率", "value": "88%", "target": "90%", "unit": "%", "color": "yellow"},
+    ]
+}
+
+tech_specs = [
+    {"item": "核心資料庫系統", "spec": "PostgreSQL 15+ (Master-Slave-Witness HA)", "owner": "張架構師 (Architect)"},
+    {"item": "應用服務框架", "spec": "FastAPI (Python) / 微服務架構", "owner": "王工程師 (Dev Lead)"},
+    {"item": "安全與閘道器", "spec": "ZTNA / API Gateway (Kong/Nginx)", "owner": "李介面專家 (Integration)"},
+    {"item": "數據庫 HA 策略", "spec": "Patroni 或 Repmgr", "owner": "張架構師 (Architect)"},
+    {"item": "主數據/配置管理", "spec": "Admin Hub (MDM Service)", "owner": "趙數據主管 (Data Mgmt)"},
+    {"item": "實時分析與 BI", "spec": "Grafana/Looker (EHSN KPI)", "owner": "陳分析師 (BI)"},
+    {"item": "交易事務保證", "spec": "PostgreSQL ACID 事務", "owner": "王工程師 (Dev Lead)"},
+]
+
+# ====== API 路由 ======
+@app.get("/api/kpi")
+async def get_kpi():
+    return dashboard_data
+
+@app.get("/api/specs")
+async def get_specs():
+    return tech_specs
+
+@app.get("/")
+async def root():
+    return {"message": "IGB ERP 2.0 FastAPI Backend is running!"}

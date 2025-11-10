@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>IGB ERP - Modular Frontend</title>
+  <!-- 若沒有，請把原本 CSS 放到 frontend/assets/style.css -->
+  <link rel="stylesheet" href="/static/assets/style.css" onerror="console.info('style.css not found')" />
+</head>
+<body>
+  <!-- LEFT SIDEBAR (自動擷取或佔位) -->
+  <aside class="sidebar w-60 bg-white border-r border-gray-200 h-screen sticky top-0 flex flex-col p-4 shadow-lg">
+    <div class="mb-8 pt-2 pb-4 border-b border-gray-100">
+      <h2 class="text-2xl font-extrabold text-indigo-700 flex items-center">
+        <svg class="h-6 w-6 mr-1 text-indigo-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zM5 8a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm0 4a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>
+        IGB COMMAND
+      </h2>
+      <p class="text-xs text-gray-500 mt-1">數位企業命令中心 V3</p>
+    </div>
+
+    <nav class="module-list flex-1 space-y-1 pr-1">
+      <!-- 按鈕只做 module key 指定，auto_loader.js 會負責載入/切換 -->
+      <button onclick="switchModule('finance_module')" id="nav-finance" class="module-button active">財務管理 (Finance)</button>
+      <button onclick="switchModule('expense_mgmt_module')" id="nav-expense-mgmt" class="module-button">費用管理中心 (Expense Mgmt)</button>
+      <button onclick="switchModule('scm_module')" id="nav-scm" class="module-button">供應鏈管理 (SCM)</button>
+      <button onclick="switchModule('project_mgmt_module')" id="nav-project-mgmt" class="module-button">專案管理 (Project Mgmt)</button>
+      <div class="h-px bg-gray-200 my-4"></div>
+      <button onclick="switchModule('general_ledger')" id="nav-general-ledger" class="module-button">總帳明細 (GL)</button>
+      <button onclick="switchModule('single_expense')" id="nav-single-expense" class="module-button">單筆費用申報</button>
+    </nav>
+  </aside>
+
+  <!-- MAIN APP AREA -->
+  <main id="igb-main-app" style="margin-left:260px; padding:20px;">
+    <div id="app-root">
+      <!-- 這裡是模組化載入點 -->
+      <div id="module-container">正在載入模組...</div>
+    </div>
+  </main>
+
+  <!-- 自動載入器 -->
+  <script src="/static/auto_loader.js"></script>
+  <script>
+    // 頁面載入後啟動模組加載（預設 project_mgmt_module）
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.autoLoader) {
+        window.autoLoader.init({
+          defaultModule: 'project_mgmt_module'
+        });
+      } else {
+        document.getElementById('module-container').innerText = 'auto_loader.js 尚未就緒';
+      }
+    });
+  </script>
+</body>
+</html>

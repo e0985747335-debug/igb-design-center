@@ -1,0 +1,14 @@
+{
+	"status": "valid",
+	"contact": [
+		"mailto:wooderiven@gmail.com"
+	],
+	"termsOfServiceAgreed": true,
+	"externalAccountBinding": {
+		"protected": "eyJhbGciOiJIUzI1NiIsImtpZCI6Inl5UDBKVTliX3RCZzdzaENuLUN3ZkEiLCJ1cmwiOiJodHRwczovL2FjbWUuemVyb3NzbC5jb20vdjIvRFY5MC9uZXdBY2NvdW50In0",
+		"payload": "eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6IldZVmlzS1RtR2kxWk16Qmo3TEJhRVZtUldBY3dpNjE1M3BERjJFY0xubjgiLCJ5IjoiZ1M0SWtZTFZyVGZaVlJkYVBNaVB4SnJjbGNoaXczZWx1b0Roa1UwNlk1RSJ9",
+		"signature": "9RaR8eFaJwT_PuM9fUM2lW5tw9iq0NkhKFi5i_5nUnI"
+	},
+	"orders": "https://acme.zerossl.com/v2/DV90/account/yyP0JU9b_tBg7shCn-CwfA/orders",
+	"location": "https://acme.zerossl.com/v2/DV90/account/yyP0JU9b_tBg7shCn-CwfA"
+}

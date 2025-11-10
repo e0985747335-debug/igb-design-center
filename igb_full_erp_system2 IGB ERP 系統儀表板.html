@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 系統儀表板 - 總覽</title>
+    <!-- 載入 Tailwind CSS 框架 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <!-- 載入 Lucide Icons (用於 UI 圖示) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- 載入 Chart.js (用於圖表) - 已新增 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+        /* 設定全域字體為 Inter */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f9; /* 輕微的背景色 */
+        }
+        /* 隱藏滾動條但保持滾動功能 (適用於側邊欄) */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <!-- 1. 側邊欄導航 (Sidebar) -->
+    <div id="sidebar" class="w-64 flex-shrink-0 bg-gray-900 text-white flex flex-col transition-all duration-300 transform -translate-x-full md:translate-x-0 md:relative z-30">
+        <!-- 標題/Logo 區域 -->
+        <div class="p-6 border-b border-gray-700">
+            <h1 class="text-2xl font-bold tracking-wider text-indigo-400">IGB ERP</h1>
+            <p class="text-sm text-gray-400 mt-1">企業資源規劃系統</p>
+        </div>
+
+        <!-- 導航連結 -->
+        <nav class="flex-grow p-4 scrollbar-hide overflow-y-auto">
+            <ul class="space-y-2">
+                <!-- 儀表板 (Dashboard) -->
+                <li>
+                    <a href="#" class="flex items-center space-x-3 p-3 rounded-lg bg-indigo-600 text-white font-semibold shadow-lg">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                        <span>儀表板</span>
+                    </a>
+                </li>
+                <!-- 銷售管理 (Sales) -->
+                <li>
+                    <a href="#" class="flex items-center space-x-3 p-3 rounded-lg text-gray-300 hover:bg-gray-800 transition">
+                        <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                        <span>銷售訂單</span>
+                    </a>
+                </li>
+                <!-- 庫存管理 (Inventory) -->
+                <li>
+                    <a href="#" class="flex items-center space-x-3 p-3 rounded-lg text-gray-300 hover:bg-gray-800 transition">
+                        <i data-lucide="package" class="w-5 h-5"></i>
+                        <span>庫存管理</span>
+                    </a>
+                </li>
+                <!-- 財務會計 (Accounting) -->
+                <li>
+                    <a href="#" class="flex items-center space-x-3 p-3 rounded-lg text-gray-300 hover:bg-gray-800 transition">
+                        <i data-lucide="landmark" class="w-5 h-5"></i>
+                        <span>財務會計</span>
+                    </a>
+                </li>
+                <!-- 供應鏈/採購 (Supply Chain/Procurement) -->
+                <li>
+                    <a href="#" class="flex items-center space-x-3 p-3 rounded-lg text-gray-300 hover:bg-gray-800 transition">
+                        <i data-lucide="truck" class="w-5 h-5"></i>
+                        <span>採購與供應鏈</span>
+                    </a>
+                </li>
+                <!-- 系統設定 (Settings) -->
+                <li>
+                    <a href="#" class="flex items-center space-x-3 p-3 rounded-lg text-gray-300 hover:bg-gray-800 transition">
+                        <i data-lucide="settings" class="w-5 h-5"></i>
+                        <span>系統設定</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- 底部使用者資訊 -->
+        <div class="p-4 border-t border-gray-700">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-lg font-bold">A</div>
+                <div>
+                    <p class="text-sm font-medium">系統管理員</p>
+                    <p class="text-xs text-gray-400">admin@igb.com</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 主內容區域 (Main Content Area) -->
+    <div class="flex-1 flex flex-col overflow-auto">
+
+        <!-- 頂部導航欄 (Header) -->
+        <header class="flex-shrink-0 bg-white shadow-md z-20">
+            <div class="p-4 flex justify-between items-center">
+                <!-- 漢堡菜單 (僅在移動端顯示) -->
+                <button id="menu-button" class="md:hidden p-2 rounded-full hover:bg-gray-100 transition">
+                    <i data-lucide="menu" class="w-6 h-6 text-gray-600"></i>
+                </button>
+
+                <!-- 麵包屑/頁面標題 -->
+                <h2 class="text-xl font-semibold text-gray-800 hidden sm:block">儀表板總覽</h2>
+
+                <!-- 右側功能 (通知 & 搜尋) -->
+                <div class="flex items-center space-x-4">
+                    <!-- 搜尋 -->
+                    <div class="relative hidden sm:block">
+                        <input type="text" placeholder="全局搜尋..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-150 w-64">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                    <!-- 通知 -->
+                    <button class="p-2 rounded-full hover:bg-gray-100 transition relative">
+                        <i data-lucide="bell" class="w-6 h-6 text-gray-600"></i>
+                        <span class="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full border border-white"></span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 實際內容 (可滾動) -->
+        <main class="flex-1 p-4 sm:p-6 overflow-y-auto">
+            <!-- 歡迎區 -->
+            <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
+                <h3 class="text-2xl font-bold text-gray-800">歡迎回來, 系統管理員!</h3>
+                <p class="text-gray-500 mt-1">這裡是 IGB ERP 系統的即時數據總覽。</p>
+            </div>
+
+            <!-- 數據概覽卡片 (Stats Cards) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- 卡片 1: 總銷售額 -->
+                <div class="bg-white p-5 rounded-xl shadow-xl border-l-4 border-indigo-500">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">總銷售額 (本月)</p>
+                            <p class="text-3xl font-extrabold text-gray-900 mt-1">$ 1,234,567</p>
+                        </div>
+                        <i data-lucide="dollar-sign" class="w-8 h-8 text-indigo-500 bg-indigo-100 p-2 rounded-full"></i>
+                    </div>
+                    <p class="text-xs text-green-500 mt-3 flex items-center">
+                        <i data-lucide="arrow-up-right" class="w-3 h-3 mr-1"></i>
+                        12.5% 較上月
+                    </p>
+                </div>
+
+                <!-- 卡片 2: 待處理訂單 -->
+                <div class="bg-white p-5 rounded-xl shadow-xl border-l-4 border-yellow-500">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">待處理訂單</p>
+                            <p class="text-3xl font-extrabold text-gray-900 mt-1">45</p>
+                        </div>
+                        <i data-lucide="clock" class="w-8 h-8 text-yellow-500 bg-yellow-100 p-2 rounded-full"></i>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-3">需立即處理</p>
+                </div>
+
+                <!-- 卡片 3: 低庫存警告 -->
+                <div class="bg-white p-5 rounded-xl shadow-xl border-l-4 border-red-500">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">低庫存項目</p>
+                            <p class="text-3xl font-extrabold text-gray-900 mt-1">18</p>
+                        </div>
+                        <i data-lucide="alert-triangle" class="w-8 h-8 text-red-500 bg-red-100 p-2 rounded-full"></i>
+                    </div>
+                    <p class="text-xs text-red-500 mt-3">請盡快採購</p>
+                </div>
+
+                <!-- 卡片 4: 新客戶數 -->
+                <div class="bg-white p-5 rounded-xl shadow-xl border-l-4 border-green-500">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">新客戶 (本季)</p>
+                            <p class="text-3xl font-extrabold text-gray-900 mt-1">210</p>
+                        </div>
+                        <i data-lucide="users" class="w-8 h-8 text-green-500 bg-green-100 p-2 rounded-full"></i>
+                    </div>
+                    <p class="text-xs text-green-500 mt-3 flex items-center">
+                        <i data-lucide="arrow-up-right" class="w-3 h-3 mr-1"></i>
+                        5.8% 較上季
+                    </p>
+                </div>
+            </div>
+
+            <!-- 主要內容區塊: 銷售圖表 & 最新活動 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 圖表區塊 (佔 2/3 寬度) -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-xl">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-4">月度銷售趨勢</h4>
+                    <!-- Chart.js 圖表容器 -->
+                    <div class="relative h-80">
+                        <canvas id="salesChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 最新活動/日誌區塊 (佔 1/3 寬度) -->
+                <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-xl">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-4">最新活動日誌</h4>
+                    <ul class="space-y-4">
+                        <li class="flex items-start space-x-3">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-green-500 mt-1"></i>
+                            <div>
+                                <p class="text-sm font-medium text-gray-800">訂單 #10023 已完成出貨</p>
+                                <p class="text-xs text-gray-500">5 分鐘前 (銷售部)</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start space-x-3">
+                            <i data-lucide="archive" class="w-5 h-5 text-indigo-500 mt-1"></i>
+                            <div>
+                                <p class="text-sm font-medium text-gray-800">新產品「XYZ 型號」入庫</p>
+                                <p class="text-xs text-gray-500">1 小時前 (庫存部)</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start space-x-3">
+                            <i data-lucide="message-square" class="w-5 h-5 text-yellow-500 mt-1"></i>
+                            <div>
+                                <p class="text-sm font-medium text-gray-800">客戶服務單 #876 待處理</p>
+                                <p class="text-xs text-gray-500">昨天 14:30 (客服部)</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start space-x-3">
+                            <i data-lucide="alert-circle" class="w-5 h-5 text-red-500 mt-1"></i>
+                            <div>
+                                <p class="text-sm font-medium text-gray-800">系統警告：資料庫連線緩慢</p>
+                                <p class="text-xs text-gray-500">2 天前 (IT 部門)</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 待辦事項/待審核列表 (Full Width) -->
+            <div class="mt-6 bg-white p-6 rounded-xl shadow-xl">
+                <h4 class="text-lg font-semibold text-gray-800 mb-4">我的待辦清單 / 待審核項目</h4>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    項目
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    模組
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    狀態
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    建立日期
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    操作
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">採購單 P-20250901 待審批</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">採購</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                        待審核
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025/09/01</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <a href="#" class="text-indigo-600 hover:text-indigo-900">審核</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">確認客戶 A 的發票資料</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">會計</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                        待處理
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025/08/30</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <a href="#" class="text-indigo-600 hover:text-indigo-900">編輯</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- 3. JavaScript 邏輯 -->
+    <script>
+        // 初始化 Lucide Icons
+        lucide.createIcons();
+
+        // 儀表板圖表邏輯 (使用 Chart.js)
+        function initializeSalesChart() {
+            const ctx = document.getElementById('salesChart');
+
+            if (!ctx) return; // 安全檢查
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['一月', '二月', '三月', '四月', '五月', '六月', '七月'],
+                    datasets: [{
+                        label: '月度總銷售額 (千元)',
+                        data: [850, 920, 780, 1100, 1050, 1230, 1450],
+                        borderColor: '#4f46e5', // Tailwind indigo-600
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        tension: 0.4, // 曲線平滑度
+                        fill: true,
+                        pointBackgroundColor: '#4f46e5',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#4f46e5',
+                        borderWidth: 3,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#4b5563', // gray-600
+                                usePointStyle: true,
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                // 將 Y 軸數值轉換為貨幣格式 (以千元為單位)
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        // 模擬新台幣格式，不帶小數點
+                                        label += new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', minimumFractionDigits: 0 }).format(context.parsed.y * 1000);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: '#e5e7eb' // gray-200
+                            },
+                            title: {
+                                display: true,
+                                text: '銷售額 (千元)',
+                                color: '#6b7280' // gray-500
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + 'K'; // 顯示 K (千)
+                                },
+                                color: '#4b5563' // gray-600
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#4b5563' // gray-600
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 漢堡菜單/側邊欄開關邏輯 (適用於移動端)
+        const sidebar = document.getElementById('sidebar');
+        const menuButton = document.getElementById('menu-button');
+        const mainContent = document.querySelector('body');
+
+        // 在非 MD 螢幕上，當側邊欄打開時，主內容區域需要一個疊層
+        const overlay = document.createElement('div');
+        overlay.id = 'sidebar-overlay';
+        overlay.className = 'fixed inset-0 bg-black opacity-50 z-20 hidden md:hidden';
+        mainContent.appendChild(overlay);
+
+        function toggleSidebar() {
+            // 切換側邊欄的 hidden/transform 類
+            sidebar.classList.toggle('-translate-x-full');
+            // 切換疊層的顯示
+            overlay.classList.toggle('hidden');
+        }
+
+        menuButton.addEventListener('click', toggleSidebar);
+        overlay.addEventListener('click', toggleSidebar);
+
+        // 確保當螢幕尺寸改變時，側邊欄的狀態正確
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) { // md breakpoint in Tailwind is 768px
+                // 在桌面視圖，確保側邊欄顯示且疊層隱藏
+                if (sidebar.classList.contains('-translate-x-full')) {
+                    sidebar.classList.remove('-translate-x-full');
+                }
+                if (!overlay.classList.contains('hidden')) {
+                    overlay.classList.add('hidden');
+                }
+            } else {
+                // 在移動視圖，如果側邊欄是開啟的，則疊層應顯示
+                if (!sidebar.classList.contains('-translate-x-full')) {
+                    overlay.classList.remove('hidden');
+                }
+            }
+        });
+
+        // 在頁面加載完成後初始化圖表
+        window.addEventListener('load', initializeSalesChart);
+
+    </script>
+</body>
+</html>

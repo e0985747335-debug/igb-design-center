@@ -1,0 +1,19 @@
+# === IGB ERP 2.0 Log Guard Ignore Rules ===
+# --- Runtime logs ---
+*.log
+*.log.gz
+tools/logs/
+tools/autowatch-service.log
+tools/git-autowatch-monitor.log
+auto-status-sync.log
+
+# --- Backups ---
+*.zip
+*.tar
+*.tar.gz
+*.bak
+*_backup_*/
+
+# --- System tmp ---
+*.tmp
+__pycache__/

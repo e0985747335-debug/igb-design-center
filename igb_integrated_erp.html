@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB 整合式 ERP 總覽</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- 載入 D3.js 用於繪製 S 曲線 (儀表板功能) -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* 設置 Inter 字體 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* 整體深色背景 */
+            color: #e2e8f0; /* 淺色文字 */
+            overflow: hidden; /* 防止主頁面滾動，讓內部內容滾動 */
+        }
+
+        /* IGB Logo 色系定義 */
+        :root {
+            --logo-blue: #00A3FF;
+            --logo-red: #E5001A;
+            --dark-panel: #2d3748;
+            --darker-bg: #1f2937;
+            --success-green: #3fb950;
+            --warning-yellow: #d29922;
+            --danger-red: #f85149;
+        }
+
+        .bg-dark-panel { background-color: var(--dark-panel); }
+        .bg-darker-bg { background-color: var(--darker-bg); }
+        .text-logo-blue { color: var(--logo-blue); }
+
+        /* 頂部導航條的樣式 */
+        .top-nav {
+            background-color: #2d3748;
+            border-bottom: 1px solid #4a5568;
+        }
+
+        /* 左側主導航樣式 */
+        .side-nav-item {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-left: 4px solid transparent;
+        }
+        .side-nav-item:hover {
+            background-color: #3b4554;
+        }
+        .side-nav-active {
+            background-color: #3b4554;
+            color: var(--logo-blue);
+            font-weight: 600;
+            border-left-color: var(--logo-blue) !important;
+        }
+
+        /* --- 卡片通用樣式 --- */
+        .erp-card {
+            background-color: #161b22;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+            border: 1px solid #30363d;
+        }
+        .text-success { color: var(--success-green); }
+        .text-warning { color: var(--warning-yellow); }
+        .text-danger { color: var(--danger-red); }
+
+        /* --- 專案儀表板特定樣式 (VIEW 2) --- */
+        #s-curve-chart .axis text { fill: #8b949e; }
+        #s-curve-chart .axis path, #s-curve-chart .axis line { stroke: #30363d; }
+        #s-curve-chart .line { fill: none; stroke-width: 3px; }
+
+        /* --- 採購管理特定樣式 (VIEW 3) --- */
+        .procurement-table th {
+            background-color: #3b4554;
+            color: #cbd5e0;
+            padding: 12px 16px;
+            font-weight: 700;
+        }
+        .procurement-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #4a5568;
+            color: #e2e8f0;
+            cursor: pointer;
+        }
+        .row-selected {
+            background-color: #4a5568 !important;
+            border-left: 4px solid var(--logo-blue);
+            font-weight: 600;
+        }
+        .detail-panel-section input[type="text"], .detail-panel-section textarea {
+            background-color: #4a5568;
+            border: 1px solid #6b7280;
+            color: #e2e8f0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            width: 100%;
+        }
+
+        /* 滾動條樣式 */
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #4a5568; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background-color: #161b22; }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- 頂部導覽列 (Top Navigation) -->
+        <header class="top-nav px-8 py-3 flex justify-between items-center flex-shrink-0 z-20">
+            <div class="flex items-center space-x-6">
+                <div class="text-2xl font-extrabold text-logo-blue flex items-center">
+                    <span class="mr-1">•</span> IGB ERP
+                </div>
+                <!-- 主要模組導航 -->
+                <nav class="flex space-x-4 text-sm font-medium">
+                    <!-- 新增策略指揮中心 -->
+                    <a href="#" id="nav-strategy" class="text-white border-b-2 border-logo-blue pb-1 cursor-pointer">策略指揮中心</a>
+                    <a href="#" id="nav-dashboard" class="text-gray-400 hover:text-white transition duration-150 cursor-pointer">專案表板</a>
+                    <a href="#" id="nav-procurement" class="text-gray-400 hover:text-white transition duration-150 cursor-pointer">採購管理</a>
+                    <a href="#" class="text-gray-400 hover:text-white transition duration-150">商品維護</a>
+                    <a href="#" class="text-gray-400 hover:text-white transition duration-150">會計</a>
+                </nav>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-400">當前用戶: 蕭士杰</span>
+                <span class="text-sm text-gray-400">日期: 2025/10/25</span>
+                <button class="bg-darker-bg p-2 rounded-full hover:bg-gray-600 transition">
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.168 6.444 6 8.243 6 10.341V14.16a2.032 2.032 0 01-.595 1.405L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- 主要內容區域 (Main Content Layout) -->
+        <main class="flex flex-grow overflow-hidden">
+
+            <!-- 左側功能導航 (Sidebar) -->
+            <nav id="sidebar" class="w-64 bg-darker-bg shadow-xl flex-shrink-0 pt-6 overflow-y-auto custom-scrollbar">
+                <!-- 菜單項將由 JavaScript 根據當前視圖填充 -->
+            </nav>
+
+            <!-- 中心內容區塊 (View Container) -->
+            <div id="content-view" class="flex-grow p-6 overflow-y-auto custom-scrollbar">
+                <!-- 視圖內容將由 JavaScript 渲染 -->
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // -----------------------------------------------------
+        // 核心應用程式邏輯與狀態
+        // -----------------------------------------------------
+
+        let currentView = 'strategy'; // 初始視圖改為策略指揮中心
+        const app = document.getElementById('app');
+        const sidebar = document.getElementById('sidebar');
+        const contentView = document.getElementById('content-view');
+
+        // 頂部導航元素
+        const navStrategy = document.getElementById('nav-strategy');
+        const navDashboard = document.getElementById('nav-dashboard');
+        const navProcurement = document.getElementById('nav-procurement');
+
+        // 採購模塊的模擬數據
+        const mockProcurementData = [
+            { id: 1, po_num: "01.01.1234567", vendor: "愛美服飾", buyer: "IBM" },
+            { id: 2, po_num: "01.02.2345670", vendor: "電子元件商", buyer: "Rob" },
+            { id: 3, po_num: "01.03.3456789", vendor: "台電", buyer: "Bob" },
+            { id: 4, po_num: "01.04.4567890", vendor: "髮飾配件", buyer: "David" },
+            { id: 5, po_num: "01.05.5678901", vendor: "愛倫服飾", buyer: "Charlie" },
+            { id: 6, po_num: "01.06.6789012", vendor: "光電複合", buyer: "Frank" },
+            { id: 7, po_num: "01.07.7890123", vendor: "水電批發", buyer: "Eva" },
+            { id: 8, po_num: "01.08.8901234", vendor: "牙刷批發", buyer: "Grace" },
+            { id: 9, po_num: "01.09.9012345", vendor: "日用品社", buyer: "Monica" },
+            { id: 10, po_num: "01.10.0123456", vendor: "電腦設備", buyer: "Jody" },
+            { id: 11, po_num: "01.11.1234577", vendor: "醫療器材", buyer: "Ivan" },
+            { id: 12, po_num: "01.12.1234588", vendor: "家電批發", buyer: "Kevin" },
+            { id: 13, po_num: "01.13.1234599", vendor: "建材行", buyer: "Linda" },
+            { id: 14, po_num: "01.14.1478900", vendor: "鞋類批發", buyer: "Mike" },
+        ];
+        let selectedProcurementId = 1;
+
+        // -----------------------------------------------------
+        // 策略指揮中心視圖 (VIEW 1) 邏輯
+        // -----------------------------------------------------
+
+        /**
+         * 渲染策略指揮中心的側邊欄
+         */
+        function renderStrategySidebar() {
+            sidebar.innerHTML = `
+                <div class="text-xs font-semibold uppercase tracking-wider text-gray-400 px-6 pt-6 pb-2">
+                    戰略概覽
+                </div>
+                <div class="side-nav-item side-nav-active">
+                    核心績效指標 (KPI)
+                </div>
+                <div class="side-nav-item">
+                    市場競爭力分析
+                </div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-gray-400 px-6 pt-6 pb-2">
+                    風險與法規
+                </div>
+                <div class="side-nav-item">
+                    合規狀態
+                </div>
+                <div class="side-nav-item">
+                    供應鏈風險
+                </div>
+            `;
+        }
+
+        /**
+         * 渲染策略指揮中心內容 (VIEW 1)
+         */
+        function renderStrategyView() {
+            renderStrategySidebar();
+            contentView.innerHTML = `
+                <div class="w-full">
+                    <h1 class="text-3xl font-extrabold text-white mb-8">IGB ERP 策略指揮中心</h1>
+
+                    <!-- 頂部戰略 KPI 區塊 -->
+                    <div class="grid grid-cols-4 gap-6 mb-8">
+                        <div class="erp-card flex flex-col">
+                            <div class="text-xl font-semibold text-gray-400 mb-2">年度營收 (YTD)</div>
+                            <div class="text-5xl font-extrabold text-success">$85.2M</div>
+                            <div class="text-sm text-gray-500 mt-1">同比增長: +12%</div>
+                        </div>
+                        <div class="erp-card flex flex-col">
+                            <div class="text-xl font-semibold text-gray-400 mb-2">淨利潤率 (TTM)</div>
+                            <div class="text-5xl font-extrabold text-logo-blue">18.5%</div>
+                            <div class="text-sm text-gray-500 mt-1">目標: 20.0%</div>
+                        </div>
+                        <div class="erp-card flex flex-col">
+                            <div class="text-xl font-semibold text-gray-400 mb-2">平均存貨周轉天數</div>
+                            <div class="text-5xl font-extrabold text-warning">45 天</div>
+                            <div class="text-sm text-gray-500 mt-1">基準線: 30 天 ⬆️</div>
+                        </div>
+                        <div class="erp-card flex flex-col">
+                            <div class="text-xl font-semibold text-gray-400 mb-2">客戶滿意度指數 (CSI)</div>
+                            <div class="text-5xl font-extrabold text-success">92.1</div>
+                            <div class="text-sm text-gray-500 mt-1">行業平均: 88.0</div>
+                        </div>
+                    </div>
+
+                    <!-- 財務與庫存概覽區塊 -->
+                    <div class="grid grid-cols-3 gap-6">
+                        <div class="erp-card col-span-2">
+                            <h2 class="text-2xl font-bold text-white mb-4">月度營收與利潤趨勢</h2>
+                            <div id="strategy-chart" class="h-80 w-full">
+                                <!-- 簡單的 SVG 趨勢圖，模擬數據 -->
+                                ${generateMockLineChart()}
+                            </div>
+                            <div class="text-sm text-gray-500 mt-4">註：數據反映過去六個月的核心業務表現。</div>
+                        </div>
+
+                        <div class="erp-card col-span-1">
+                            <h2 class="text-2xl font-bold text-white mb-4">即時營運警報</h2>
+                            <div class="space-y-4">
+                                <div class="p-3 rounded-lg bg-danger/20 border border-danger flex items-start space-x-3">
+                                    <span class="text-danger font-bold text-xl">⚠️</span>
+                                    <div>
+                                        <p class="text-base text-danger font-medium">存貨超額積壓</p>
+                                        <p class="text-sm text-gray-400">超過 90 天未銷售的庫存價值達 $500K，請立即審核。</p>
+                                    </div>
+                                </div>
+                                <div class="p-3 rounded-lg bg-warning/20 border border-warning flex items-start space-x-3">
+                                    <span class="text-warning font-bold text-xl">🔔</span>
+                                    <div>
+                                        <p class="text-base text-warning font-medium">兩大供應商評級下降</p>
+                                        <p class="text-sm text-gray-400">Vendor A001 和 B005 延期交貨率上升 15%。</p>
+                                    </div>
+                                </div>
+                                <div class="p-3 rounded-lg bg-success/20 border border-success flex items-start space-x-3">
+                                    <span class="text-success font-bold text-xl">✅</span>
+                                    <div>
+                                        <p class="text-base text-success font-medium">系統健康</p>
+                                        <p class="text-sm text-gray-400">所有核心微服務 API 響應時間均符合 SLA。</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * 生成策略指揮中心用的模擬趨勢圖 (SVG)
+         */
+        function generateMockLineChart() {
+            return `
+                <svg width="100%" height="100%" viewBox="0 0 700 320" preserveAspectRatio="none">
+                    <defs>
+                        <linearGradient id="revenueGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:var(--logo-blue); stop-opacity:0.8" />
+                            <stop offset="100%" style="stop-color:var(--logo-blue); stop-opacity:0.1" />
+                        </linearGradient>
+                    </defs>
+                    <!-- Y 軸標籤 (簡化) -->
+                    <text x="0" y="20" fill="#6B7280" font-size="12">10M</text>
+                    <text x="0" y="300" fill="#6B7280" font-size="12">0M</text>
+
+                    <!-- X 軸標籤 (月份) -->
+                    <text x="100" y="315" fill="#6B7280" font-size="12">5月</text>
+                    <text x="220" y="315" fill="#6B7280" font-size="12">6月</text>
+                    <text x="340" y="315" fill="#6B7280" font-size="12">7月</text>
+                    <text x="460" y="315" fill="#6B7280" font-size="12">8月</text>
+                    <text x="580" y="315" fill="#6B7280" font-size="12">9月</text>
+                    <text x="690" y="315" fill="#6B7280" font-size="12">10月</text>
+
+                    <!-- 營收線 (Revenue) - 使用 D 屬性繪製線條和區域 -->
+                    <path d="M50 200 L170 150 L290 180 L410 120 L530 100 L650 80" stroke="var(--logo-blue)" stroke-width="3" fill="none" />
+                    <path d="M50 200 L170 150 L290 180 L410 120 L530 100 L650 80 L650 300 L50 300 Z" fill="url(#revenueGradient)" opacity="0.4"/>
+
+                    <!-- 利潤線 (Profit) -->
+                    <path d="M50 250 L170 230 L290 240 L410 210 L530 200 L650 180" stroke="var(--success-green)" stroke-width="3" fill="none" />
+
+                    <!-- 數據點 -->
+                    <circle cx="650" cy="80" r="6" fill="var(--logo-blue)"></circle>
+                    <circle cx="650" cy="180" r="6" fill="var(--success-green)"></circle>
+                </svg>
+            `;
+        }
+
+        // -----------------------------------------------------
+        // 專案儀表板視圖 (VIEW 2) 邏輯 (原有的 S 曲線)
+        // -----------------------------------------------------
+
+        /**
+         * 繪製 S 曲線圖表 (使用 D3.js)
+         */
+        function drawSCurve() {
+            const data = [
+                { quarter: "2025 Q3", planned: 20, actual: 15 },
+                { quarter: "2025 Q4", planned: 45, actual: 40 },
+                { quarter: "2026 Q1", planned: 75, actual: 78 },
+                { quarter: "2026 Q2", planned: 90, actual: 92 },
+                { quarter: "2026 Q3", planned: 100, actual: 95 }
+            ];
+
+            const chartContainer = document.getElementById('s-curve-chart');
+            if (!chartContainer) return;
+
+            const margin = { top: 20, right: 40, bottom: 40, left: 60 };
+            const width = chartContainer.clientWidth - margin.left - margin.right;
+            const height = chartContainer.clientHeight - margin.top - margin.bottom;
+
+            d3.select("#s-curve-chart").selectAll("svg").remove();
+
+            const svg = d3.select("#s-curve-chart")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            // X 軸 (時間點/季度)
+            const x = d3.scalePoint()
+                .domain(data.map(d => d.quarter))
+                .range([0, width])
+                .padding(0.5);
+
+            // Y 軸 (進度百分比)
+            const y = d3.scaleLinear()
+                .domain([0, 100])
+                .range([height, 0]);
+
+            // 繪製 X 軸
+            svg.append("g")
+                .attr("class", "axis x-axis")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x))
+                .call(g => g.select(".domain").remove());
+
+            // 繪製 Y 軸
+            svg.append("g")
+                .attr("class", "axis y-axis")
+                .call(d3.axisLeft(y).ticks(5).tickFormat(d => `${d}%`))
+                .call(g => g.select(".domain").remove());
+
+            // 繪製格線
+            svg.selectAll("y-grid")
+                .data(y.ticks(5))
+                .enter().append("line")
+                .attr("class", "grid")
+                .attr("x1", 0)
+                .attr("x2", width)
+                .attr("y1", d => y(d))
+                .attr("y2", d => y(d))
+                .attr("stroke", "#30363d")
+                .attr("stroke-dasharray", "3,3");
+
+            // 線條生成器
+            const lineGenerator = d3.line()
+                .x(d => x(d.quarter))
+                .y(d => y(d.planned))
+                .curve(d3.curveMonotoneX);
+
+            // 1. 計劃進度
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line planned-line")
+                .attr("d", lineGenerator.y(d => y(d.planned)))
+                .attr("stroke", "#4a5568");
+
+            // 2. 實際進度
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line actual-line")
+                .attr("d", lineGenerator.y(d => y(d.actual)))
+                .attr("stroke", "var(--logo-blue)");
+
+            // 繪製點 (Actual)
+            svg.selectAll(".dot-actual")
+                .data(data)
+                .enter().append("circle")
+                .attr("class", "dot dot-actual")
+                .attr("cx", d => x(d.quarter))
+                .attr("cy", d => y(d.actual))
+                .attr("r", 5)
+                .attr("fill", "var(--logo-blue)");
+
+            // 圖例 (Legend)
+            const legend = svg.append("g").attr("transform", `translate(${width - 250}, 0)`);
+            legend.append("rect").attr("x", 0).attr("y", 0).attr("width", 10).attr("height", 10).attr("fill", "var(--logo-blue)");
+            legend.append("text").attr("x", 15).attr("y", 9).attr("class", "text-sm font-medium").attr("fill", "#c9d1d9").text("實際進度 (%)");
+            legend.append("rect").attr("x", 120).attr("y", 0).attr("width", 10).attr("height", 10).attr("fill", "#4a5568");
+            legend.append("text").attr("x", 135).attr("y", 9).attr("class", "text-sm font-medium").attr("fill", "#c9d1d9").text("計劃進度 (S 曲線)");
+        }
+
+        /**
+         * 渲染儀表板的側邊欄
+         */
+        function renderDashboardSidebar() {
+            sidebar.innerHTML = `
+                <div class="text-xs font-semibold uppercase tracking-wider text-gray-400 px-6 pt-6 pb-2">
+                    專案模組
+                </div>
+                <div class="side-nav-item side-nav-active">
+                    專案表板
+                </div>
+                <div class="side-nav-item">
+                    技術規格
+                </div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-gray-400 px-6 pt-6 pb-2">
+                    系統狀態
+                </div>
+                <div class="side-nav-item">
+                    MDM 執行時間軸
+                </div>
+                <div class="side-nav-item">
+                    系統健康監控
+                </div>
+            `;
+        }
+
+        /**
+         * 渲染專案儀表板內容 (VIEW 2)
+         */
+        function renderDashboardView() {
+            renderDashboardSidebar();
+            contentView.innerHTML = `
+                <div class="w-full">
+                    <h1 class="text-3xl font-extrabold text-white mb-6">專案進度儀表板</h1>
+
+                    <!-- KPI 區塊 -->
+                    <div class="grid grid-cols-4 gap-6 mb-8">
+                        <div class="erp-card flex flex-col justify-center items-start">
+                            <div class="text-xl font-semibold text-gray-400 mb-2">總體專案進度</div>
+                            <div class="text-5xl font-extrabold text-success">85%</div>
+                            <div class="text-sm text-gray-500 mt-1">+5% MTD</div>
+                        </div>
+                        <div class="erp-card flex flex-col justify-center items-start">
+                            <div class="text-xl font-semibold text-gray-400 mb-2">MDM 核心數據清潔率</div>
+                            <div class="text-5xl font-extrabold text-success">85%</div>
+                            <div class="text-sm text-gray-500 mt-1">目標 95%</div>
+                        </div>
+                        <div class="erp-card flex flex-col justify-center items-start">
+                            <div class="text-xl font-semibold text-gray-400 mb-2">核心微服務 API 完成度</div>
+                            <div class="text-5xl font-extrabold text-warning">7/10</div>
+                            <div class="text-sm text-gray-500 mt-1">待開發 3 個</div>
+                        </div>
+                        <div class="erp-card flex flex-col justify-center items-start">
+                            <div class="text-xl font-semibold text-gray-400 mb-2">關鍵問題等級</div>
+                            <div class="text-5xl font-extrabold text-danger">低 (1)</div>
+                            <div class="text-sm text-gray-500 mt-1">待解決 2 項</div>
+                        </div>
+                    </div>
+
+                    <!-- 核心進度與 S 曲線區塊 -->
+                    <div class="grid grid-cols-3 gap-6 mb-8">
+                        <div class="erp-card col-span-1">
+                            <h2 class="text-2xl font-bold text-white mb-4">核心模組進度</h2>
+                            <div id="module-progress" class="space-y-4">
+                                <!-- 進度條組件 -->
+                                <div><div class="flex justify-between items-center text-sm font-medium"><span>財務總帳 (GL/COA)</span><span class="text-success">99%</span></div><div class="w-full bg-[#30363d] rounded-full h-2.5"><div class="bg-success h-2.5 rounded-full" style="width: 99%"></div></div><div class="text-xs text-gray-500 mt-1">規格定義 - 99%</div></div>
+                                <div><div class="flex justify-between items-center text-sm font-medium"><span>物料/儲備庫存 (IM/COGS)</span><span class="text-warning">80%</span></div><div class="w-full bg-[#30363d] rounded-full h-2.5"><div class="bg-warning h-2.5 rounded-full" style="width: 80%"></div></div><div class="text-xs text-gray-500 mt-1">數據清洗中 - 80%</div></div>
+                                <div><div class="flex justify-between items-center text-sm font-medium"><span>訂單/退貨 (SD/RMA)</span><span class="text-danger">75%</span></div><div class="w-full bg-[#30363d] rounded-full h-2.5"><div class="bg-danger h-2.5 rounded-full" style="width: 75%"></div></div><div class="text-xs text-gray-500 mt-1">核心 API 完成 - 75%</div></div>
+                                <div><div class="flex justify-between items-center text-sm font-medium"><span>微物流網絡 (SiteLink)</span><span class="text-logo-blue">60%</span></div><div class="w-full bg-[#30363d] rounded-full h-2.5"><div class="bg-logo-blue h-2.5 rounded-full" style="width: 60%"></div></div><div class="text-xs text-gray-500 mt-1">GPS 介面開發 - 60%</div></div>
+                            </div>
+                        </div>
+
+                        <div class="erp-card col-span-2">
+                            <h2 class="text-2xl font-bold text-white mb-4">專案進度追蹤 (S 曲線)</h2>
+                            <div id="s-curve-chart" class="h-96"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // 繪製圖表
+            setTimeout(drawSCurve, 50); // 確保 DOM 渲染完成後再繪製
+        }
+
+        // -----------------------------------------------------
+        // 採購管理視圖 (VIEW 3) 邏輯
+        // -----------------------------------------------------
+
+        /**
+         * 渲染採購單列表
+         */
+        function renderProcurementList() {
+            const listElement = document.getElementById('procurement-list');
+            if (!listElement) return;
+
+            listElement.innerHTML = '';
+            mockProcurementData.forEach(item => {
+                const isSelected = item.id === selectedProcurementId;
+                const row = document.createElement('tr');
+                row.className = isSelected ? 'row-selected' : '';
+                row.dataset.id = item.id;
+                row.innerHTML = `
+                    <td class="px-3 py-3 text-sm">${item.id}</td>
+                    <td class="px-3 py-3 text-sm">${item.po_num}</td>
+                    <td class="px-3 py-3 text-sm">${item.vendor}</td>
+                    <td class="px-3 py-3 text-sm">${item.buyer}</td>
+                `;
+                row.addEventListener('click', () => selectProcurementRow(item.id));
+                listElement.appendChild(row);
+            });
+            document.getElementById('total-count').textContent = mockProcurementData.length;
+            // 首次加載或渲染時，確保右側顯示正確的單號
+            updateProcurementDetails(selectedProcurementId);
+        }
+
+        /**
+         * 選中採購單行並更新詳情面板
+         */
+        function selectProcurementRow(id) {
+            const listElement = document.getElementById('procurement-list');
+            // 移除舊的選中樣式
+            listElement.querySelectorAll('tr').forEach(row => {
+                row.classList.remove('row-selected');
+                row.style.borderLeft = 'none';
+            });
+
+            // 設置新的選中狀態
+            const newSelected = listElement.querySelector(`[data-id="${id}"]`);
+            if (newSelected) {
+                newSelected.classList.add('row-selected');
+                newSelected.style.borderLeft = '4px solid var(--logo-blue)';
+                selectedProcurementId = id;
+                updateProcurementDetails(id);
+            }
+        }
+
+        /**
+         * 更新右側詳情面板的單號
+         */
+        function updateProcurementDetails(id) {
+             const data = mockProcurementData.find(d => d.id === id);
+             if (data) {
+                const detailNum = document.getElementById('detail-po-number');
+                if (detailNum) detailNum.textContent = data.po_num;
+             }
+        }
+
+        /**
+         * 渲染採購管理的側邊欄
+         */
+        function renderProcurementSidebar() {
+            sidebar.innerHTML = `
+                <div class="text-xs font-semibold uppercase tracking-wider text-gray-400 px-6 pt-6 pb-2">
+                    採購業務
+                </div>
+                <div class="side-nav-item side-nav-active">
+                    採購處理
+                </div>
+                <div class="side-nav-item">
+                    製作採購單
+                </div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-gray-400 px-6 pt-6 pb-2">
+                    報表與查詢
+                </div>
+                <div class="side-nav-item">
+                    驗收清單
+                </div>
+                <div class="side-nav-item">
+                    歷史採購查詢
+                </div>
+            `;
+        }
+
+        /**
+         * 渲染採購管理內容 (VIEW 3)
+         */
+        function renderProcurementView() {
+            renderProcurementSidebar();
+            contentView.innerHTML = `
+                <div class="flex space-x-6 h-full">
+                    <!-- 採購單列表 (Purchase Order List) -->
+                    <div class="w-1/2 bg-darker-bg rounded-xl shadow-2xl p-6 flex flex-col">
+                        <h2 class="text-2xl font-bold text-white mb-4">採購單列表</h2>
+                        <div class="mb-4 flex space-x-2">
+                            <input type="text" placeholder="搜尋採購單、廠商或品名..." class="flex-grow">
+                            <button class="bg-gray-600 p-2 rounded-lg hover:bg-gray-700 transition">
+                                <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </button>
+                        </div>
+
+                        <!-- 表格 -->
+                        <div class="overflow-y-auto flex-grow rounded-lg border border-gray-600">
+                            <table class="min-w-full divide-y divide-gray-700 procurement-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sticky top-0 z-10">單號</th>
+                                        <th class="sticky top-0 z-10">採購單號碼</th>
+                                        <th class="sticky top-0 z-10">廠商名稱</th>
+                                        <th class="sticky top-0 z-10">採購人員</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="procurement-list">
+                                    <!-- 數據行將由 JavaScript 填充 -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-4 text-sm text-gray-400">總計 <span id="total-count">0</span> 筆採購單</div>
+                    </div>
+
+                    <!-- 採購單詳情與商品清單 (Purchase Order Details & Items) -->
+                    <div class="w-1/2 flex flex-col space-y-4 overflow-y-auto custom-scrollbar">
+
+                        <!-- 採購單資料面板 -->
+                        <div class="p-6 bg-logo-red text-white rounded-xl shadow-md flex-shrink-0">
+                            <h2 class="text-2xl font-bold mb-4">採購單資料 <span id="detail-po-number">1234567</span></h2>
+                            <div class="grid grid-cols-2 gap-4 text-sm detail-panel-section">
+                                <div><label class="block font-medium mb-1">採購單號</label><input type="text" value="1234567" readonly></div>
+                                <div><label class="block font-medium mb-1">採購日期</label><input type="text" value="2024/01/01" readonly></div>
+                                <div>
+                                    <label class="block font-medium mb-1">廠商編號</label>
+                                    <div class="flex space-x-2">
+                                        <input type="text" value="A001" readonly>
+                                        <button class="bg-gray-700 text-white px-3 rounded-lg text-xs hover:bg-gray-800 flex-shrink-0">查詢</button>
+                                    </div>
+                                </div>
+                                <div><label class="block font-medium mb-1">廠商名稱</label><input type="text" value="愛美服飾" readonly></div>
+                                <div><label class="block font-medium mb-1">採購人員</label><input type="text" value="IBM (假名)" readonly></div>
+                                <div><label class="block font-medium mb-1">付款方式</label><input type="text" value="月結 30 天" readonly></div>
+                                <div class="col-span-2"><label class="block font-medium mb-1">備註</label><textarea rows="1" readonly>統一發票開立請註明商品明細。</textarea></div>
+                            </div>
+                        </div>
+
+                        <!-- 採購商品清單面板 -->
+                        <div class="p-6 bg-darker-bg rounded-xl shadow-md flex-grow">
+                            <h2 class="text-2xl font-bold text-white mb-4">採購商品清單</h2>
+
+                            <!-- 商品表格 -->
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-700">
+                                    <thead>
+                                        <tr>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">項次</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">商品編號/名稱</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">數量</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">單價</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">總額</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="item-list" class="divide-y divide-gray-700 text-sm">
+                                        <tr class="hover:bg-gray-700"><td class="px-3 py-3 text-gray-300">1</td><td class="px-3 py-3 text-gray-300">A1001/T 恤 (黑色, XL)</td><td class="px-3 py-3 text-gray-300">100</td><td class="px-3 py-3 text-gray-300">50</td><td class="px-3 py-3 text-gray-300">5,000</td><td class="px-3 py-3 text-logo-red cursor-pointer hover:underline">刪除</td></tr>
+                                        <tr class="hover:bg-gray-700"><td class="px-3 py-3 text-gray-300">2</td><td class="px-3 py-3 text-gray-300">A3102/牛仔褲 (藍色, L)</td><td class="px-3 py-3 text-gray-300">50</td><td class="px-3 py-3 text-gray-300">550</td><td class="px-3 py-3 text-gray-300">27,500</td><td class="px-3 py-3 text-logo-red cursor-pointer hover:underline">刪除</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="mt-4 flex justify-end"><button class="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition duration-150 text-sm">新增商品</button></div>
+
+                            <!-- 總計區 -->
+                            <div class="mt-6 p-4 bg-gray-700 rounded-lg text-right">
+                                <p class="text-xl font-bold text-white">採購總金額 (未稅): <span class="text-logo-blue ml-2" id="total-amount">32,500</span></p>
+                            </div>
+                        </div>
+
+                        <!-- 底部操作按鈕 -->
+                        <div class="flex justify-end space-x-4 flex-shrink-0">
+                            <button class="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition duration-150">列印採購單</button>
+                            <button class="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition duration-150">作廢</button>
+                            <button class="px-6 py-3 bg-logo-red text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition duration-150">🚨 確認採購</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // 渲染採購列表數據
+            renderProcurementList();
+        }
+
+
+        // -----------------------------------------------------
+        // 視圖切換器
+        // -----------------------------------------------------
+
+        /**
+         * 移除所有導航項目的 active 樣式
+         */
+        function clearNavStyles() {
+            [navStrategy, navDashboard, navProcurement].forEach(nav => {
+                if (nav) {
+                    nav.classList.remove('text-white', 'border-b-2', 'border-logo-blue');
+                    nav.classList.add('text-gray-400', 'hover:text-white');
+                }
+            });
+        }
+
+        /**
+         * 切換視圖主函數
+         * @param {string} view - 'strategy', 'dashboard', 或 'procurement'
+         */
+        function switchView(view) {
+            currentView = view;
+
+            clearNavStyles();
+
+            let targetNav;
+            let renderFunction;
+
+            if (view === 'strategy') {
+                targetNav = navStrategy;
+                renderFunction = renderStrategyView;
+            } else if (view === 'dashboard') {
+                targetNav = navDashboard;
+                renderFunction = renderDashboardView;
+            } else if (view === 'procurement') {
+                targetNav = navProcurement;
+                renderFunction = renderProcurementView;
+            }
+
+            if (targetNav && renderFunction) {
+                targetNav.classList.add('text-white', 'border-b-2', 'border-logo-blue');
+                targetNav.classList.remove('text-gray-400', 'hover:text-white');
+                renderFunction();
+            }
+        }
+
+        // -----------------------------------------------------
+        // 事件監聽與初始化
+        // -----------------------------------------------------
+
+        // 綁定頂部導航事件
+        navStrategy.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('strategy');
+        });
+        navDashboard.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('dashboard');
+        });
+        navProcurement.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('procurement');
+        });
+
+        // 窗口大小變化時重新繪製 S 曲線 (如果正在顯示儀表板)
+        window.addEventListener('resize', () => {
+            if (currentView === 'dashboard') {
+                drawSCurve();
+            }
+        });
+
+        // 首次加載
+        window.onload = function() {
+            switchView('strategy'); // 默認顯示策略指揮中心
+        }
+    </script>
+</body>
+</html>

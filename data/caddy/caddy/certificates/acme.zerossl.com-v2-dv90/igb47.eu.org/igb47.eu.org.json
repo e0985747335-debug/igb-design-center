@@ -1,0 +1,19 @@
+{
+	"sans": [
+		"igb47.eu.org"
+	],
+	"issuer_data": {
+		"url": "https://acme.zerossl.com/v2/DV90/cert/KLE23UroItAmqORLT9I4_w",
+		"ca": "https://acme.zerossl.com/v2/DV90",
+		"account": "https://acme.zerossl.com/v2/DV90/account/yyP0JU9b_tBg7shCn-CwfA",
+		"renewal_info": {
+			"suggestedWindow": {
+				"start": "2026-01-21T23:59:59Z",
+				"end": "2026-01-23T23:59:59Z"
+			},
+			"_uniqueIdentifier": "D2vmS845R672fpAeefAwkZLIX6M.AO9edA6Pxe7NK_hlK7fBw8g",
+			"_retryAfter": "2025-11-07T16:42:40.292761533Z",
+			"_selectedTime": "2026-01-23T10:35:05Z"
+		}
+	}
+}

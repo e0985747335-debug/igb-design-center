@@ -1,0 +1,21 @@
+# ==========================================================
+# 🧠 IGB ERP 2.0 Enterprise 定期任務排程 (v5.8.3)
+# Author: IGB Tung
+# ==========================================================
+
+# 🌅 每天凌晨 03:00：Smart Heavy Cleaner (v5.8.3)
+0 3 * * * bash /home/iven/igb-design-center/tools/smart-heavy-cleaner-v5.8.3-safe.sh >> /home/iven/igb-design-center/logs/cleaner-cron.log 2>&1
+
+# 🔍 每 20 分鐘：監控 IGB Service 狀態 (防呆 + Telegram 通知)
+*/20 * * * * bash /home/iven/igb-design-center/tools/monitor_igb_services.sh >> /home/iven/igb-design-center/logs/monitor/monitor_cron.log 2>&1
+
+# 🗓 每週日 21:00：完整備份 + 週報
+0 21 * * 0 bash /home/iven/igb-design-center/tools/auto-cron-backup.sh >> /home/iven/igb-design-center/logs/auto-cron-backup.log 2>&1
+30 21 * * 0 bash /home/iven/igb-design-center/tools/cron-weekly-report.sh >> /home/iven/igb-design-center/tools/logs/cron-weekly-report.log 2>&1
+
+# 🕒 每天 23:30：自動狀態同步摘要 (每日報告)
+30 23 * * * bash /home/iven/igb-design-center/tools/auto-status-sync.sh >> /home/iven/igb-design-center/logs/auto-status-sync.log 2>&1
+
+# ✅ 每天 08:30：Cron 自我健康檢查
+30 8 * * * /bin/bash -lc 'cd /home/iven/igb-design-center/tools && ./verify-cron-status-beauty.sh >> /home/iven/igb-design-center/tools/logs/verify-cron-status-beauty.log 2>&1 && find /home/iven/igb-design-center/tools/logs -name "verify-cron-status-beauty-*.log" -mtime +30 -delete'
+

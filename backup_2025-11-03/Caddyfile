@@ -1,0 +1,20 @@
+igb47.eu.org {
+    encode gzip zstd
+
+    # --- 靜態網站首頁 ---
+    root * /srv
+    file_server
+
+    # --- FastAPI ---
+    handle_path /api/* {
+        reverse_proxy igb_fastapi:8000
+    }
+
+    # --- pgAdmin ---
+    handle_path /pgadmin/* {
+        uri strip_prefix /pgadmin
+        reverse_proxy igb_pgadmin:80
+    }
+
+    tls wooderiven@gmail.com
+}

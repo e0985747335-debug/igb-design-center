@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>優化行動應用程式介面</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+        }
+        /* Custom class for the simulated mobile container */
+        .mobile-container {
+            max-width: 420px; /* Typical max width for mobile display */
+            height: 100vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        /* Style for custom icons (using text/emoji as placeholders) */
+        .icon {
+            font-size: 20px;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body class="flex justify-center min-h-screen">
+
+<div class="mobile-container bg-white shadow-2xl relative">
+    
+    <!-- 1. 頂部導航與搜尋欄 (Header & Search) -->
+    <header class="p-4 pt-6 bg-white sticky top-0 z-10 border-b border-gray-100">
+        <div class="flex items-center justify-between mb-4">
+            <!-- START: Logo 區塊整合 -->
+            <div class="flex items-center space-x-2">
+                <!-- Logo Placeholder: 使用圓角淺藍色方塊作為 iGB 標誌的簡化視覺代表 -->
+                <div class="w-8 h-8 bg-sky-600 rounded-lg flex items-center justify-center shadow-md">
+                    <!-- 由於原標誌有四個區塊，這裡用一個強調點 (或第一個字母 'i') 作為代表 -->
+                    <span class="text-white text-xl font-extrabold -mt-1">i</span>
+                </div>
+                <!-- 淺藍色標題 -->
+                <h1 class="text-2xl font-extrabold text-sky-600">生活點滴</h1>
+            </div>
+            <!-- END: Logo 區塊整合 -->
+            
+            <!-- 假設右側是通知或個人中心入口 -->
+            <div class="icon text-gray-700">&#9889;</div> <!-- Placeholder for Notification Icon -->
+        </div>
+
+        <!-- 優化的搜尋框：更圓潤、有陰影、且帶有清晰的提示文字 -->
+        <div class="relative">
+            <input type="text" placeholder="探索熱門食譜、附近好去處..." 
+                   class="w-full py-3 pl-10 pr-4 text-sm bg-gray-100 rounded-full focus:ring-2 focus:ring-sky-500 focus:bg-white outline-none transition duration-150 ease-in-out shadow-sm">
+            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </span>
+        </div>
+    </header>
+
+    <!-- 2. 分類/快速入口區 (Categories) -->
+    <section class="p-4 grid grid-cols-4 gap-4 border-b border-gray-100">
+        <!-- 優化：使用圓形圖示搭配文字，更符合行動端設計語言 -->
+        <div class="text-center group cursor-pointer">
+            <div class="w-14 h-14 mx-auto bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mb-1 transition duration-150 group-hover:bg-red-200 shadow-md">
+                <div class="icon">&#128293;</div> <!-- Hot/Popular Icon -->
+            </div>
+            <span class="text-xs font-medium text-gray-700">熱門</span>
+        </div>
+        <div class="text-center group cursor-pointer">
+            <div class="w-14 h-14 mx-auto bg-teal-100 text-teal-600 rounded-2xl flex items-center justify-center mb-1 transition duration-150 group-hover:bg-teal-200 shadow-md">
+                <div class="icon">&#128197;</div> <!-- Newest Icon -->
+            </div>
+            <span class="text-xs font-medium text-gray-700">最新</span>
+        </div>
+        <div class="text-center group cursor-pointer">
+            <div class="w-14 h-14 mx-auto bg-yellow-100 text-yellow-600 rounded-2xl flex items-center justify-center mb-1 transition duration-150 group-hover:bg-yellow-200 shadow-md">
+                <div class="icon">&#128640;</div> <!-- Nearby Icon -->
+            </div>
+            <span class="text-xs font-medium text-gray-700">附近</span>
+        </div>
+        <div class="text-center group cursor-pointer">
+            <div class="w-14 h-14 mx-auto bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mb-1 transition duration-150 group-hover:bg-indigo-200 shadow-md">
+                <div class="icon">&#127760;</div> <!-- All Icon -->
+            </div>
+            <span class="text-xs font-medium text-gray-700">全部</span>
+        </div>
+    </section>
+
+    <!-- 3. 內容清單區 (Content Feed) -->
+    <main class="p-4 pb-20">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">今日熱門精選</h2>
+        
+        <!-- 優化的內容卡片設計 (Content Card Optimization) -->
+        <div id="content-list" class="space-y-4">
+            
+            <!-- 卡片範例 1: 泰式海鮮炒麵 -->
+            <div class="flex items-center bg-white p-3 rounded-xl shadow-lg hover:shadow-xl transition duration-300 cursor-pointer">
+                <!-- 圖片區塊: 使用 4:3 比例，圓角處理，提升視覺吸引力 -->
+                <div class="w-24 h-16 mr-4 flex-shrink-0 bg-sky-100 rounded-lg overflow-hidden relative">
+                    <!-- Placeholder Image with the new sky blue color -->
+                    <img src="https://placehold.co/96x64/0EA5E9/ffffff?text=海鮮麵" onerror="this.onerror=null;this.src='https://placehold.co/96x64/0EA5E9/ffffff?text=圖片'" class="w-full h-full object-cover">
+                    <!-- 標籤/Tag: 視覺強化 -->
+                    <span class="absolute bottom-1 right-1 px-2 py-0.5 text-xs font-semibold text-white bg-red-500 rounded-full shadow-md">
+                        新上架
+                    </span>
+                </div>
+                
+                <!-- 文字內容區塊 -->
+                <div class="flex-grow">
+                    <h3 class="text-base font-semibold text-gray-900 line-clamp-2">
+                        泰式海鮮炒麵的秘訣：酸辣開胃又美味
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">
+                        <span class="inline-block px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded-full">
+                            食譜
+                        </span>
+                        <span class="ml-2 text-xs text-gray-400">3小時前</span>
+                    </p>
+                </div>
+                <!-- 箭頭或其他互動元素 -->
+                <div class="icon text-gray-300 ml-2">&#10095;</div>
+            </div>
+
+            <!-- 卡片範例 2: 香菜 -->
+            <div class="flex items-center bg-white p-3 rounded-xl shadow-lg hover:shadow-xl transition duration-300 cursor-pointer">
+                <div class="w-24 h-16 mr-4 flex-shrink-0 bg-green-100 rounded-lg overflow-hidden relative">
+                    <img src="https://placehold.co/96x64/047857/ffffff?text=香菜" onerror="this.onerror=null;this.src='https://placehold.co/96x64/047857/ffffff?text=圖片'" class="w-full h-full object-cover">
+                </div>
+                
+                <div class="flex-grow">
+                    <h3 class="text-base font-semibold text-gray-900 line-clamp-2">
+                        香菜控必學：5種意想不到的創意料理
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">
+                        <!-- 將標籤顏色調整為與淺藍色主題相輔的顏色，例如更柔和的藍色 -->
+                        <span class="inline-block px-2 py-0.5 text-xs font-medium text-sky-700 bg-sky-100 rounded-full">
+                            美食
+                        </span>
+                        <span class="ml-2 text-xs text-gray-400">1天前</span>
+                    </p>
+                </div>
+                <div class="icon text-gray-300 ml-2">&#10095;</div>
+            </div>
+
+            <!-- 卡片範例 3: 其他類別 -->
+            <div class="flex items-center bg-white p-3 rounded-xl shadow-lg hover:shadow-xl transition duration-300 cursor-pointer">
+                <div class="w-24 h-16 mr-4 flex-shrink-0 bg-purple-100 rounded-lg overflow-hidden relative">
+                    <img src="https://placehold.co/96x64/8B5CF6/ffffff?text=好去處" onerror="this.onerror=null;this.src='https://placehold.co/96x64/8B5CF6/ffffff?text=圖片'" class="w-full h-full object-cover">
+                </div>
+                
+                <div class="flex-grow">
+                    <h3 class="text-base font-semibold text-gray-900 line-clamp-2">
+                        台北週末好去處：文青咖啡廳地圖
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">
+                        <span class="inline-block px-2 py-0.5 text-xs font-medium text-pink-700 bg-pink-100 rounded-full">
+                            旅遊
+                        </span>
+                        <span class="ml-2 text-xs text-gray-400">2小時前</span>
+                    </p>
+                </div>
+                <div class="icon text-gray-300 ml-2">&#10095;</div>
+            </div>
+
+        </div>
+    </main>
+    
+    <!-- 4. 底部標籤列 (Bottom Tab Bar) -->
+    <footer class="fixed bottom-0 w-full max-w-md h-16 bg-white border-t border-gray-200 flex justify-around items-center shadow-2xl z-20">
+        <!-- 確保點擊區域足夠大 -->
+        <!-- 淺藍色活躍狀態 -->
+        <a href="#" class="flex flex-col items-center text-sky-600">
+            <div class="icon">&#127968;</div> <!-- Home Icon -->
+            <span class="text-xs font-medium">首頁</span>
+        </a>
+        <a href="#" class="flex flex-col items-center text-gray-400 hover:text-gray-600">
+            <div class="icon">&#128269;</div> <!-- Search Icon -->
+            <span class="text-xs font-medium">探索</span>
+        </a>
+        
+        <!-- 中間的 "新增/發布" 按鈕，使用天空藍強調 -->
+        <a href="#" class="w-14 h-14 -mt-6 bg-sky-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-sky-600 transition duration-150">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+        </a>
+
+        <a href="#" class="flex flex-col items-center text-gray-400 hover:text-gray-600">
+            <div class="icon">&#128172;</div> <!-- Messages Icon -->
+            <span class="text-xs font-medium">訊息</span>
+        </a>
+        <a href="#" class="flex flex-col items-center text-gray-400 hover:text-gray-600">
+            <div class="icon">&#128100;</div> <!-- Profile Icon -->
+            <span class="text-xs font-medium">我的</span>
+        </a>
+    </footer>
+</div>
+
+</body>
+</html>

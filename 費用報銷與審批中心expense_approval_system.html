@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>電子化費用報銷與審批系統 (附電子郵件通知模擬)</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 使用 Inter 字體 */
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        /* 自訂 Scrollbar */
+        .scrollable-list::-webkit-scrollbar { width: 8px; }
+        .scrollable-list::-webkit-scrollbar-thumb { background-color: #9ca3af; border-radius: 4px; }
+        .scrollable-list::-webkit-scrollbar-track { background-color: #e5e7eb; }
+    </style>
+    <!-- 載入 Google Icons for UI elements -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+
+    <!-- 主容器 -->
+    <div id="app" class="min-h-screen p-4 sm:p-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-extrabold text-gray-900 border-b-4 border-indigo-600 pb-2 inline-block">
+                費用報銷與審批中心
+            </h1>
+            
+            <!-- 角色切換模擬 -->
+            <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between bg-white p-3 rounded-xl shadow-md border-l-4 border-orange-500">
+                <p class="text-sm text-gray-700 font-medium mb-2 sm:mb-0">
+                    <span class="material-icons text-lg align-middle mr-1 text-orange-600">person</span>
+                    當前模擬角色: <span id="current-role-display" class="font-bold text-lg text-indigo-700">提交者 (員工)</span>
+                </p>
+                <div class="flex space-x-2">
+                    <button onclick="switchRole('submitter')" class="role-btn bg-indigo-500 hover:bg-indigo-600 text-white text-sm py-2 px-4 rounded-lg transition duration-200 shadow">
+                        切換為 提交者 (員工)
+                    </button>
+                    <button onclick="switchRole('approver')" class="role-btn bg-green-500 hover:bg-green-600 text-white text-sm py-2 px-4 rounded-lg transition duration-200 shadow">
+                        切換為 審批者 (經理)
+                    </button>
+                </div>
+        </header>
+
+        <!-- 應用程式主體：根據角色動態調整佈局 -->
+        <div id="main-content" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- 報銷單提交區 (僅提交者顯示) -->
+            <div id="submission-area" class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg h-fit">
+                <h2 class="text-xl font-semibold text-indigo-700 mb-4 flex items-center">
+                    <span class="material-icons mr-2 text-2xl">add_box</span> 提交新的報銷單
+                </h2>
+                <form id="expense-form" class="space-y-4">
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-gray-700">費用說明 (必填)</label>
+                        <input type="text" id="description" placeholder="例如：客戶餐費或專案差旅費" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                    </div>
+
+                    <div>
+                        <label for="category" class="block text-sm font-medium text-gray-700">會計科目 (必選)</label>
+                        <select id="category" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border bg-white">
+                            <option value="" disabled selected>請選擇一個科目</option>
+                            <option value="旅費及交通費">旅費及交通費 (Travel)</option>
+                            <option value="餐費及招待費">餐費及招待費 (Meals)</option>
+                            <option value="辦公用品">辦公用品 (Office Supplies)</option>
+                            <option value="行銷與廣告費">行銷與廣告費 (Marketing)</option>
+                            <option>其他</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="amount" class="block text-sm font-medium text-gray-700">金額 (必填)</label>
+                        <input type="number" id="amount" placeholder="例如：1500" required min="0.01" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                    </div>
+                    
+                    <div>
+                        <label for="date" class="block text-sm font-medium text-gray-700">發生日期 (必填)</label>
+                        <input type="date" id="date" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                    </div>
+                    
+                    <button type="submit" id="submit-button" class="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150">
+                        <span class="material-icons mr-1 text-base">send</span> 提交報銷
+                    </button>
+                    <p id="submission-message" class="text-sm text-center mt-2 hidden"></p>
+                </form>
+            </div>
+
+            <!-- 報銷單列表區 (根據角色調整寬度) -->
+            <div id="list-area" class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 id="list-title" class="text-xl font-semibold text-green-700 flex items-center">
+                        <span class="material-icons mr-2 text-2xl">list_alt</span> 待處理與歷史報銷單
+                    </h2>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>電子化費用報銷與分析系統 (D3.js 數據報表)</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 D3.js for Data Visualization -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* 使用 Inter 字體 */
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        
+        /* 自訂 Scrollbar */
+        .scrollable-list::-webkit-scrollbar { width: 8px; }
+        .scrollable-list::-webkit-scrollbar-thumb { background-color: #9ca3af; border-radius: 4px; }
+        .scrollable-list::-webkit-scrollbar-track { background-color: #e5e7eb; }
+
+        /* UI 優化：自訂通知框的轉換效果，讓它滑入滑出更流暢 */
+        .notification-hidden { opacity: 0; transform: translateY(100%); visibility: hidden; }
+        .notification-visible { opacity: 1; transform: translateY(0); visibility: visible; }
+        
+        /* 確保 SVG 容器的尺寸和響應性 */
+        #bar-chart-container {
+            width: 100%;
+            height: 500px; /* 固定高度，內容自動調整寬度 */
+            overflow-x: auto;
+        }
+        
+        /* D3 圖表樣式 */
+        .bar {
+            fill: #4c51bf; /* Indigo-600 */
+            transition: fill 0.3s ease;
+        }
+        .bar:hover {
+            fill: #374151; /* Gray-700 */
+        }
+    </style>
+    <!-- 載入 Google Icons for UI elements -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+
+    <!-- 主容器 -->
+    <div id="app" class="min-h-screen p-4 sm:p-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-extrabold text-gray-900 border-b-4 border-indigo-600 pb-2 inline-block">
+                費用報銷與分析系統
+            </h1>
+            
+            <!-- 角色切換模擬 -->
+            <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between bg-white p-3 rounded-xl shadow-md border-l-4 border-orange-500">
+                <p class="text-sm text-gray-700 font-medium mb-2 sm:mb-0">
+                    <span class="material-icons text-lg align-middle mr-1 text-orange-600">person</span>
+                    當前模擬角色: <span id="current-role-display" class="font-bold text-lg text-indigo-700">提交者 (員工)</span>
+                </p>
+                <div class="flex space-x-2">
+                    <button onclick="switchRole('submitter')" class="role-btn bg-indigo-500 hover:bg-indigo-600 text-white text-sm py-2 px-4 rounded-lg transition duration-200 shadow">
+                        切換為 提交者 (員工)
+                    </button>
+                    <button onclick="switchRole('approver')" class="role-btn bg-green-500 hover:bg-green-600 text-white text-sm py-2 px-4 rounded-lg transition duration-200 shadow">
+                        切換為 審批者 (經理)
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 視圖切換標籤 -->
+            <div class="mt-6 flex space-x-3 border-b border-gray-300">
+                <button id="tab-dashboard" onclick="switchView('dashboard')" 
+                        class="px-4 py-2 text-sm font-medium border-b-2 border-indigo-600 text-indigo-600 transition duration-150 flex items-center">
+                    <span class="material-icons mr-1">paid</span> 報銷與審批
+                </button>
+                <button id="tab-analysis" onclick="switchView('analysis')" 
+                        class="px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:border-gray-400 hover:text-gray-700 transition duration-150 flex items-center">
+                    <span class="material-icons mr-1">insights</span> 會計科目分析 (報表)
+                </button>
+            </div>
+        </header>
+
+        <!-- 報銷/審批儀表板 (Dashboard View) -->
+        <div id="dashboard-panel">
+            <div id="main-content" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- 報銷單提交區 (僅提交者顯示) -->
+                <div id="submission-area" class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg h-fit">
+                    <h2 class="text-xl font-semibold text-indigo-700 mb-4 flex items-center">
+                        <span class="material-icons mr-2 text-2xl">add_box</span> 提交新的報銷單
+                    </h2>
+                    <form id="expense-form" class="space-y-4">
+                        <div>
+                            <label for="description" class="block text-sm font-medium text-gray-700">費用說明 (必填)</label>
+                            <input type="text" id="description" placeholder="例如：客戶餐費或專案差旅費" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                        </div>
+
+                        <div>
+                            <label for="category" class="block text-sm font-medium text-gray-700">會計科目 (必選)</label>
+                            <select id="category" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border bg-white">
+                                <option value="" disabled selected>請選擇一個科目</option>
+                                
+                                <!-- 💼 旅費及交通費 (Travel & Transport) - 增加細項 -->
+                                <optgroup label="💼 旅費及交通費 (Travel & Transport)">
+                                    <option value="國內差旅費">國內差旅費 (Domestic)</option>
+                                    <option value="國外差旅費">國外差旅費 (International)</option>
+                                    <option value="市區交通費">市區交通費 (Local Transit)</option>
+                                    <option value="高鐵/火車票">高鐵/火車票 (Rail Fare)</option>
+                                    <option value="機票費用">機票費用 (Airfare)</option>
+                                    <option value="住宿費用">住宿費用 (Accommodation)</option>
+                                </optgroup>
+                                
+                                <!-- 🍽️ 餐費及招待費 (Meals & Entertainment) - 增加細項 -->
+                                <optgroup label="🍽️ 餐費及招待費 (Meals & Entertainment)">
+                                    <option value="客戶招待費">客戶招待費 (Client Entertainment)</option>
+                                    <option value="員工福利餐費">員工福利餐費 (Staff Welfare)</option>
+                                    <option value="內部會議餐飲">內部會議餐飲 (Internal Meeting F&B)</option>
+                                </optgroup>
+                                
+                                <!-- 📦 辦公與行政費 (Office & Admin) - 增加細項 -->
+                                <optgroup label="📦 辦公與行政費 (Office & Admin)">
+                                    <option value="辦公用品及耗材">辦公用品及耗材 (Supplies)</option>
+                                    <option value="郵電/通訊費">郵電/通訊費 (Post & Telecom)</option>
+                                    <option value="租金支出">租金支出 (Rent Expense)</option>
+                                    <option value="水電瓦斯費">水電瓦斯費 (Utilities)</option>
+                                    <option value="修繕與維護費">修繕與維護費 (Repair & Maint.)</option>
+                                    <option value="報章雜誌訂閱費">報章雜誌訂閱費 (Subscriptions)</option>
+                                </optgroup>
+                                
+                                <!-- 💻 資訊與軟體費 (IT & Software) - 增加細項 -->
+                                <optgroup label="💻 資訊與軟體費 (IT & Software)">
+                                    <option value="軟體訂閱費">軟體訂閱費 (Software Subscription)</option>
+                                    <option value="硬體採購費">硬體採購費 (Hardware Purchase)</option>
+                                    <option value="資訊服務費">資訊服務費 (IT Services)</option>
+                                    <option value="雲端服務費">雲端服務費 (Cloud Services)</option>
+                                    <option value="網站網域名稱費">網站網域名稱費 (Domain/Web Fees)</option>
+                                </optgroup>
+
+                                <!-- 📈 行銷與業務費 (Marketing & Sales) - 增加細項 -->
+                                <optgroup label="📈 行銷與業務費 (Marketing & Sales)">
+                                    <option value="廣告與宣傳費">廣告與宣傳費 (Advertising)</option>
+                                    <option value="業務交際費">業務交際費 (Sales Relations)</option>
+                                    <option value="展覽費">展覽費 (Exhibition Fees)</option>
+                                    <option value="印刷宣傳品">印刷宣傳品 (Printed Materials)</option>
+                                    <option value="市場調研費">市場調研費 (Market Research)</option>
+                                </optgroup>
+                                
+                                <!-- 📚 培訓與人才費 (Training & HR) - 增加細項 -->
+                                <optgroup label="📚 培訓與人才費 (Training & HR)">
+                                    <option value="專業培訓費">專業培訓費 (Professional Training)</option>
+                                    <option value="招募費用">招募費用 (Recruitment Costs)</option>
+                                    <option value="教育訓練課程費">教育訓練課程費 (Course Fees)</option>
+                                    <option value="員工健康檢查費">員工健康檢查費 (Health Check-ups)</option>
+                                </optgroup>
+
+                                <!-- 🧑‍💻 專業服務費 (Professional Services) - 增加細項 -->
+                                <optgroup label="🧑‍💻 專業服務費 (Professional Services)">
+                                    <option value="顧問費">顧問費 (Consulting)</option>
+                                    <option value="法律及會計費用">法律及會計費用 (Legal & Accounting)</option>
+                                    <option value="外部審計費">外部審計費 (External Audit)</option>
+                                    <option value="翻譯/口譯費">翻譯/口譯費 (Translation/Interpreting)</option>
+                                </optgroup>
+                                
+                                <!-- 🏦 財務與雜項費 (Financial & Misc.) - 增加細項 -->
+                                <optgroup label="🏦 財務與雜項費 (Financial & Misc.)">
+                                    <option value="銀行手續費">銀行手續費 (Bank Charges)</option>
+                                    <option value="利息支出">利息支出 (Interest Expense)</option>
+                                    <option value="政府規費與罰鍰">政府規費與罰鍰 (Fees & Penalties)</option>
+                                    <option value="保險費">保險費 (Insurance Premiums)</option>
+                                    <option value="慈善捐贈">慈善捐贈 (Donations)</option>
+                                </optgroup>
+
+                                <!-- ❓ 其他雜項費用 (Miscellaneous) -->
+                                <optgroup label="❓ 其他雜項費用 (Miscellaneous)">
+                                    <option value="其他雜項費用">其他雜項費用 (Misc. Other)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="amount" class="block text-sm font-medium text-gray-700">金額 (必填)</label>
+                            <input type="number" id="amount" placeholder="例如：1500.50" required min="0.01" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                        </div>
+                        
+                        <div>
+                            <label for="date" class="block text-sm font-medium text-gray-700">發生日期 (必填)</label>
+                            <input type="date" id="date" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                        </div>
+                        
+                        <button type="submit" id="submit-button" class="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150">
+                            <span class="material-icons mr-1 text-base">send</span> 提交報銷
+                        </button>
+                        <p id="submission-message" class="text-sm text-center mt-2 hidden"></p>
+                    </form>
+                </div>
+
+                <!-- 報銷單列表區 (根據角色調整寬度) -->
+                <div id="list-area" class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 id="list-title" class="text-xl font-semibold text-green-700 flex items-center">
+                            <span class="material-icons mr-2 text-2xl">list_alt</span> 待處理與歷史報銷單
+                        </h2>
+                        <!-- 過濾器 (只在審批者角色顯示) -->
+                        <select id="status-filter" onchange="displayReports()" class="hidden bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5">
+                            <option value="all">所有單據</option>
+                            <option value="待審批">只看待審批</option>
+                            <option value="已批准">只看已批准</option>
+                            <option value="已拒絕">只看已拒絕</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 新增：總金額顯示區 -->
+                    <div id="total-amount-box" class="hidden mb-4 bg-gray-50 border-t border-b border-indigo-200 p-3 rounded-lg text-sm">
+                        當前列表總金額: <span id="total-amount-display" class="font-extrabold text-lg text-indigo-700 ml-1">---</span> TWD
+                    </div>
+                    
+                    <div class="max-h-[60vh] overflow-y-auto scrollable-list">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">說明/科目</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">金額 (TWD)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態</th>
+                                    <th id="action-header" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reports-list" class="bg-white divide-y divide-gray-200">
+                                <!-- 報銷單列表將由 JavaScript 加載到這裡 -->
+                                <tr><td colspan="5" class="text-center py-4 text-gray-500">正在加載報銷單...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 會計科目分析儀表板 (Analysis View) -->
+        <div id="analysis-panel" class="hidden">
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold text-indigo-700 mb-4 flex items-center">
+                    <span class="material-icons mr-2 text-2xl">analytics</span> 費用科目佔比分析 (已批准單據)
+                </h2>
+                <div class="text-sm text-gray-600 mb-6 border-b pb-4">
+                    <span class="font-bold text-base text-red-600">* 報表僅納入狀態為「已批准」的費用單據，以反映實際支出。</span>
+                </div>
+
+                <!-- 統計總覽卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                        <p class="text-sm font-medium text-indigo-600">已批准單據總數</p>
+                        <p id="stat-count" class="text-2xl font-extrabold text-indigo-800 mt-1">0</p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                        <p class="text-sm font-medium text-green-600">已批准總金額 (TWD)</p>
+                        <p id="stat-total" class="text-2xl font-extrabold text-green-800 mt-1">0.00</p>
+                    </div>
+                    <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                        <p class="text-sm font-medium text-yellow-600">最高費用科目</p>
+                        <p id="stat-top-category" class="text-2xl font-extrabold text-yellow-800 mt-1 truncate">N/A</p>
+                    </div>
+                </div>
+
+                <!-- D3.js 長條圖容器 -->
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 border-t pt-4">各科目支出明細</h3>
+                <div id="chart-area">
+                    <div id="bar-chart-container">
+                        <!-- D3 SVG 圖表將渲染在這裡 -->
+                    </div>
+                </div>
+                
+                <div id="chart-no-data" class="hidden text-center py-10 text-gray-500">
+                    <span class="material-icons text-4xl mb-2">info</span>
+                    <p>目前沒有任何「已批准」的報銷單數據可供分析。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模擬電子郵件通知框 (使用自訂 CSS 類來控制隱藏/顯示) -->
+    <div id="email-notification-box" 
+        class="notification-hidden 
+               fixed bottom-4 right-4 max-w-sm w-full bg-white shadow-xl 
+               rounded-lg p-4 transition-all duration-500 ease-in-out border-l-4 border-indigo-500 z-50">
+        <div class="flex items-start space-x-4">
+            <span class="material-icons text-indigo-500 text-2xl mt-1">mail_outline</span>
+            <div>
+                <p class="text-sm font-semibold text-gray-900 flex items-center">
+                    <span id="notification-icon" class="material-icons text-green-500 mr-1 text-base"></span>
+                    <span id="notification-subject">模擬郵件通知</span>
+                </p>
+                <p id="notification-body" class="text-xs text-gray-500 mt-1">
+                    [此為模擬] 報銷單狀態已變更，請前往系統查看。
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 費用詳情模態框 (Modal - 保持不變) -->
+    <div id="detail-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg transition-all transform duration-300 scale-100">
+            <!-- Modal Header -->
+            <div class="p-5 border-b flex justify-between items-center">
+                <h3 class="text-xl font-bold text-indigo-700">報銷單詳細資訊</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 space-y-4 text-sm">
+                <!-- ID/基本資訊 -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-gray-500 font-medium">報銷單 ID:</p>
+                        <p id="detail-id" class="font-mono text-gray-800">---</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 font-medium">狀態:</p>
+                        <p id="detail-status" class="font-bold text-lg">---</p>
+                    </div>
+                </div>
+
+                <!-- 核心數據 -->
+                <div class="border-t pt-4">
+                    <p class="text-gray-500 font-medium">費用說明:</p>
+                    <p id="detail-description" class="text-gray-900 font-semibold text-lg mb-2">---</p>
+                    
+                    <p class="text-gray-500 font-medium mt-3">會計科目:</p>
+                    <p id="detail-category" class="text-indigo-600 font-medium">---</p>
+                    
+                    <p class="text-gray-500 font-medium mt-3">發生日期:</p>
+                    <p id="detail-date" class="text-gray-700">---</p>
+                </div>
+
+                <!-- 金額 -->
+                <div class="border-t pt-4">
+                    <p class="text-gray-500 font-medium">報銷金額:</p>
+                    <p id="detail-amount" class="text-green-600 font-extrabold text-2xl">--- TWD</p>
+                </div>
+
+                <!-- 時間軸/審批紀錄 -->
+                <div class="border-t pt-4">
+                    <p class="text-gray-500 font-medium mb-2">提交與審批紀錄:</p>
+                    <ul class="space-y-2">
+                        <li class="flex justify-between items-start">
+                            <span class="text-gray-700">提交時間:</span>
+                            <span id="detail-createdAt" class="text-gray-600 text-right">---</span>
+                        </li>
+                        <li id="detail-approval-row" class="hidden flex justify-between items-start">
+                            <span class="text-gray-700">審批者:</span>
+                            <span id="detail-approvedBy" class="text-gray-600 text-right">---</span>
+                        </li>
+                         <li id="detail-approvedAt-row" class="hidden flex justify-between items-start">
+                            <span class="text-gray-700">審批時間:</span>
+                            <span id="detail-approvedAt" class="text-gray-600 text-right">---</span>
+                        </li>
+                        <li id="detail-rejection-reason-row" class="hidden">
+                            <span class="text-red-500 font-semibold block mt-2">拒絕原因 (模擬):</span>
+                            <span id="detail-rejection-reason" class="text-red-700 italic">無提供。 (應在生產環境中要求填寫)</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Modal Footer (僅審批者在待審批狀態顯示) -->
+            <div id="detail-action-footer" class="p-5 border-t bg-gray-50 rounded-b-xl flex justify-end space-x-3 hidden">
+                <button id="modal-approve-btn" 
+                        class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition duration-150 shadow-md flex items-center">
+                    <span class="material-icons mr-1 text-base">done_all</span> 批准
+                </button>
+                <button id="modal-reject-btn" 
+                        class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition duration-150 shadow-md flex items-center">
+                    <span class="material-icons mr-1 text-base">close</span> 拒絕
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- 腳本：使用本地儲存、角色權限分離與電子郵件通知模擬 -->
+    <script>
+        // 引用 DOM 元素
+        const form = document.getElementById('expense-form');
+        const reportsList = document.getElementById('reports-list');
+        const submissionArea = document.getElementById('submission-area');
+        const listArea = document.getElementById('list-area');
+        const listTitle = document.getElementById('list-title');
+        const actionHeader = document.getElementById('action-header');
+        const submitButton = document.getElementById('submit-button');
+        const submissionMessage = document.getElementById('submission-message');
+
+        const currentRoleDisplay = document.getElementById('current-role-display');
+        const notificationBox = document.getElementById('email-notification-box');
+        const statusFilter = document.getElementById('status-filter'); 
+        const totalAmountBox = document.getElementById('total-amount-box');
+        const totalAmountDisplay = document.getElementById('total-amount-display');
+
+        // Modal 元素引用
+        const detailModal = document.getElementById('detail-modal');
+        const detailId = document.getElementById('detail-id');
+        const detailStatus = document.getElementById('detail-status');
+        const detailDescription = document.getElementById('detail-description');
+        const detailCategory = document.getElementById('detail-category');
+        const detailDate = document.getElementById('detail-date');
+        const detailAmount = document.getElementById('detail-amount');
+        const detailCreatedAt = document.getElementById('detail-createdAt');
+        const detailApprovedBy = document.getElementById('detail-approvedBy');
+        const detailApprovedAt = document.getElementById('detail-approvedAt');
+        const detailRejectionReason = document.getElementById('detail-rejection-reason');
+        const detailApprovalRow = document.getElementById('detail-approval-row');
+        const detailApprovedAtRow = document.getElementById('detail-approvedAt-row');
+        const detailRejectionReasonRow = document.getElementById('detail-rejection-reason-row');
+        const detailActionFooter = document.getElementById('detail-action-footer');
+        const modalApproveBtn = document.getElementById('modal-approve-btn');
+        const modalRejectBtn = document.getElementById('modal-reject-btn');
+
+
+        // 新增的視圖元素引用
+        const dashboardPanel = document.getElementById('dashboard-panel');
+        const analysisPanel = document.getElementById('analysis-panel');
+        const tabDashboard = document.getElementById('tab-dashboard');
+        const tabAnalysis = document.getElementById('tab-analysis');
+        const chartContainer = document.getElementById('bar-chart-container');
+        const chartNoData = document.getElementById('chart-no-data');
+
+        // 報表統計卡片引用
+        const statCount = document.getElementById('stat-count');
+        const statTotal = document.getElementById('stat-total');
+        const statTopCategory = document.getElementById('stat-top-category');
+
+        // 本地儲存的鍵名
+        const STORAGE_KEY = 'local_expense_reports';
+        // 模擬當前使用者角色
+        let currentUserRole = 'submitter'; 
+
+        // 輔助函數: 格式化日期時間
+        function formatDateTime(isoString) {
+            if (!isoString) return 'N/A';
+            try {
+                const date = new Date(isoString);
+                return date.toLocaleString('zh-TW', { 
+                    year: 'numeric', 
+                    month: '2-digit', 
+                    day: '2-digit', 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                }).replace(/\//g, '-').replace(',', ' ');
+            } catch (e) {
+                return isoString;
+            }
+        }
+        
+        // 輔助函數: 格式化金額
+        function formatAmount(amount) {
+            if (isNaN(amount) || amount === null) return 'N/A';
+            // 使用 en-US 格式化以確保千分位和兩位小數點
+            return amount.toLocaleString('en-US', { minimumFractionDigits: 2 });
+        }
+        
+        /**
+         * 載入報銷單資料（從 localStorage）
+         */
+        function loadReports() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                return data ? JSON.parse(data) : [];
+            } catch (error) {
+                console.error("錯誤：無法從 localStorage 載入數據", error);
+                return [];
+            }
+        }
+
+        /**
+         * 儲存報銷單資料（到 localStorage）
+         */
+        function saveReports(reports) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
+            } catch (error) {
+                console.error("嚴重錯誤：無法將數據存儲到 localStorage，可能空間已滿或存儲被禁用。", error);
+            }
+        }
+
+        /**
+         * 簡單的 ID 生成器
+         */
+        function generateId() {
+            return 'R' + Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
+        }
+
+        /**
+         * 模擬電子郵件通知功能
+         */
+        function simulateEmailNotification(report, newStatus) {
+            if (newStatus === '待審批') { 
+                // 提交成功通知提交者，但這個模擬不需要
+                return; 
+            }
+            
+            let subject = '';
+            let body = '';
+            let icon = 'mail_outline';
+
+            if (newStatus === '已批准') {
+                subject = '✅ 報銷單已批准: ' + report.description;
+                body = `您的費用報銷單 ID: ${report.id} (金額: ${formatAmount(report.amount)} TWD) 已由經理批准。`;
+                icon = 'check_circle';
+            } else if (newStatus === '已拒絕') {
+                subject = '❌ 報銷單被拒絕: ' + report.description;
+                body = `您的費用報銷單 ID: ${report.id} (金額: ${formatAmount(report.amount)} TWD) 已被拒絕。請登入系統查看詳情。`;
+                icon = 'cancel';
+            }
+
+            // 顯示通知
+            document.getElementById('notification-subject').textContent = subject;
+            document.getElementById('notification-body').textContent = `[模擬通知] ${body}`;
+            document.getElementById('notification-icon').textContent = icon;
+            document.getElementById('notification-icon').classList.remove('text-green-500', 'text-red-500');
+            document.getElementById('notification-icon').classList.add(newStatus === '已批准' ? 'text-green-500' : 'text-red-500');
+
+
+            notificationBox.classList.remove('notification-hidden');
+            notificationBox.classList.add('notification-visible');
+
+            // 5 秒後自動隱藏
+            setTimeout(() => {
+                notificationBox.classList.remove('notification-visible');
+                notificationBox.classList.add('notification-hidden');
+            }, 5000);
+        }
+
+        /**
+         * 處理審批操作 (批准/拒絕)
+         */
+        window.handleApproval = (reportId, newStatus) => {
+            if (currentUserRole !== 'approver') {
+                console.error("權限不足：只有審批者可以執行此操作。請切換為審批者角色。");
+                return;
+            }
+
+            let reports = loadReports();
+            const reportIndex = reports.findIndex(r => r.id === reportId);
+            
+            if (reportIndex === -1 || reports[reportIndex].status !== '待審批') { return; }
+            
+            try {
+                const updatedReport = reports[reportIndex];
+                updatedReport.status = newStatus;
+                updatedReport.approvedBy = 'LocalManager'; // 模擬審批者名稱
+                updatedReport.approvedAt = new Date().toISOString();
+                
+                saveReports(reports);
+                simulateEmailNotification(updatedReport, newStatus);
+                
+                // 審批完成後，刷新儀表板和分析報表
+                displayReports(); 
+                if (analysisPanel.classList.contains('hidden') === false) {
+                    renderAnalysis();
+                }
+
+            } catch (e) {
+                console.error("審批過程中發生錯誤:", e);
+            }
+        };
+
+
+        window.showReportDetails = (reportId) => {
+            const reports = loadReports();
+            const report = reports.find(r => r.id === reportId);
+
+            if (!report) {
+                console.error('報銷單未找到:', reportId);
+                return;
+            }
+            
+            // 1. 填充基本數據
+            detailId.textContent = report.id;
+            detailDescription.textContent = report.description;
+            detailCategory.textContent = report.category;
+            detailDate.textContent = report.date;
+            detailAmount.textContent = `${formatAmount(report.amount)} TWD`;
+            detailCreatedAt.textContent = formatDateTime(report.createdAt);
+
+            // 2. 處理狀態顏色
+            let statusText = report.status;
+            detailStatus.textContent = statusText;
+            detailStatus.className = 'font-bold text-lg';
+            if (statusText === '已批准') detailStatus.classList.add('text-green-600');
+            else if (statusText === '已拒絕') detailStatus.classList.add('text-red-600');
+            else detailStatus.classList.add('text-yellow-600');
+            
+            // 3. 處理審批/拒絕資訊
+            const isApprovedOrRejected = report.status === '已批准' || report.status === '已拒絕';
+            detailApprovalRow.classList.toggle('hidden', !isApprovedOrRejected);
+            detailApprovedAtRow.classList.toggle('hidden', !isApprovedOrRejected);
+            detailRejectionReasonRow.classList.toggle('hidden', report.status !== '已拒絕');
+
+            if (isApprovedOrRejected) {
+                detailApprovedBy.textContent = report.approvedBy || 'N/A';
+                detailApprovedAt.textContent = formatDateTime(report.approvedAt);
+            }
+            
+            // 4. 處理拒絕原因 (此處模擬，生產環境應有數據)
+            if (report.status === '已拒絕') {
+                 detailRejectionReason.textContent = report.rejectionReason || '未提供拒絕原因 (模擬)';
+            }
+
+            // 5. 處理審批操作按鈕 (僅限審批者且狀態為待審批)
+            const showFooter = currentUserRole === 'approver' && report.status === '待審批';
+            detailActionFooter.classList.toggle('hidden', !showFooter);
+
+            if (showFooter) {
+                modalApproveBtn.onclick = () => {
+                    handleApproval(report.id, '已批准');
+                    closeModal();
+                };
+                modalRejectBtn.onclick = () => {
+                    // 實際生產環境中，這裡會彈出一個輸入拒絕原因的提示框
+                    if (window.confirm("您確定要拒絕這筆報銷單嗎？(生產環境將要求填寫原因)")) {
+                        handleApproval(report.id, '已拒絕');
+                        closeModal();
+                    }
+                };
+            }
+            
+            detailModal.classList.remove('hidden');
+        };
+        
+        window.closeModal = () => {
+            detailModal.classList.add('hidden');
+        };
+        
+        // 允許按 ESC 關閉 Modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+
+        /**
+         * 渲染報銷單列表 (根據當前角色和過濾器調整)
+         */
+        function displayReports() {
+            let reports = loadReports();
+            reportsList.innerHTML = '';
+            let totalAmount = 0;
+            const isApprover = currentUserRole === 'approver';
+            let filteredReports = reports;
+            
+            if (isApprover) {
+                const selectedStatus = statusFilter.value;
+                if (selectedStatus !== 'all') {
+                    filteredReports = reports.filter(r => r.status === selectedStatus);
+                }
+            } else {
+                 // 提交者只能看自己的單據 (在模擬中，所有數據都屬於 'LocalUser')
+                 // 這裡我們假設 'LocalUser' 是提交者，不需要額外過濾
+            }
+            
+            filteredReports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            actionHeader.style.display = isApprover ? 'table-cell' : 'none';
+
+            if (filteredReports.length === 0) {
+                const colSpan = isApprover ? 5 : 4;
+                let message = '目前沒有報銷單記錄。';
+                if (isApprover && statusFilter.value !== 'all') {
+                     message = `沒有找到狀態為 "${statusFilter.value}" 的單據。`;
+                }
+                reportsList.innerHTML = `<tr><td colspan="${colSpan}" class="text-center py-4 text-gray-500">${message}</td></tr>`;
+                
+                if (isApprover) {
+                    totalAmountBox.classList.remove('hidden');
+                    totalAmountDisplay.textContent = '0.00';
+                }
+                return;
+            }
+
+            // 遍歷報告並渲染，同時計算總金額
+            filteredReports.forEach(report => {
+                totalAmount += report.amount; // 累加金額
+                
+                let statusColor, statusIcon;
+                switch (report.status) {
+                    case '已批准':
+                        statusColor = 'bg-green-100 text-green-800';
+                        statusIcon = 'check_circle';
+                        break;
+                    case '已拒絕':
+                        statusColor = 'bg-red-100 text-red-800';
+                        statusIcon = 'cancel';
+                        break;
+                    case '待審批':
+                    default:
+                        statusColor = 'bg-yellow-100 text-yellow-800';
+                        statusIcon = 'schedule';
+                        break;
+                }
+                
+                const reportDate = report.date ? report.date : 'N/A';
+                
+                let actionButtonsHTML = '';
+                let tdActionClass = 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium';
+
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-100 transition duration-100 cursor-pointer'; 
+                row.onclick = (e) => {
+                    // 點擊行時，如果不是點擊按鈕，則顯示詳情
+                    if (!e.target.closest('button')) { 
+                        showReportDetails(report.id);
+                    }
+                }; 
+
+                if (isApprover) {
+                    // 審批者顯示操作按鈕和詳情按鈕
+                    actionButtonsHTML = `
+                         <button onclick="event.stopPropagation(); showReportDetails('${report.id}')" 
+                            class="text-indigo-600 hover:text-indigo-900 transition duration-150 p-1 rounded-full hover:bg-indigo-100"
+                            title="查看詳情/審批"
+                        >
+                            <span class="material-icons text-base align-middle">visibility</span>
+                        </button>
+                    `;
+                } else {
+                    // 提交者不顯示操作欄，點擊整行查看詳情
+                    tdActionClass = 'hidden'; 
+                }
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${reportDate}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${report.description}
+                        <!-- 強化科目顯示效果 -->
+                        <div class="text-xs text-indigo-700 font-semibold mt-1 bg-indigo-50 px-2 py-0.5 rounded-full inline-block">
+                             ${report.category || 'N/A'}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                        $${formatAmount(report.amount)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">
+                            <span class="material-icons text-sm mr-1 align-middle">${statusIcon}</span> ${report.status}
+                        </span>
+                    </td>
+                    <td class="${tdActionClass} ${isApprover ? '' : 'hidden'} text-center">
+                        ${actionButtonsHTML}
+                    </td>
+                `;
+                reportsList.appendChild(row);
+            });
+            
+            // 更新總金額顯示
+            if (isApprover) {
+                totalAmountBox.classList.remove('hidden');
+                totalAmountDisplay.textContent = formatAmount(totalAmount);
+            } else {
+                totalAmountBox.classList.add('hidden');
+            }
+        }
+        
+        /**
+         * 處理表單提交邏輯
+         */
+        function setupFormSubmission() {
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                
+                if (currentUserRole !== 'submitter') {
+                    submissionMessage.textContent = '❌ 錯誤：只有提交者角色可以提交報銷單。';
+                    submissionMessage.classList.remove('hidden', 'text-green-600');
+                    submissionMessage.classList.add('text-red-600');
+                    return;
+                }
+                
+                submitButton.disabled = true;
+                submitButton.textContent = '提交中...';
+
+                const description = document.getElementById('description').value;
+                const amountInput = document.getElementById('amount').value;
+                const amount = parseFloat(parseFloat(amountInput).toFixed(2));
+                const date = document.getElementById('date').value;
+                const category = document.getElementById('category').value;
+                
+                if (!description || isNaN(amount) || amount <= 0 || !date || !category) {
+                    submissionMessage.textContent = '❌ 錯誤：所有欄位都必須正確填寫。';
+                    submissionMessage.classList.remove('hidden', 'text-green-600');
+                    submissionMessage.classList.add('text-red-600');
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = `<span class="material-icons mr-1 text-base">send</span> 提交報銷`;
+                    return;
+                }
+
+                const newReport = {
+                    id: generateId(),
+                    submitterId: 'LocalUser',
+                    description: description,
+                    category: category,
+                    amount: amount,
+                    date: date,
+                    status: '待審批',
+                    createdAt: new Date().toISOString(),
+                };
+
+                try {
+                    const reports = loadReports();
+                    reports.push(newReport);
+                    saveReports(reports);
+                    
+                    submissionMessage.textContent = '✅ 報銷單提交成功！等待審批。';
+                    submissionMessage.classList.remove('hidden', 'text-red-600');
+                    submissionMessage.classList.add('text-green-600');
+                    
+                    form.reset();
+                    displayReports(); // 刷新列表
+                    
+                    console.log(`%c[System Alert] New Expense Report Submitted: ${newReport.description}. Manager needs review.`, 'color: orange;');
+                    
+                    setTimeout(() => { submissionMessage.classList.add('hidden'); }, 3000);
+
+                } catch (e) {
+                    console.error("提交過程中發生錯誤:", e);
+                    submissionMessage.textContent = `❌ 提交失敗: ${e.message}`;
+                    submissionMessage.classList.remove('hidden', 'text-green-600');
+                    submissionMessage.classList.add('text-red-600');
+                } finally {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = `<span class="material-icons mr-1 text-base">send</span> 提交報銷`;
+                }
+            };
+        }
+        
+        // --- D3.js 報表分析核心功能 (與上次提交保持一致) ---
+
+        /**
+         * 執行數據聚合和渲染長條圖
+         */
+        function renderAnalysis() {
+            // 1. 數據準備: 僅篩選「已批准」的單據
+            const reports = loadReports();
+            const approvedReports = reports.filter(r => r.status === '已批准');
+
+            // 2. 數據聚合: 按 'category' 分組並加總 'amount'
+            const aggregatedDataMap = approvedReports.reduce((acc, report) => {
+                const category = report.category || '未分類科目';
+                acc[category] = (acc[category] || 0) + report.amount;
+                return acc;
+            }, {});
+
+            // 轉換為 D3 易處理的陣列格式
+            let data = Object.keys(aggregatedDataMap).map(key => ({
+                category: key,
+                total: aggregatedDataMap[key]
+            }));
+
+            // 3. 處理無數據情況
+            if (data.length === 0) {
+                chartNoData.classList.remove('hidden');
+                d3.select("#bar-chart-container").select("svg").remove();
+                statCount.textContent = '0';
+                statTotal.textContent = '0.00';
+                statTopCategory.textContent = 'N/A';
+                return;
+            }
+
+            chartNoData.classList.add('hidden');
+
+            // 4. 更新統計卡片
+            const totalApprovedAmount = data.reduce((sum, item) => sum + item.total, 0);
+            const topCategory = data.reduce((max, item) => item.total > max.total ? item : max, { total: -1, category: 'N/A' });
+            
+            statCount.textContent = approvedReports.length.toString();
+            statTotal.textContent = formatAmount(totalApprovedAmount);
+            statTopCategory.textContent = topCategory.category;
+
+
+            // 5. 排序數據 (總金額降序)
+            data.sort((a, b) => b.total - a.total);
+
+            // 6. D3.js 長條圖渲染
+
+            // 清空舊圖表
+            d3.select("#bar-chart-container").select("svg").remove();
+
+            // 定義尺寸
+            const margin = { top: 30, right: 20, bottom: 150, left: 80 }; // 增加底部和左側邊距
+            const width = chartContainer.clientWidth - margin.left - margin.right;
+            const height = chartContainer.clientHeight - margin.top - margin.bottom;
+
+            // 創建 SVG 容器
+            const svg = d3.select("#bar-chart-container")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            // 7. 定義比例尺 (Scale)
+            
+            // X 軸：序數比例尺 (Ordinal Scale) for Categories
+            const x = d3.scaleBand()
+                .domain(data.map(d => d.category))
+                .range([0, width])
+                .padding(0.3);
+
+            // Y 軸：線性比例尺 (Linear Scale) for Amount
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.total) * 1.1]) // Y軸最大值為數據最大值的 110%
+                .range([height, 0]);
+
+            // 8. 繪製軸線 (Axes)
+            
+            // X 軸
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x))
+                .selectAll("text")
+                .attr("transform", "translate(-10,0)rotate(-45)") // 旋轉標籤以節省空間
+                .style("text-anchor", "end")
+                .style("font-size", "12px");
+
+            // Y 軸
+            svg.append("g")
+                .call(d3.axisLeft(y).tickFormat(d => formatAmount(d))) // Y軸數值格式化
+                .style("font-size", "12px")
+                .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", -margin.left + 15)
+                .attr("x", -height / 2)
+                .attr("fill", "#000")
+                .style("text-anchor", "middle")
+                .style("font-size", "14px")
+                .text("總支出金額 (TWD)");
+
+
+            // 9. 繪製長條 (Bars)
+            svg.selectAll(".bar")
+                .data(data)
+                .enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", d => x(d.category))
+                .attr("y", d => y(d.total))
+                .attr("width", x.bandwidth())
+                .attr("height", d => height - y(d.total));
+
+            // 10. 繪製長條上方的數值標籤
+            svg.selectAll(".label")
+                .data(data)
+                .enter().append("text")
+                .attr("class", "label")
+                .attr("x", d => x(d.category) + x.bandwidth() / 2)
+                .attr("y", d => y(d.total) - 5)
+                .attr("text-anchor", "middle")
+                .style("font-size", "12px")
+                .style("font-weight", "bold")
+                .text(d => `$${formatAmount(d.total)}`);
+        }
+
+        // --- 視圖切換邏輯 (與上次提交保持一致) ---
+
+        /**
+         * 切換主視圖 (報銷/分析)
+         */
+        window.switchView = (view) => {
+            if (view === 'dashboard') {
+                dashboardPanel.classList.remove('hidden');
+                analysisPanel.classList.add('hidden');
+                tabDashboard.classList.add('border-indigo-600', 'text-indigo-600');
+                tabDashboard.classList.remove('border-transparent', 'text-gray-500', 'hover:border-gray-400', 'hover:text-gray-700');
+                tabAnalysis.classList.remove('border-indigo-600', 'text-indigo-600');
+                tabAnalysis.classList.add('border-transparent', 'text-gray-500', 'hover:border-gray-400', 'hover:text-gray-700');
+                displayReports(); // 切回儀表板時刷新列表
+            } else if (view === 'analysis') {
+                dashboardPanel.classList.add('hidden');
+                analysisPanel.classList.remove('hidden');
+                tabAnalysis.classList.add('border-indigo-600', 'text-indigo-600');
+                tabAnalysis.classList.remove('border-transparent', 'text-gray-500', 'hover:border-gray-400', 'hover:text-gray-700');
+                tabDashboard.classList.remove('border-indigo-600', 'text-indigo-600');
+                tabDashboard.classList.add('border-transparent', 'text-gray-500', 'hover:border-gray-400', 'hover:text-gray-700');
+                renderAnalysis(); // 切換到分析視圖時渲染圖表
+            }
+        }
+        
+        // 監聽窗口大小變化事件，重新渲染圖表以確保響應性
+        window.addEventListener('resize', () => {
+             // 只有在 Analysis 視圖下才重繪
+            if (analysisPanel.classList.contains('hidden') === false) {
+                renderAnalysis();
+            }
+        });
+
+        /**
+         * 根據角色渲染應用程式介面 (與上次提交保持一致)
+         */
+        window.switchRole = (role) => {
+            currentUserRole = role;
+            
+            // 1. 更新角色顯示
+            if (role === 'submitter') {
+                currentRoleDisplay.textContent = '提交者 (員工)';
+                currentRoleDisplay.classList.remove('text-green-700');
+                currentRoleDisplay.classList.add('text-indigo-700');
+                submissionArea.classList.remove('hidden');
+                listArea.classList.remove('lg:col-span-3');
+                listArea.classList.add('lg:col-span-2');
+                listTitle.innerHTML = `<span class="material-icons mr-2 text-2xl">list_alt</span> 我提交的報銷單`;
+                statusFilter.classList.add('hidden');
+            } else if (role === 'approver') {
+                currentRoleDisplay.textContent = '審批者 (經理)';
+                currentRoleDisplay.classList.remove('text-indigo-700');
+                currentRoleDisplay.classList.add('text-green-700');
+                submissionArea.classList.add('hidden');
+                listArea.classList.remove('lg:col-span-2');
+                listArea.classList.add('lg:col-span-3');
+                listTitle.innerHTML = `<span class="material-icons mr-2 text-2xl">list_alt</span> 所有待審批與歷史單據`;
+                statusFilter.classList.remove('hidden');
+            }
+            
+            // 2. 只有在 Dashboard 視圖下才執行 displayReports
+            if (dashboardPanel.classList.contains('hidden') === false) {
+                 displayReports(); 
+            }
+            // 3. 如果在 Analysis 視圖，則重新渲染分析
+            if (analysisPanel.classList.contains('hidden') === false) {
+                renderAnalysis();
+            }
+        };
+
+
+        /**
+         * 啟動時注入模擬數據 (如果本地儲存中沒有數據)
+         * 調整了模擬數據，加入了新的科目。
+         */
+        function injectMockData() {
+            const reports = loadReports();
+            if (reports.length === 0) {
+                console.log("本地儲存為空，注入模擬數據。");
+                const today = new Date().toISOString().slice(0, 10);
+                const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+                const twoDaysAgo = new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10);
+                const lastWeek = new Date(Date.now() - 86400000 * 7).toISOString().slice(0, 10);
+
+                const mockData = [
+                    {
+                        id: 'R' + Date.now().toString(36) + '001',
+                        submitterId: 'LocalUser',
+                        description: '專案啟動會議餐費',
+                        category: '客戶招待費',
+                        amount: 3200.00,
+                        date: today,
+                        status: '待審批',
+                        createdAt: new Date().toISOString(),
+                    },
+                    {
+                        id: 'R' + Date.now().toString(36) + '002',
+                        submitterId: 'LocalUser',
+                        description: '前往高雄出差高鐵票',
+                        category: '國內差旅費',
+                        amount: 1490.50,
+                        date: yesterday,
+                        status: '已批准',
+                        createdAt: new Date(Date.now() - 3600000).toISOString(), 
+                        approvedBy: 'LocalManager',
+                        approvedAt: new Date(Date.now() - 1800000).toISOString(),
+                    },
+                    {
+                        id: 'R' + Date.now().toString(36) + '003',
+                        submitterId: 'LocalUser',
+                        description: '新印表機墨水匣採購',
+                        category: '辦公用品及耗材',
+                        amount: 880.00,
+                        date: yesterday,
+                        status: '待審批',
+                        createdAt: new Date(Date.now() - 7200000).toISOString(), 
+                    },
+                    {
+                        id: 'R' + Date.now().toString(36) + '004',
+                        submitterId: 'LocalUser',
+                        description: '客戶感謝禮物',
+                        category: '業務交際費',
+                        amount: 2500.00,
+                        date: twoDaysAgo, 
+                        status: '已拒絕',
+                        createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+                        approvedBy: 'LocalManager',
+                        approvedAt: new Date(Date.now() - 86400000 * 1.5).toISOString(),
+                    },
+                    // 新增更多「已批准」數據用於分析
+                    {
+                        id: 'R' + Date.now().toString(36) + '005',
+                        submitterId: 'LocalUser',
+                        description: 'Google 廣告投放費',
+                        category: '廣告與宣傳費',
+                        amount: 8000.00,
+                        date: lastWeek, 
+                        status: '已批准',
+                        createdAt: new Date(Date.now() - 86400000 * 7).toISOString(),
+                        approvedBy: 'LocalManager',
+                        approvedAt: new Date(Date.now() - 86400000 * 6.5).toISOString(),
+                    },
+                    {
+                        id: 'R' + Date.now().toString(36) + '006',
+                        submitterId: 'LocalUser',
+                        description: '法律顧問月費',
+                        category: '法律及會計費用',
+                        amount: 12000.00,
+                        date: lastWeek, 
+                        status: '已批准',
+                        createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+                        approvedBy: 'LocalManager',
+                        approvedAt: new Date(Date.now() - 86400000 * 4.5).toISOString(),
+                    },
+                    {
+                        id: 'R' + Date.now().toString(36) + '007',
+                        submitterId: 'LocalUser',
+                        description: '部門聚餐費用',
+                        category: '員工福利餐費',
+                        amount: 4500.00,
+                        date: twoDaysAgo, 
+                        status: '已批准',
+                        createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+                        approvedBy: 'LocalManager',
+                        approvedAt: new Date(Date.now() - 86400000 * 2.5).toISOString(),
+                    },
+                    {
+                        id: 'R' + Date.now().toString(36) + '008',
+                        submitterId: 'LocalUser',
+                        description: '台北辦公室月租',
+                        category: '租金支出',
+                        amount: 50000.00,
+                        date: today, 
+                        status: '已批准',
+                        createdAt: new Date(Date.now() - 86400000 * 0.5).toISOString(),
+                        approvedBy: 'LocalManager',
+                        approvedAt: new Date(Date.now() - 86400000 * 0.25).toISOString(),
+                    },
+                    // 使用新增的科目
+                     {
+                        id: 'R' + Date.now().toString(36) + '009',
+                        submitterId: 'LocalUser',
+                        description: 'AWS 雲服務費用',
+                        category: '軟體訂閱費',
+                        amount: 7200.00,
+                        date: twoDaysAgo, 
+                        status: '已批准',
+                        createdAt: new Date(Date.now() - 86400000 * 3.5).toISOString(),
+                        approvedBy: 'LocalManager',
+                        approvedAt: new Date(Date.now() - 86400000 * 3.1).toISOString(),
+                    },
+                     {
+                        id: 'R' + Date.now().toString(36) + '010',
+                        submitterId: 'LocalUser',
+                        description: '新員工職前培訓課程',
+                        category: '專業培訓費',
+                        amount: 6000.00,
+                        date: lastWeek, 
+                        status: '已批准',
+                        createdAt: new Date(Date.now() - 86400000 * 8).toISOString(),
+                        approvedBy: 'LocalManager',
+                        approvedAt: new Date(Date.now() - 86400000 * 7.5).toISOString(),
+                    },
+                ];
+                saveReports(mockData);
+            }
+        }
+
+        // 應用程式啟動
+        document.addEventListener('DOMContentLoaded', () => {
+            injectMockData(); // 注入數據
+            setupFormSubmission();
+            // 預設切換到 Dashboard 視圖
+            switchView('dashboard'); 
+            // 預設為提交者視角
+            switchRole('submitter'); 
+        });
+    </script>
+</body>
+</html>

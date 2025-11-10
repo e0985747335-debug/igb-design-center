@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP 2.0 戰略指揮中心</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 引入 Lucide Icons 庫 */
+        <script type="module" src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+        
+        /* 自定義字體和深色主題 */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        :root {
+            --primary-color: #3b82f6; /* Blue-500 */
+            --bg-dark: #1f2937;      /* Gray-800 */
+            --bg-deep: #111827;      /* Gray-900 */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-deep);
+            color: #d1d5db; /* Light Gray */
+            min-height: 100vh;
+        }
+
+        .dashboard-card {
+            background-color: var(--bg-dark);
+            border: 1px solid #374151; /* Gray-700 */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            border-radius: 0.5rem;
+        }
+
+        .nav-link.active {
+            background-color: #374151; /* Gray-700 */
+            border-left: 4px solid var(--primary-color);
+            color: white;
+        }
+
+        /* 將 SVG 圖標轉換為 Lucide Icons */
+        .icon {
+            display: inline-block;
+            width: 1.25rem;
+            height: 1.25rem;
+            stroke-width: 2;
+            stroke: currentColor;
+            fill: none;
+            line-height: 1;
+        }
+
+        /* 響應式佈局：側邊欄在小螢幕上隱藏或變為頂部導航 */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                border-bottom: 1px solid #374151;
+            }
+            .content-area {
+                padding-top: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="flex flex-col lg:flex-row min-h-screen">
+        <!-- 側邊欄/導航 (Sidebar) -->
+        <nav class="sidebar lg:w-64 bg-gray-900 lg:h-screen p-4 flex-shrink-0">
+            <div class="text-2xl font-bold text-blue-400 mb-8 mt-2 tracking-wider border-b border-gray-700 pb-4">
+                ERP 2.0 指揮中心
+            </div>
+            <div id="nav-container" class="lg:space-y-2 flex lg:block overflow-x-auto space-x-2 lg:space-x-0">
+                <!-- 導航連結將由 JS 渲染 -->
+            </div>
+            
+            <div class="mt-8 pt-4 border-t border-gray-700">
+                <p class="text-xs text-gray-500">系統狀態: <span id="system-status" class="text-green-400">連線中</span></p>
+                <p class="text-xs text-gray-500 mt-1">用戶 ID: <span id="user-id" class="font-mono text-xs">...</span></p>
+            </div>
+        </nav>
+
+        <!-- 主要內容區域 (Main Content) -->
+        <main class="flex-grow p-4 lg:p-8 content-area">
+            <h2 id="module-title" class="text-3xl font-semibold text-white mb-6">歡迎使用 ERP 2.0 戰略指揮中心</h2>
+            <div id="module-content" class="min-h-[70vh]">
+                <div class="dashboard-card p-10 text-center">
+                    <p class="text-xl text-blue-400 mb-4">請從左側導航選擇一個模組</p>
+                    <p class="text-gray-400">整合了財務、採購和審批的核心功能，為您的戰略決策提供實時數據支持。</p>
+                    <div class="mt-8 flex justify-center space-x-4">
+                        <button onclick="renderModule('AccountingAnalysis')" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">查看財務 KPI</button>
+                        <button onclick="renderModule('Procurement')" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">進入採購中心</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 模態框/通知區域 (取代 alert/confirm) -->
+    <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center z-50"></div>
+
+    <script type="module">
+        // =========================================================
+        // 核心設定與初始化
+        // =========================================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // 設定 Firebase Log Level
+        setLogLevel('Debug');
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // 假設 __initial_auth_token 存在，但為穩健性，優先嘗試匿名登入
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        let currentUserId = null;
+        let currentModule = 'Home';
+
+        // 登入處理 (僅使用匿名登入確保穩定性)
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUserId = user.uid;
+                document.getElementById('user-id').textContent = currentUserId.substring(0, 10) + '...';
+            } else {
+                try {
+                    await signInAnonymously(auth);
+                } catch (error) {
+                    console.error("匿名登入失敗:", error);
+                    document.getElementById('system-status').textContent = '登入失敗';
+                    document.getElementById('system-status').className = 'text-red-400';
+                    document.getElementById('user-id').textContent = '認證錯誤';
+                }
+            }
+        });
+
+        // =========================================================
+        // UI 渲染與導航邏輯
+        // =========================================================
+
+        const modules = {
+            'ExpenseApproval': { title: '費用審批系統', icon: 'Wallet', render: renderExpenseApproval },
+            'AccountingAnalysis': { title: '會計分析應用程式', icon: 'BarChart3', render: renderAccountingAnalysis },
+            'Procurement': { title: 'IGB ERP 採購', icon: 'ShoppingBag', render: renderProcurement },
+            'FinanceTracker': { title: '財務追蹤器', icon: 'DollarSign', render: renderFinanceTracker }
+        };
+
+        // 導航渲染
+        const renderNavigation = () => {
+            const navContainer = document.getElementById('nav-container');
+            navContainer.innerHTML = '';
+            
+            Object.keys(modules).forEach(key => {
+                const module = modules[key];
+                const isActive = key === currentModule ? 'active' : '';
+                
+                // 模擬 Lucide Icon
+                const iconHtml = `<i data-lucide="${module.icon}" class="icon mr-3"></i>`;
+
+                const link = document.createElement('a');
+                link.href = `#${key}`;
+                link.className = `nav-link ${isActive} flex items-center p-3 text-sm font-medium rounded-lg hover:bg-gray-700 transition duration-150 ease-in-out`;
+                link.innerHTML = `<span class="icon">${iconHtml}</span> ${module.title}`;
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    renderModule(key);
+                };
+                navContainer.appendChild(link);
+            });
+            // 由於 Lucide Icons 是在頁面加載後初始化，這裡的圖標可能需要重繪
+            // 這裡假設我們使用的是 Tailwind 提供的 SVG/Emoki 替代方案
+        };
+
+        // 核心模組渲染函數
+        window.renderModule = (moduleKey) => {
+            const moduleInfo = modules[moduleKey];
+            if (!moduleInfo) return;
+
+            currentModule = moduleKey;
+            
+            // 更新導航連結的活動狀態
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector(`[href="#${moduleKey}"]`).classList.add('active');
+
+            // 更新標題
+            document.getElementById('module-title').textContent = moduleInfo.title;
+
+            // 渲染內容
+            moduleInfo.render();
+        };
+
+        // =========================================================
+        // 模組 1: 費用審批系統 (Expense Approval System)
+        // =========================================================
+        function renderExpenseApproval() {
+            const content = document.getElementById('module-content');
+            content.innerHTML = `
+                <div class="dashboard-card p-6">
+                    <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">待審批請求 (5 筆)</h3>
+                    <div class="space-y-3">
+                        ${renderApprovalItem('差旅費', 'TSMC 專案出差', 2500, '待總經理審批', 'red-500')}
+                        ${renderApprovalItem('招待費', '客戶晚宴', 800, '待財務審批', 'yellow-500')}
+                        ${renderApprovalItem('報銷', '硬體採購', 450, '已通過', 'green-500')}
+                    </div>
+                    
+                    <h3 class="text-xl font-semibold text-blue-300 mb-4 mt-8 border-b border-gray-700 pb-2">提交新請求</h3>
+                    <form id="expense-form" class="space-y-4">
+                        <input type="text" id="expense-title" placeholder="標題 (e.g. 差旅, 報銷)" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                        <input type="number" id="expense-amount" placeholder="金額 (TWD)" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                        <textarea id="expense-details" placeholder="詳細說明" rows="3" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500 resize-none"></textarea>
+                        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded-lg transition duration-200">提交審批請求</button>
+                    </form>
+                </div>
+            `;
+            // 綁定表單事件
+            document.getElementById('expense-form').onsubmit = handleExpenseSubmission;
+        }
+
+        const renderApprovalItem = (type, title, amount, status, color) => `
+            <div class="flex justify-between items-center p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition duration-150">
+                <div class="flex-grow">
+                    <p class="text-sm font-medium text-white">${title} (${type})</p>
+                    <p class="text-xs text-gray-400">NT$ ${amount.toLocaleString()}</p>
+                </div>
+                <span class="text-xs font-bold px-3 py-1 rounded-full bg-${color}/20 text-${color}-400">${status}</span>
+                <button class="ml-4 text-blue-400 hover:text-blue-200 text-sm font-semibold">審批</button>
+            </div>
+        `;
+
+        const handleExpenseSubmission = async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('expense-title').value;
+            const amount = document.getElementById('expense-amount').value;
+            const details = document.getElementById('expense-details').value;
+
+            if (!currentUserId) {
+                customAlert('錯誤：用戶身份未確定，無法提交。');
+                return;
+            }
+            
+            // 模擬 Firestore 寫入
+            try {
+                const path = `artifacts/${appId}/users/${currentUserId}/expenses`;
+                await addDoc(collection(db, path), {
+                    title, amount: parseFloat(amount), details, status: '待審批', submittedAt: Date.now()
+                });
+                customAlert('費用請求已成功提交！', 'green');
+                document.getElementById('expense-form').reset();
+            } catch (error) {
+                console.error("費用提交失敗:", error);
+                customAlert('提交失敗：' + error.message, 'red');
+            }
+        };
+
+        // =========================================================
+        // 模組 2: 會計分析應用程式 (Accounting Analysis App)
+        // =========================================================
+        function renderAccountingAnalysis() {
+            const content = document.getElementById('module-content');
+            content.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    ${renderKpiCard('總收入 (Q3)', 'NT$ 1,500 萬', '+12.5% YoY', 'green')}
+                    ${renderKpiCard('淨利潤率', '18.7%', '-0.5% YoY', 'red')}
+                    ${renderKpiCard('應收帳款 (30+天)', 'NT$ 80 萬', '+25.0% MoM', 'yellow')}
+                </div>
+                <div class="dashboard-card p-6 mt-6">
+                    <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">損益趨勢分析</h3>
+                    <div class="h-64 bg-gray-700 rounded-lg flex items-center justify-center text-gray-400">
+                        [Placeholder: 季度收入/支出折線圖]
+                    </div>
+                </div>
+                <div class="dashboard-card p-6 mt-6">
+                    <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">主要支出分類</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        ${renderCategorySummary('人事費用', '45%', 'NT$ 450 萬')}
+                        ${renderCategorySummary('研發投入', '25%', 'NT$ 250 萬')}
+                        ${renderCategorySummary('市場營銷', '15%', 'NT$ 150 萬')}
+                        ${renderCategorySummary('營運雜項', '15%', 'NT$ 150 萬')}
+                    </div>
+                </div>
+            `;
+        }
+
+        const renderKpiCard = (title, value, trend, color) => `
+            <div class="dashboard-card p-5 border-l-4 border-${color}-500">
+                <p class="text-sm font-medium text-gray-400">${title}</p>
+                <p class="text-3xl font-bold text-white mt-1">${value}</p>
+                <div class="flex items-center mt-2">
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-${color}-500/20 text-${color}-400">${trend}</span>
+                </div>
+            </div>
+        `;
+
+        const renderCategorySummary = (name, percentage, amount) => `
+            <div class="p-3 bg-gray-700 rounded-lg">
+                <p class="text-sm font-medium text-white">${name}</p>
+                <div class="flex justify-between items-center mt-1">
+                    <span class="text-lg font-bold text-blue-400">${percentage}</span>
+                    <span class="text-xs text-gray-400">${amount}</span>
+                </div>
+                <div class="h-1 bg-gray-600 rounded-full mt-1">
+                    <div class="h-1 bg-blue-500 rounded-full" style="width: ${percentage};"></div>
+                </div>
+            </div>
+        `;
+
+        // =========================================================
+        // 模組 3: IGB ERP 採購 (Procurement)
+        // =========================================================
+        function renderProcurement() {
+            const content = document.getElementById('module-content');
+            content.innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- 快速數據概覽 -->
+                    ${renderKpiCard('待處理 PO', '12 筆', '緊急', 'yellow')}
+                    ${renderKpiCard('預計到貨總值', 'NT$ 350 萬', '本週', 'blue')}
+                    ${renderKpiCard('新供應商請求', '3 份', '待審核', 'red')}
+                </div>
+                
+                <div class="dashboard-card p-6 mt-6">
+                    <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">建立採購訂單 (PO)</h3>
+                    <form id="po-form" class="space-y-4">
+                        <select id="supplier" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                            <option value="">選擇供應商...</option>
+                            <option>台積電材料</option>
+                            <option>聯合電子</option>
+                            <option>國際貿易B</option>
+                        </select>
+                        <input type="text" id="item" placeholder="採購項目 (e.g. 記憶體晶片 M12)" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                        <div class="flex space-x-4">
+                            <input type="number" id="quantity" placeholder="數量" class="w-1/2 p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                            <input type="number" id="price" placeholder="單價 (NT$)" class="w-1/2 p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition duration-200">生成並發送 PO</button>
+                    </form>
+                </div>
+                
+                <div class="dashboard-card p-6 mt-6">
+                    <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">庫存預警列表</h3>
+                    <div class="space-y-2">
+                        ${renderInventoryItem('螺絲釘 T-500', 50, 100, 'red')}
+                        ${renderInventoryItem('散熱膏 Z-10', 120, 150, 'yellow')}
+                        ${renderInventoryItem('電源供應器 120W', 300, 200, 'green')}
+                    </div>
+                </div>
+            `;
+            document.getElementById('po-form').onsubmit = handlePOFormSubmission;
+        }
+
+        const renderInventoryItem = (item, current, safety, color) => `
+            <div class="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
+                <p class="text-sm font-medium text-white">${item}</p>
+                <div class="flex space-x-4 items-center">
+                    <span class="text-xs text-gray-400">目前: ${current} / 安全庫存: ${safety}</span>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-${color}-500/20 text-${color}-400">${current < safety ? '需補貨' : '充足'}</span>
+                </div>
+            </div>
+        `;
+
+        const handlePOFormSubmission = async (e) => {
+            e.preventDefault();
+            const supplier = document.getElementById('supplier').value;
+            const item = document.getElementById('item').value;
+            const quantity = document.getElementById('quantity').value;
+            const price = document.getElementById('price').value;
+
+            if (!currentUserId) {
+                customAlert('錯誤：用戶身份未確定，無法提交。');
+                return;
+            }
+
+            // 模擬 Firestore 寫入
+            try {
+                const path = `artifacts/${appId}/users/${currentUserId}/purchase_orders`;
+                await addDoc(collection(db, path), {
+                    supplier, item, quantity: parseInt(quantity), price: parseFloat(price), total: parseInt(quantity) * parseFloat(price), status: '待發送', created: Date.now()
+                });
+                customAlert(`PO [${item}] 已建立，總計 NT$ ${(parseInt(quantity) * parseFloat(price)).toLocaleString()}。`, 'blue');
+                document.getElementById('po-form').reset();
+            } catch (error) {
+                console.error("PO 提交失敗:", error);
+                customAlert('PO 提交失敗：' + error.message, 'red');
+            }
+        };
+
+        // =========================================================
+        // 模組 4: 財務追蹤器 (Finance Tracker)
+        // =========================================================
+        function renderFinanceTracker() {
+            const content = document.getElementById('module-content');
+            content.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    ${renderBalanceCard('本月總收入', 850000, 'green')}
+                    ${renderBalanceCard('本月總支出', 420000, 'red')}
+                </div>
+                
+                <div class="dashboard-card p-6 mt-6">
+                    <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">新增交易記錄</h3>
+                    <form id="finance-form" class="space-y-4">
+                        <select id="type" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                            <option value="收入">收入</option>
+                            <option value="支出">支出</option>
+                        </select>
+                        <input type="text" id="description" placeholder="描述 (e.g. 薪資入帳, 辦公用品)" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                        <input type="number" id="amount" placeholder="金額 (TWD)" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-blue-500" required>
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-lg transition duration-200">記錄交易</button>
+                    </form>
+                </div>
+
+                <div class="dashboard-card p-6 mt-6">
+                    <h3 class="text-xl font-semibold text-blue-300 mb-4 border-b border-gray-700 pb-2">最近交易</h3>
+                    <div class="space-y-2">
+                        ${renderTransactionItem('收入', '客戶付款', 150000, '2025-10-20', 'green')}
+                        ${renderTransactionItem('支出', '伺服器維護費', 12000, '2025-10-18', 'red')}
+                        ${renderTransactionItem('支出', '差旅報銷', 25000, '2025-10-15', 'red')}
+                    </div>
+                </div>
+            `;
+            document.getElementById('finance-form').onsubmit = handleFinanceFormSubmission;
+        }
+
+        const renderBalanceCard = (title, amount, color) => `
+            <div class="dashboard-card p-5 border-b-4 border-${color}-500">
+                <p class="text-sm font-medium text-gray-400">${title}</p>
+                <p class="text-3xl font-bold text-white mt-1 text-${color}-400">NT$ ${amount.toLocaleString()}</p>
+            </div>
+        `;
+
+        const renderTransactionItem = (type, desc, amount, date, color) => `
+            <div class="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
+                <div class="flex items-center space-x-3">
+                    <span class="text-xl text-${color}-400">${type === '收入' ? '⬆️' : '⬇️'}</span>
+                    <div class="flex-grow">
+                        <p class="text-sm font-medium text-white">${desc}</p>
+                        <p class="text-xs text-gray-400">${date}</p>
+                    </div>
+                </div>
+                <span class="text-base font-bold text-${color}-400">${type === '收入' ? '+' : '-'} NT$ ${amount.toLocaleString()}</span>
+            </div>
+        `;
+
+        const handleFinanceFormSubmission = async (e) => {
+            e.preventDefault();
+            const type = document.getElementById('type').value;
+            const description = document.getElementById('description').value;
+            const amount = document.getElementById('amount').value;
+
+            if (!currentUserId) {
+                customAlert('錯誤：用戶身份未確定，無法提交。');
+                return;
+            }
+
+            // 模擬 Firestore 寫入
+            try {
+                const path = `artifacts/${appId}/users/${currentUserId}/transactions`;
+                await addDoc(collection(db, path), {
+                    type, description, amount: parseFloat(amount), recordedAt: Date.now()
+                });
+                customAlert(`成功記錄一筆 ${type} 交易：NT$ ${parseFloat(amount).toLocaleString()}。`, 'indigo');
+                document.getElementById('finance-form').reset();
+            } catch (error) {
+                console.error("交易記錄失敗:", error);
+                customAlert('交易記錄失敗：' + error.message, 'red');
+            }
+        };
+
+        // =========================================================
+        // 通用 UI 函數 (取代 alert 和 confirm)
+        // =========================================================
+        
+        // 模態框/通知
+        const customAlert = (message, color = 'blue') => {
+            const container = document.getElementById('modal-container');
+            
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `fixed bottom-4 right-4 z-[60] bg-${color}-600 text-white p-4 rounded-xl shadow-2xl transition-opacity duration-300 transform translate-y-0 opacity-100`;
+            alertDiv.textContent = message;
+            
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.style.opacity = '0';
+                alertDiv.style.transform = 'translateY(20px)';
+                setTimeout(() => alertDiv.remove(), 300);
+            }, 3000);
+        };
+
+        // 頁面載入完成後初始化
+        window.onload = () => {
+            renderNavigation();
+            // 由於默認顯示 Home，這裡不需要呼叫 renderModule('Home')，讓初始 HTML 顯示。
+            // 如果需要強制顯示第一個模組，可以取消註釋下面一行:
+            // renderModule('ExpenseApproval');
+        };
+
+    </script>
+</body>
+</html>

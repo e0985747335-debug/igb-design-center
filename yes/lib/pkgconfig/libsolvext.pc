@@ -1,0 +1,9 @@
+libdir=/home/iven/igb-design-center/yes/lib
+includedir=/home/iven/igb-design-center/yes/include
+
+Name: libsolvext
+Description: Library for reading repositories
+Version: 0.7.30
+Requires: libsolv
+Libs: -L${libdir} -lsolvext
+Cflags: -I${includedir}

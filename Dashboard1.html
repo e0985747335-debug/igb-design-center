@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGB ERP 2.0 技術指揮中心儀表板</title>
+    <!-- 引入 Tailwind CSS 腳本 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 使用 Inter 字體 -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* GitHub Dark Theme Background */
+        }
+        .glass-card {
+            background-color: rgba(30, 41, 59, 0.6); /* Slightly transparent dark blue */
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+        }
+        /* Custom scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen p-4 md:p-8">
+    
+    <!-- 標頭 (Header) -->
+    <header class="mb-8 p-4 glass-card rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center">
+        <h1 class="text-3xl font-bold text-blue-400 mb-2 md:mb-0">
+            IGB ERP 2.0 技術指揮中心
+        </h1>
+        <div class="text-sm text-gray-400">
+            <span id="current-time">載入中...</span> | 
+            用戶: <span class="font-medium text-blue-300">系統管理員 (Admin)</span>
+        </div>
+    </header>
+
+    <!-- 關鍵指標卡片 (Key Metric Cards) -->
+    <div id="metric-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Metric Card Template -->
+        <!-- Populated by JavaScript below -->
+    </div>
+
+    <!-- 主體內容區 (Main Content Area) -->
+    <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- 左側面板 - 系統狀態與警告 (Left Panel - Status & Alerts) -->
+        <div class="lg:col-span-1 space-y-6">
+            
+            <!-- 服務狀態清單 (Service Status List) -->
+            <div class="glass-card p-6 rounded-xl shadow-lg h-96 overflow-y-auto">
+                <h2 class="text-xl font-semibold border-b border-gray-600 pb-3 mb-4 text-green-400 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9.25 10.75M14.25 17L14.75 10.75M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z"></path></svg>
+                    核心服務運行狀態
+                </h2>
+                <div id="service-status" class="space-y-3">
+                    <!-- Populated by JavaScript below -->
+                </div>
+            </div>
+
+            <!-- 系統警告 (System Alerts) -->
+            <div class="glass-card p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold border-b border-gray-600 pb-3 mb-4 text-red-400 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.332 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    即時警告 (最近 30 分鐘)
+                </h2>
+                <div id="alerts-list" class="space-y-3">
+                     <!-- Populated by JavaScript below -->
+                </div>
+                <div class="mt-4 text-center">
+                    <button class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 shadow-md">
+                        查看所有警告
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 右側面板 - 效能與流量 (Right Panel - Performance & Traffic) -->
+        <div class="lg:col-span-2 space-y-6">
+            
+            <!-- 交易流量趨勢 (Transaction Traffic Trend - Placeholder Chart) -->
+            <div class="glass-card p-6 rounded-xl shadow-lg h-80">
+                <h2 class="text-xl font-semibold border-b border-gray-600 pb-3 mb-4 text-blue-400 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    交易流量趨勢 (過去 24 小時)
+                </h2>
+                <div class="text-center text-gray-500 h-48 flex items-center justify-center border border-dashed border-gray-700 rounded-lg">
+                    [圖表 Placeholder: 需使用圖表庫如 Chart.js 或 D3.js 來繪製實際折線圖/柱狀圖]
+                </div>
+            </div>
+
+            <!-- 關鍵 API 延遲 (Critical API Latency) -->
+            <div class="glass-card p-6 rounded-xl shadow-lg h-96 overflow-y-auto">
+                <h2 class="text-xl font-semibold border-b border-gray-600 pb-3 mb-4 text-yellow-400 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    關鍵 API 平均延遲 (P95, 毫秒)
+                </h2>
+                <div id="api-latency-list" class="space-y-3">
+                    <!-- Populated by JavaScript below -->
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- JavaScript 邏輯和資料模擬 -->
+    <script type="text/javascript">
+        // 模擬數據
+        const mockMetrics = [
+            { title: "即時交易筆數", value: "2,450 / min", icon: '<svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 4h4m-2 0V9"></path></svg>', trend: "+3.2% (1h)" },
+            { title: "系統整體延遲 (P95)", value: "85 ms", icon: '<svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>', trend: "穩定" },
+            { title: "錯誤率 (5min)", value: "0.01%", icon: '<svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>', trend: "無重大上升" },
+            { title: "核心資料庫連線", value: "正常", icon: '<svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10m0 0h16a2 2 0 002-2V9a2 2 0 00-2-2H4zm0 10h16M7 7h.01M7 17h.01M17 7h.01M17 17h.01"></path></svg>', trend: "100% Uptime" }
+        ];
+
+        const mockServices = [
+            { name: "訂單處理服務", status: "正常", color: "green", cpu: "25%", mem: "40%" },
+            { name: "庫存管理服務", status: "正常", color: "green", cpu: "15%", mem: "30%" },
+            { name: "使用者認證服務", status: "過載", color: "yellow", cpu: "85%", mem: "60%" },
+            { name: "報告生成服務", status: "異常", color: "red", cpu: "10%", mem: "75%" },
+            { name: "排程任務服務", status: "正常", color: "green", cpu: "5%", mem: "20%" },
+        ];
+
+        const mockAlerts = [
+            { time: "23:35:12", level: "嚴重", description: "服務 '使用者認證服務' CPU 使用率超過 80% (持續 10 分鐘)" },
+            { time: "23:30:45", level: "一般", description: "資料庫連線池使用率超過 90%" },
+            { time: "23:20:01", level: "一般", description: "批次任務執行時間延長 (20% above average)" },
+        ];
+
+        const mockLatency = [
+            { api: "/api/v2/order/create", p95: "110 ms" },
+            { api: "/api/v2/inventory/query", p95: "75 ms" },
+            { api: "/api/v2/user/login", p95: "150 ms (高)" },
+            { api: "/api/v2/report/daily", p95: "2500 ms" },
+            { api: "/api/v2/product/info", p95: "60 ms" },
+        ];
+
+        // 輔助函數：根據顏色返回 Tailwind 類別
+        const getColorClass = (color) => {
+            switch (color) {
+                case 'green': return 'bg-green-600';
+                case 'yellow': return 'bg-yellow-600';
+                case 'red': return 'bg-red-600';
+                default: return 'bg-gray-600';
+            }
+        };
+
+        // 渲染關鍵指標卡片
+        const renderMetricCards = () => {
+            const container = document.getElementById('metric-cards');
+            container.innerHTML = mockMetrics.map(metric => `
+                <div class="glass-card p-5 rounded-xl shadow-xl flex items-center justify-between transition duration-300 hover:scale-[1.02] cursor-pointer">
+                    <div class="flex flex-col">
+                        <p class="text-sm font-medium text-gray-400">${metric.title}</p>
+                        <p class="text-3xl font-bold text-white mt-1">${metric.value}</p>
+                        <p class="text-xs mt-1 ${metric.trend.includes('+') ? 'text-green-400' : 'text-gray-400'}">${metric.trend}</p>
+                    </div>
+                    <div class="p-3 bg-blue-900/50 rounded-full">
+                        ${metric.icon}
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        // 渲染服務狀態清單
+        const renderServiceStatus = () => {
+            const container = document.getElementById('service-status');
+            container.innerHTML = mockServices.map(service => `
+                <div class="flex justify-between items-center text-sm p-2 rounded-lg transition duration-150 hover:bg-gray-700/50">
+                    <span class="font-medium text-gray-300 w-32 truncate">${service.name}</span>
+                    <span class="flex items-center">
+                        <span class="h-2.5 w-2.5 rounded-full ${getColorClass(service.color)} mr-2"></span>
+                        <span class="text-${service.color}-400">${service.status}</span>
+                    </span>
+                    <span class="text-gray-500 hidden md:inline-block">CPU: ${service.cpu}</span>
+                    <span class="text-gray-500 hidden md:inline-block">Mem: ${service.mem}</span>
+                </div>
+            `).join('');
+        };
+
+        // 渲染警告清單
+        const renderAlerts = () => {
+            const container = document.getElementById('alerts-list');
+            container.innerHTML = mockAlerts.map(alert => {
+                const levelColor = alert.level === '嚴重' ? 'text-red-500' : 'text-yellow-500';
+                const levelBg = alert.level === '嚴重' ? 'bg-red-900/40' : 'bg-yellow-900/40';
+                return `
+                    <div class="p-3 ${levelBg} rounded-lg border-l-4 border-red-500 flex flex-col md:flex-row md:justify-between transition duration-150 hover:bg-red-900/60">
+                        <div>
+                            <span class="font-bold ${levelColor} mr-2">${alert.level}</span>
+                            <span class="text-sm text-gray-300">${alert.description}</span>
+                        </div>
+                        <span class="text-xs text-gray-500 mt-1 md:mt-0 md:ml-4">${alert.time}</span>
+                    </div>
+                `;
+            }).join('');
+        };
+
+        // 渲染 API 延遲清單
+        const renderLatencyList = () => {
+            const container = document.getElementById('api-latency-list');
+            container.innerHTML = mockLatency.map(item => {
+                const isHigh = item.p95.includes('(高)');
+                const colorClass = isHigh ? 'text-red-400 font-bold' : 'text-green-400';
+                return `
+                    <div class="flex justify-between items-center p-2 rounded-lg transition duration-150 hover:bg-gray-700/50">
+                        <span class="font-mono text-sm text-gray-400 truncate w-3/5">${item.api}</span>
+                        <span class="text-right text-sm ${colorClass} w-2/5">${item.p95.replace(' (高)', '')}</span>
+                    </div>
+                `;
+            }).join('');
+        };
+
+        // 設置時鐘
+        const updateClock = () => {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateString = now.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            document.getElementById('current-time').textContent = `${dateString} ${timeString} (CST)`;
+        };
+
+        // 初始化儀表板
+        window.onload = function () {
+            renderMetricCards();
+            renderServiceStatus();
+            renderAlerts();
+            renderLatencyList();
+            
+            // 初始時鐘設置並每秒更新
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            console.log("IGB ERP 2.0 技術指揮中心儀表板 HTML/JS 初始化完成。");
+        };
+    </script>
+
+</body>
+</html>
+

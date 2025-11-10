@@ -1,0 +1,101 @@
+nohup: ignoring input
+[2025-11-07 21:29:22] 🔍 啟動 Git 自動監控...
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:29:58] ✅ 自動推送成功 (2025-11-07 21:29:56)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:34:43] ✅ 自動推送成功 (2025-11-07 21:34:41)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:35:13] ✅ 自動推送成功 (2025-11-07 21:35:12)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:35:21] ✅ 自動推送成功 (2025-11-07 21:35:20)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+fatal: Unable to create '/home/iven/igb-design-center/.git/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+[2025-11-07 21:45:03] ✅ 自動推送成功 (2025-11-07 21:45:02)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:45:19] ✅ 自動推送成功 (2025-11-07 21:45:18)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+fatal: Unable to create '/home/iven/igb-design-center/.git/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+[2025-11-07 21:45:38] ✅ 自動推送成功 (2025-11-07 21:45:37)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:47:37] ✅ 自動推送成功 (2025-11-07 21:47:35)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:48:43] ✅ 自動推送成功 (2025-11-07 21:48:42)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:49:03] ✅ 自動推送成功 (2025-11-07 21:49:01)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:52:15] ✅ 自動推送成功 (2025-11-07 21:52:14)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:52:35] ✅ 自動推送成功 (2025-11-07 21:52:34)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:53:02] ✅ 自動推送成功 (2025-11-07 21:53:01)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:55:25] ✅ 自動推送成功 (2025-11-07 21:55:24)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:55:35] ✅ 自動推送成功 (2025-11-07 21:55:33)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:55:51] ✅ 自動推送成功 (2025-11-07 21:55:50)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:56:20] ✅ 自動推送成功 (2025-11-07 21:56:18)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:58:15] ✅ 自動推送成功 (2025-11-07 21:58:14)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:59:03] ✅ 自動推送成功 (2025-11-07 21:59:02)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 21:59:25] ✅ 自動推送成功 (2025-11-07 21:59:24)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 22:04:17] ✅ 自動推送成功 (2025-11-07 22:04:15)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 22:04:42] ✅ 自動推送成功 (2025-11-07 22:04:41)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 22:05:02] ✅ 自動推送成功 (2025-11-07 22:05:01)
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+warning: could not open directory 'config/caddy/caddy/': Permission denied
+[2025-11-07 22:23:44] ✅ 自動推送成功 (2025-11-07 22:23:43)
+[2025-11-07 22:38:56] ✅ 自動推送成功 (2025-11-07 22:38:54)
+[2025-11-07 22:39:05] ✅ 自動推送成功 (2025-11-07 22:39:04)
+[2025-11-07 22:39:11] ✅ 自動推送成功 (2025-11-07 22:39:10)
+[2025-11-07 22:56:19] ✅ 自動推送成功 (2025-11-07 22:56:18)
+[2025-11-07 23:07:30] ✅ 自動推送成功 (2025-11-07 23:07:28)
+[2025-11-07 23:07:42] ✅ 自動推送成功 (2025-11-07 23:07:41)
+[2025-11-07 23:07:48] ✅ 自動推送成功 (2025-11-07 23:07:47)
+[2025-11-07 23:13:09] ✅ 自動推送成功 (2025-11-07 23:13:08)
+[2025-11-07 23:15:48] ✅ 自動推送成功 (2025-11-07 23:15:47)
+[2025-11-07 23:46:57] ✅ 自動推送成功 (2025-11-07 23:46:56)
+[2025-11-07 23:53:40] ✅ 自動推送成功 (2025-11-07 23:53:38)
+[2025-11-07 23:53:59] ✅ 自動推送成功 (2025-11-07 23:53:58)
+[2025-11-07 23:54:14] ✅ 自動推送成功 (2025-11-07 23:54:13)
